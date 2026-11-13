@@ -30,6 +30,7 @@ docs/
   RETOS.md        Los 14 retos y la comparación de los candidatos
   GANADORES.md    Ganadores anteriores (global, Madrid, España) y qué tienen en común
   DATOS.md        Fuentes de datos: Quickmap, Moon Trek, relieve e iluminación de LOLA
+  INTERFAZ.md     Cómo se ve: recorrido, boceto y piezas de la interfaz
   PLAN.md         Cómo lo resolvemos: método, tecnologías, entregables, reparto y calendario
   HACKATHON.md    Diario: cómo avanzó
   IA.md           Registro de uso de IA, obligatorio en Space Apps

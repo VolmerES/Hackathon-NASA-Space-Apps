@@ -39,6 +39,7 @@ Todo esto es contexto, no proyecto: no hay código del producto.
 | Mensaje de WhatsApp al equipo | Redactó el resumen de pros y contras | Juan Bautista lo revisó y envió | — |
 | Plan del proyecto (`PLAN.md`) | Redactó la propuesta completa: el problema, el método (SPICE, horizonte con LOLA, validación con Horizons), tecnologías, entregables, reparto y calendario | Juan Bautista pidió que resolviera el reto de verdad, no solo una app bonita. ⚠️ Pendiente de que lo revisen los cuatro | ⚠️ Nombres de kernels y productos de LOLA sin comprobar |
 | Fuentes de datos (`DATOS.md`) | Buscó y leyó las páginas de Quickmap, Moon Trek, LROC y PGDA; encontró el relieve de 5 m/píxel de los sitios y los mapas de iluminación para validar | Juan Bautista pidió investigar Quickmap y Moon Trek | Leído en las páginas oficiales. ⚠️ Nada descargado aún |
+| Interfaz (`INTERFAZ.md`) | Propuso el recorrido, el boceto de la pantalla y las piezas (tarjetas de veredicto, cronograma, panorama del horizonte, explicación, sello de validación) | Juan Bautista lo pidió. ⚠️ Pendiente de que lo decida Angela con el equipo | Las cifras del boceto son inventadas y así se dice |
 | Repo en GitHub | Creó el repo, hizo el commit y lo subió | Juan Bautista lo pidió y decidió hacerlo público | — |
 
 ### 14‑nov · sábado

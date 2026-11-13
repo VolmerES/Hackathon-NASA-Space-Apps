@@ -155,6 +155,8 @@ cifra.** Es el patrón de Medicci.
 - En la demo, un pequeño servidor permite preguntar en directo. Si falla, se
   muestra la explicación precalculada.
 
+> La interfaz (recorrido, boceto y piezas) está en [`INTERFAZ.md`](INTERFAZ.md).
+
 ## 3. Tecnologías
 
 | Parte | Tecnología | Por qué |
