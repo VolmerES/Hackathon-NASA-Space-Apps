@@ -162,7 +162,7 @@ cifra.** Es el patrón de Medicci.
 | Mapa | Imagen del relieve de LOLA con los sitios marcados | Sin servidor de mapas: no se cae |
 | IA | **API de Claude** (servidor pequeño con FastAPI para la demo) | Explicaciones basadas en las cifras calculadas |
 | Web publicada | **Hostinger**, en **`nasaspaceapps.volmer.es`** | Web estática con HTTPS automático: sin servidor que se caiga en el pitch |
-| Servidor (opcional) | **Contabo**, en un subdominio aparte (p. ej. `api.nasaspaceapps.volmer.es`) | Solo para la IA en directo o el horizonte con coordenadas propias. Si cae, la web sigue con lo precalculado |
+| Servidor (opcional) | **Contabo**: el VPS de whoshuman y telegrupos (alias SSH `whoshuman-vps`), en un contenedor Docker propio y un subdominio aparte (p. ej. `api.nasaspaceapps.volmer.es`) | Solo para la IA en directo o el horizonte con coordenadas propias. **Sin tocar whoshuman ni telegrupos**; el cálculo pesado de LOLA se hace en local. Si cae, la web sigue con lo precalculado |
 | Copia de reserva | **GitHub Pages** (el repo ya es público) | Segunda dirección si falla el dominio |
 
 **FortiGuard:** la guía oficial recomienda pedir la clasificación de las webs
