@@ -154,6 +154,9 @@ Planner y el panorama; el modo Explore reorganiza las mismas piezas.
 
 ## Detalles que suman
 
+- **Enlaces «View in Quickmap / Moon Trek»** en cada sitio, centrados en sus
+  coordenadas: conectan nuestra herramienta con las de la NASA.
+
 - **El escenario en la URL** (sitios, fecha, retraso): un planificador lo
   comparte con su equipo con un enlace.
 - **Exportar a CSV** las cifras de la comparación.

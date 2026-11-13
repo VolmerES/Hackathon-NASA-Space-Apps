@@ -130,6 +130,20 @@ NASA** y resuelven las dos piezas más difíciles del plan.
 cálculo que el equipo de LOLA de la NASA, y comparamos nuestras cifras con las
 suyas. Eso es Validez y Relevancia de nota alta.
 
+## Herramientas de la NASA, a la vista
+
+El jurado puntúa que los datos de la NASA sean el núcleo. Usar además sus
+herramientas, y que se vea, refuerza la historia:
+
+- **SPICE** (NAIF/JPL): el cálculo de las posiciones. «El mismo sistema de
+  navegación que usan las misiones de la NASA».
+- **Horizons** (JPL): la validación y, si da tiempo, el botón «Check against
+  JPL Horizons».
+- **Moon Trek** (NASA/JPL): las teselas del mapa.
+- **Quickmap** (LROC): la comparación de iluminación y **un enlace «View in
+  Quickmap / Moon Trek» en cada sitio**, centrado en sus coordenadas.
+- **LOLA / PGDA** (Goddard): el relieve y la validación.
+
 ## Herramientas externas que pueden ayudar
 
 Buscadas la noche del 13‑nov. ⚠️ Ninguna probada todavía: se prueban el
@@ -138,7 +152,7 @@ sábado a primera hora.
 | Herramienta | Qué es | Para qué | Riesgo |
 |---|---|---|---|
 | [**HORAYZON**](https://gmd.copernicus.org/articles/15/6817/2022/) (ETH Zúrich, 2022) | Librería de Python que calcula el horizonte del terreno desde un mapa de relieve con trazado de rayos (Embree). Unas 100 veces más rápida que el método clásico y simplifica el relieve lejano | **El horizonte de cada sitio**, la pieza más difícil | ⚠️ Pensada para la Tierra: comprobar si acepta la esfera lunar y coordenadas proyectadas. Si no, trazado de rayos propio |
-| [**Skyfield**](https://rhodesmill.org/skyfield/planetary.html) | Librería de astronomía en Python. Su documentación trae el ejemplo de un observador en la superficie de la Luna en `MOON_ME_DE421` | Efemérides más sencillas que SPICE, **en el mismo sistema que los mapas de 5 m de PGDA 78** | Comprobar contra Horizons, como SPICE |
+| [**Skyfield**](https://rhodesmill.org/skyfield/planetary.html) | Librería de astronomía en Python. Su documentación trae el ejemplo de un observador en la superficie de la Luna en `MOON_ME_DE421` | Solo **comprobación cruzada** de SPICE, si hace falta. Trabaja en el mismo sistema que los mapas de PGDA 78 | **No es de la NASA.** La herramienta principal es **SPICE** (NAIF/JPL), por Relevancia y coherencia con Horizons |
 | [**lunarsky**](https://github.com/aelanman/lunarsky/) | Extensión de astropy con sistema local (este, norte, arriba) en la Luna | Alternativa a Skyfield | — |
 | **astroquery** (`jplhorizons`) | Acceso a Horizons desde Python | Automatizar la validación | ⚠️ Comprobar que acepta un observador en la superficie lunar |
 | [**Cesium Moon Terrain**](https://cesium.com/platform/cesium-ion/content/cesium-moon-terrain) | La Luna entera en 3D con datos de LOLA (5–60 m/píxel en los polos). Gratis para uso no comercial y educativo | Extra: entrada con la Luna entera y zoom hasta el sitio | Necesita cuenta de Cesium ion. [Aviso en su foro](https://community.cesium.com/t/cesium-ion-moon-terrain-appears-2-5-km-higher-than-lola-sldem2015-dem-at-the-same-lon-lat/46282): relieve ~2,5 km más alto que LOLA. **Solo para ver, nunca para calcular.** Añade CesiumJS al stack |
