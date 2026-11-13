@@ -4,6 +4,34 @@
 Cada tarea dice qué hay que entregar y cuándo está hecha. Contexto en
 [`PLAN.md`](PLAN.md), [`DATOS.md`](DATOS.md) e [`INTERFAZ.md`](INTERFAZ.md).
 
+## Cómo se reparte el software
+
+Para que no recaiga todo en Juan Bautista, **si Juan y Luna programan** (Python
+o MATLAB, con ayuda de IA) se reparte así. ⚠️ Preguntárselo antes de las 9:30.
+
+| Quién | Qué programa |
+|---|---|
+| **Juan Bautista** | Efemérides con SPICE, exportación a JSON, capa de IA, despliegue e integración |
+| **Juan y Luna** | **Módulo de física en Python:** trazado de rayos del horizonte (con curvatura), cifras (fracción del disco, potencia, noche más larga, batería, ventanas) y *notebooks* de validación contra Horizons y PGDA |
+| **Angela** | La web: mapa, tarjetas, cronograma, panorama y, si da tiempo, el 3D |
+
+Juan Bautista les pasa las posiciones del Sol y la Tierra y los mapas de
+relieve cargados; ellos devuelven el horizonte y las cifras de cada sitio; él
+lo empaqueta para la web. El **contrato de datos** permite trabajar en
+paralelo.
+
+Si no programan, siguen teniendo todo lo de abajo: los programas hacen las
+cuentas, pero **no deciden qué contar ni saben si el resultado está bien**.
+
+### Errores que solo ve quien sabe de esto (para revisar siempre)
+
+- Mezclar los sistemas de la Luna **MOON_ME** y **MOON_PA** (~875 m de
+  diferencia). Los mapas de PGDA 78 vienen en MOON_ME (DE421).
+- Criterio del **acimut** (desde el norte, sentido horario) y de la elevación.
+- **Escalas de tiempo** (UTC frente a TDB).
+- Conversión de las coordenadas **estereográficas polares** a latitud y longitud.
+- Cifras poco creíbles frente a la NASA (un 95 % de luz donde PGDA da 60 %).
+
 ## Juan y Luna: que las cifras sean correctas y se puedan defender
 
 El jurado puntúa **Validez** (base científica, viabilidad real) y
