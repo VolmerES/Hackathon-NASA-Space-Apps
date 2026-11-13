@@ -129,3 +129,17 @@ NASA** y resuelven las dos piezas más difíciles del plan.
 **Por qué importa para el jurado:** usamos los mismos datos y el mismo tipo de
 cálculo que el equipo de LOLA de la NASA, y comparamos nuestras cifras con las
 suyas. Eso es Validez y Relevancia de nota alta.
+
+## Herramientas externas que pueden ayudar
+
+Buscadas la noche del 13‑nov. ⚠️ Ninguna probada todavía: se prueban el
+sábado a primera hora.
+
+| Herramienta | Qué es | Para qué | Riesgo |
+|---|---|---|---|
+| [**HORAYZON**](https://gmd.copernicus.org/articles/15/6817/2022/) (ETH Zúrich, 2022) | Librería de Python que calcula el horizonte del terreno desde un mapa de relieve con trazado de rayos (Embree). Unas 100 veces más rápida que el método clásico y simplifica el relieve lejano | **El horizonte de cada sitio**, la pieza más difícil | ⚠️ Pensada para la Tierra: comprobar si acepta la esfera lunar y coordenadas proyectadas. Si no, trazado de rayos propio |
+| [**Skyfield**](https://rhodesmill.org/skyfield/planetary.html) | Librería de astronomía en Python. Su documentación trae el ejemplo de un observador en la superficie de la Luna en `MOON_ME_DE421` | Efemérides más sencillas que SPICE, **en el mismo sistema que los mapas de 5 m de PGDA 78** | Comprobar contra Horizons, como SPICE |
+| [**lunarsky**](https://github.com/aelanman/lunarsky/) | Extensión de astropy con sistema local (este, norte, arriba) en la Luna | Alternativa a Skyfield | — |
+| **astroquery** (`jplhorizons`) | Acceso a Horizons desde Python | Automatizar la validación | ⚠️ Comprobar que acepta un observador en la superficie lunar |
+| [**Cesium Moon Terrain**](https://cesium.com/platform/cesium-ion/content/cesium-moon-terrain) | La Luna entera en 3D con datos de LOLA (5–60 m/píxel en los polos). Gratis para uso no comercial y educativo | Extra: entrada con la Luna entera y zoom hasta el sitio | Necesita cuenta de Cesium ion. [Aviso en su foro](https://community.cesium.com/t/cesium-ion-moon-terrain-appears-2-5-km-higher-than-lola-sldem2015-dem-at-the-same-lon-lat/46282): relieve ~2,5 km más alto que LOLA. **Solo para ver, nunca para calcular.** Añade CesiumJS al stack |
+| [NASA: entorno de la base lunar](https://www.nasa.gov/moonbase-environment-visualization/) y [regiones de Artemis III](https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/) | Visualización interactiva y comunicados oficiales | Contexto del pitch y lista de sitios alineada con la NASA | ⚠️ Un comunicado dice 9 regiones y otro 13: mirar el vigente |
