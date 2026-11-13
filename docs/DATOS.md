@@ -38,6 +38,23 @@ con muchas capas de relieve e imagen.
   polo sur con los sitios encima) sin montar un servidor de mapas. ⚠️ Elegir la
   capa polar y comprobar que las teselas cargan desde nuestro dominio.
 - **Fallback:** si las teselas fallan, una imagen estática del relieve.
+- **Comprobado en su configuración pública:** las teselas son JPG o PNG en
+  `https://trek.nasa.gov/tiles/Moon/{EQ|polo}/{capa}/1.0.0/default/default028mm/{z}/{fila}/{col}.jpg`.
+  Proyecciones: equirectangular, polo norte y **polo sur (IAU2000:30120)**.
+  Índice de capas en `https://trek.nasa.gov/moon/TrekServices/ws/index/…/searchItems`
+  y servicios de cada capa en `…/getLayerServices?uuid=`. Los mapas de relieve
+  y pendientes **no se sirven como teselas** visibles. ⚠️ No comprobado si se
+  descargan desde Trek; el relieve lo sacamos de PGDA.
+
+### Cómo devuelven los «render»
+
+Ni Moon Trek ni Quickmap devuelven una vista 3D: **sirven imágenes 2D
+(teselas WMTS o recortes WMS) y el 3D lo pinta el navegador.** Quickmap pide
+sus capas al servidor de LROC, que tiene un «WMS Browser» ⚠️ sin documentar
+para uso externo. Para nosotros: el 3D lo hacemos con three.js. **No pegar fotos
+como textura en el 3D:** llevan las sombras del momento en que se tomaron y
+chocarían con nuestra iluminación calculada. Relieve gris iluminado solo por
+nuestro Sol.
 
 ## El hallazgo: productos de la NASA que encajan de lleno
 
