@@ -118,6 +118,29 @@ fecha original. Es la respuesta directa al caso de uso.
 - Es poco habitual en un hackathon y convierte la Validez en algo que el jurado
   **ve**.
 
+### 7. Vista 3D desde el sitio (opcional, fuera del MVP)
+
+Idea de Juan Bautista: **ponerse de pie en el sitio**, como en Street View, y
+ver el Sol, la Tierra y el relieve, con los datos encima.
+
+- **Encaja con el enunciado:** menciona «3D surface visualizations» y pide
+  hacer evidentes las condiciones extremas de la Luna.
+- **Mismos datos:** relieve de LOLA, luz desde la dirección del Sol calculada
+  con SPICE, la Tierra en su posición y a su tamaño. Es el panorama del
+  horizonte en primera persona.
+- **Técnica:** three.js (React Three Fiber). Malla del relieve del sitio
+  reducida (≈512 × 512 cerca, malla gruesa para lo lejano), cámara a 1,8 m del
+  suelo, luz direccional del Sol, la Tierra dibujada. Deslizador de tiempo
+  compartido con el cronograma y panel con las cifras (elevación del Sol, puesta
+  de Sol, comunicación, qué tapa qué).
+- **No es una foto:** no hay imágenes a ras de suelo. Se etiqueta como «terrain
+  rendering from NASA LOLA data».
+- **Las cifras salen del cálculo, no del render:** con el Sol a 1° las sombras
+  en 3D tienen artefactos.
+- **Cuándo:** domingo por la mañana, solo con los sitios de la lista. Reserva:
+  el panorama 2D muestra lo mismo.
+- **Para el vídeo:** animación de un día lunar en 3D desde un sitio.
+
 ## Dos modos
 
 | | Planner | Explore |
@@ -142,7 +165,7 @@ Planner y el panorama; el modo Explore reorganiza las mismas piezas.
 
 | MVP (sábado) | Si da tiempo (domingo) | Después |
 |---|---|---|
-| Lista de sitios, misión y retraso, tarjetas con semáforo, cronograma, panorama estático | Animación del día lunar, «Why?» con IA, sello de validación, URL compartible | Modo Explore completo, coordenadas propias con relieve, CSV, altura sobre el suelo (1 m / 5 m) |
+| Lista de sitios, misión y retraso, tarjetas con semáforo, cronograma, panorama estático | Animación del día lunar, «Why?» con IA, sello de validación, URL compartible, **vista 3D desde el sitio** | Modo Explore completo, coordenadas propias con relieve, CSV, altura sobre el suelo (1 m / 5 m) |
 
 El orden de recorte es el del plan: **las tarjetas, el cronograma y el
 panorama con relieve real no se recortan.**
