@@ -6,22 +6,40 @@ Cada tarea dice qué hay que entregar y cuándo está hecha. Contexto en
 
 ## Cómo se reparte el software
 
-Para que no recaiga todo en Juan Bautista, **si Juan y Luna programan** (Python
-o MATLAB, con ayuda de IA) se reparte así. ⚠️ Preguntárselo antes de las 9:30.
+Juan y Luna manejan **algo de Python** (13‑nov). Lo complejo es de Juan
+Bautista; ellos hacen las fórmulas cortas y la verificación, con ayuda de IA.
 
-| Quién | Qué programa |
+| Quién | Qué |
 |---|---|
-| **Juan Bautista** | Efemérides con SPICE, exportación a JSON, capa de IA, despliegue e integración |
-| **Juan y Luna** | **Módulo de física en Python:** trazado de rayos del horizonte (con curvatura), cifras (fracción del disco, potencia, noche más larga, batería, ventanas) y *notebooks* de validación contra Horizons y PGDA |
-| **Angela** | La web: mapa, tarjetas, cronograma, panorama y, si da tiempo, el 3D |
+| **Juan Bautista** | Efemérides con SPICE, trazado de rayos del horizonte, carga de los mapas de LOLA, exportación a JSON, IA, despliegue e integración |
+| **Juan y Luna** | **Fórmulas de ingeniería** (funciones cortas): fracción del disco solar visible, potencia, noche más larga, batería, ventanas de comunicación y de operación. **Notebooks de verificación** |
+| **Angela** | La web |
 
-Juan Bautista les pasa las posiciones del Sol y la Tierra y los mapas de
-relieve cargados; ellos devuelven el horizonte y las cifras de cada sitio; él
-lo empaqueta para la web. El **contrato de datos** permite trabajar en
-paralelo.
+### El kit de verificación (sin leer el código de Juan Bautista)
 
-Si no programan, siguen teniendo todo lo de abajo: los programas hacen las
-cuentas, pero **no deciden qué contar ni saben si el resultado está bien**.
+1. **Fichero de parámetros, suyo:** sitios y coordenadas, umbrales del
+   semáforo, modelo de paneles, consumo, margen de antena. Lo editan; el
+   código lo lee.
+2. **CSV legibles por sitio:** hora UTC, acimut y elevación del Sol y de la
+   Tierra, altura del horizonte en esa dirección.
+3. **Comparación independiente con Horizons:** sacan sus propios datos de la
+   web de Horizons y los comparan con los CSV en un notebook. Otra persona y
+   otra herramienta: por eso es fiable.
+4. **Pruebas de sentido físico**, predichas a mano antes de ver resultados
+   (⚠️ confirmar las cifras exactas):
+   - Eje lunar inclinado ~1,54°: en el polo, el Sol no sube más de ~1,5° sobre
+     el horizonte ideal.
+   - Cada ~29,5 días (mes sinódico), el Sol da una vuelta de acimut.
+   - Por la libración, la Tierra vista desde el polo sur sube y baja unos
+     pocos grados en ciclos de ~27 días.
+   - En un sitio ecuatorial (Apolo), las noches duran ~14,8 días.
+5. **Gráficas automáticas** por sitio: panorama con silueta y trayectorias;
+   nuestro % frente al de la NASA.
+6. **Tabla de validación contra PGDA**, montada por ellos: la diapositiva de
+   Validez.
+
+**Puntos de control:** 13:30 (posiciones contra Horizons) y 20:00 (horizonte e
+iluminación contra la NASA). Dan el visto bueno ellos.
 
 ### Errores que solo ve quien sabe de esto (para revisar siempre)
 

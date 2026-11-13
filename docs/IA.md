@@ -44,7 +44,7 @@ Todo esto es contexto, no proyecto: no hay código del producto.
 | Vista 3D desde el sitio (`INTERFAZ.md`) | Valoró la idea (pros, contras, técnica, cuándo) | **La idea es de Juan Bautista** | — |
 | Alcance (`ALCANCE.md`) | Repasó cada objetivo y sugerencia del enunciado y los clasificó en MVP, si da tiempo y fuera; definió cuándo está hecho el MVP | Juan Bautista pidió fijar el alcance antes que la tecnología. ⚠️ Pendiente de cerrarlo con el equipo | — |
 | Herramientas externas (`DATOS.md`) | Buscó y resumió HORAYZON, Skyfield, lunarsky, astroquery, Cesium Moon Terrain y los recursos de Artemis III | Juan Bautista lo pidió | ⚠️ Ninguna probada |
-| Reparto del software (`REPARTO.md`) | Propuso que Juan y Luna programen el módulo de física y listó los errores típicos que deben vigilar | Juan Bautista planteó que se quedaba con todo el software. ⚠️ Pendiente de preguntar si programan | — |
+| Reparto del software (`REPARTO.md`) | Propuso que Juan y Luna programen el módulo de física y listó los errores típicos que deben vigilar | Juan Bautista planteó que se quedaba con todo el software. Juan y Luna manejan algo de Python: hacen las fórmulas cortas y la verificación | — |
 | Repo en GitHub | Creó el repo, hizo el commit y lo subió | Juan Bautista lo pidió y decidió hacerlo público | — |
 
 ### 14‑nov · sábado
