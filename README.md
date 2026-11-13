@@ -30,6 +30,7 @@ docs/
   RETOS.md        Los 14 retos y la comparación de los candidatos
   GANADORES.md    Ganadores anteriores (global, Madrid, España) y qué tienen en común
   HACKATHON.md    Diario: cómo avanzó
+  IA.md           Registro de uso de IA, obligatorio en Space Apps
   retos/          Enunciado completo y datos de cada reto (web oficial, 13-nov)
   briefing/       Fotos de las diapositivas de la presentación
   organizacion/   Guías oficiales para local leads (PDF, fuera de git)

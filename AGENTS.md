@@ -9,8 +9,11 @@
 - Las PDF de `docs/organizacion/` son «LOCAL LEADS ONLY»: no se suben a git ni
   se publican.
 - Todo lo que se entrega (página de equipo, pitch, vídeo) va **en inglés**.
-- Space Apps exige declarar dónde y cómo se ha usado la IA («SI tools»): apuntar
-  en `docs/HACKATHON.md` qué se hizo con Claude Code.
+- Space Apps exige declarar dónde y cómo se ha usado la IA («SI tools»). **Cada
+  vez que hagas algo con peso, añade una línea al registro de
+  [`docs/IA.md`](docs/IA.md)**: qué hizo la IA, qué hizo el equipo y qué se
+  comprobó. Sigue las marcas de su tabla final (cabeceras de código, línea
+  `IA:` en los commits, marca de agua en imágenes).
 - Para ser elegible a premio global hay que usar **al menos un dato o recurso de
   la NASA**, y listar todos los datos, recursos y herramientas usados.
 - Commits sin `Co-Authored-By:`.
