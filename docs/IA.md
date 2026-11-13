@@ -38,6 +38,7 @@ Todo esto es contexto, no proyecto: no hay código del producto.
 | Elección del reto | Comparó los candidatos (a favor, en contra, riesgos, encaje con el equipo, uso de IA) y dio una recomendación razonada | **Juan y Luna** investigaron los 14 retos y eligieron los tres candidatos. Juan Bautista contó los equipos inscritos en cada reto. **El equipo decidió** el reto lunar | La recomendación es de la IA; la decisión, del equipo |
 | Mensaje de WhatsApp al equipo | Redactó el resumen de pros y contras | Juan Bautista lo revisó y envió | — |
 | Plan del proyecto (`PLAN.md`) | Redactó la propuesta completa: el problema, el método (SPICE, horizonte con LOLA, validación con Horizons), tecnologías, entregables, reparto y calendario | Juan Bautista pidió que resolviera el reto de verdad, no solo una app bonita. ⚠️ Pendiente de que lo revisen los cuatro | ⚠️ Nombres de kernels y productos de LOLA sin comprobar |
+| Fuentes de datos (`DATOS.md`) | Buscó y leyó las páginas de Quickmap, Moon Trek, LROC y PGDA; encontró el relieve de 5 m/píxel de los sitios y los mapas de iluminación para validar | Juan Bautista pidió investigar Quickmap y Moon Trek | Leído en las páginas oficiales. ⚠️ Nada descargado aún |
 | Repo en GitHub | Creó el repo, hizo el commit y lo subió | Juan Bautista lo pidió y decidió hacerlo público | — |
 
 ### 14‑nov · sábado

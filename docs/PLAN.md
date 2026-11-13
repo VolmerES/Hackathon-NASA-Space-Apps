@@ -105,6 +105,11 @@ estática. Horizons solo se usa para **validar**, una vez.
 
 ### Horizonte real: LOLA
 
+> **Actualizado:** las fuentes concretas están en [`DATOS.md`](DATOS.md). El
+> relieve de 5 m/píxel de los sitios (PGDA 78) y los mapas de iluminación y
+> visibilidad de la Tierra ya calculados por el equipo de LOLA (PGDA 69), que
+> son nuestra validación principal.
+
 - Para cada sitio, se trazan **720 rayos** (cada 0,5° de acimut) sobre el mapa
   de elevación de LOLA y se guarda el ángulo máximo del relieve en cada
   dirección, **teniendo en cuenta la curvatura de la Luna** (radio 1737,4 km).

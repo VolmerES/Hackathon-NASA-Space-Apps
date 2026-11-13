@@ -29,6 +29,7 @@ docs/
   CONTEXTO.md     Fuente de verdad: evento, reglas, agenda, criterios, premios, entregables
   RETOS.md        Los 14 retos y la comparación de los candidatos
   GANADORES.md    Ganadores anteriores (global, Madrid, España) y qué tienen en común
+  DATOS.md        Fuentes de datos: Quickmap, Moon Trek, relieve e iluminación de LOLA
   PLAN.md         Cómo lo resolvemos: método, tecnologías, entregables, reparto y calendario
   HACKATHON.md    Diario: cómo avanzó
   IA.md           Registro de uso de IA, obligatorio en Space Apps
