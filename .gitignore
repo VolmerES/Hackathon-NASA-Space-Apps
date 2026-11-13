@@ -1,0 +1,14 @@
+# Fotos con caras de asistentes
+docs/briefing/02-sabado-3.jpeg
+
+# Entorno
+.env
+.env.*
+__pycache__/
+.venv/
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Guías para local leads («LOCAL LEADS ONLY»): no se publican
+docs/organizacion/*.pdf
