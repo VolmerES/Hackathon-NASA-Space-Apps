@@ -161,13 +161,21 @@ cifra.** Es el patrón de Medicci.
 | Gráficas | **Plotly.js** | Gráfica polar del cielo y cronogramas sin dibujarlos a mano |
 | Mapa | Imagen del relieve de LOLA con los sitios marcados | Sin servidor de mapas: no se cae |
 | IA | **API de Claude** (servidor pequeño con FastAPI para la demo) | Explicaciones basadas en las cifras calculadas |
-| Despliegue | **GitHub Pages** (el repo ya es público) | Web estática: sin servidor que se caiga en el pitch |
+| Web publicada | **Hostinger**, en **`nasaspaceapps.volmer.es`** | Web estática con HTTPS automático: sin servidor que se caiga en el pitch |
+| Servidor (opcional) | **Contabo**, en un subdominio aparte (p. ej. `api.nasaspaceapps.volmer.es`) | Solo para la IA en directo o el horizonte con coordenadas propias. Si cae, la web sigue con lo precalculado |
+| Copia de reserva | **GitHub Pages** (el repo ya es público) | Segunda dirección si falla el dominio |
+
+**FortiGuard:** la guía oficial recomienda pedir la clasificación de las webs
+nuevas en el formulario de FortiGuard Web Filter, para que los filtros de red
+del jurado no las bloqueen. Pedirla para `nasaspaceapps.volmer.es` en cuanto el
+subdominio exista (categoría: *education* o *web-based application*; *Company
+Name*: «N/A»). ⚠️ Comprobar dónde están las DNS de `volmer.es`.
 
 ## 4. Qué entregamos exactamente
 
 | Entregable | Qué es | Campo de la página |
 |---|---|---|
-| **La web** | Pública en GitHub Pages: lista de sitios, cielo con horizonte real, cronograma, comparador, deslizador de retraso, cifras y explicación | *Link to Final Project* |
+| **La web** | Pública en `nasaspaceapps.volmer.es` (copia en GitHub Pages): lista de sitios, cielo con horizonte real, cronograma, comparador, deslizador de retraso, cifras y explicación | *Link to Final Project* |
 | **El repo** | Código, datos precalculados, scripts para regenerarlos y README en inglés con método, fuentes, validación y uso de IA | *Link to Final Project* / *References* |
 | **La validación** | Una página corta: nuestras cifras frente a Horizons, Quickmap y la literatura; el cronómetro | Página del proyecto y diapositiva |
 | **La demo** | **7 diapositivas** para el pitch, subidas como PDF público. Vídeo de 30 s como copia de seguridad | *Link to Project Demo* |
@@ -205,5 +213,6 @@ cifra.** Es el patrón de Medicci.
 | SPICE no cuadra o los kernels dan guerra | Efemérides precalculadas desde la API de Horizons para los sitios de la lista |
 | LOLA demasiado grande o lenta | Menos resolución, menos sitios, o la capa de iluminación de Quickmap como referencia |
 | Falla el wifi o el servidor en el pitch | Web estática con todo precalculado y vídeo grabado |
+| El dominio no carga o el filtro del jurado lo bloquea | Copia en GitHub Pages; clasificación en FortiGuard pedida el sábado |
 | La IA no responde | Explicaciones precalculadas |
 | No llegamos a todo | Orden de recorte: primero cae la IA en directo, luego el comparador múltiple, luego las coordenadas propias. **El cielo con horizonte real y las cifras no se recortan** |
