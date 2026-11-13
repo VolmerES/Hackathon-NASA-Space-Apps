@@ -29,6 +29,7 @@ docs/
   CONTEXTO.md     Fuente de verdad: evento, reglas, agenda, criterios, premios, entregables
   RETOS.md        Los 14 retos y la comparación de los candidatos
   GANADORES.md    Ganadores anteriores (global, Madrid, España) y qué tienen en común
+  PLAN.md         Cómo lo resolvemos: método, tecnologías, entregables, reparto y calendario
   HACKATHON.md    Diario: cómo avanzó
   IA.md           Registro de uso de IA, obligatorio en Space Apps
   retos/          Enunciado completo y datos de cada reto (web oficial, 13-nov)

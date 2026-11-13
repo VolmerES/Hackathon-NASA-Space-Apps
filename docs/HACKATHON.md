@@ -17,6 +17,7 @@ El contexto completo (agenda, criterios, premios, entregables) está en
 - [x] 14‑nov · **Reto elegido: [Lunar Landing Site Navigator](retos/lunar-landing-site-navigator.md)**. Plan B: Space Mission Design Game ([por qué](RETOS.md#los-tres-candidatos-del-equipo))
 - [x] 13‑nov · Equipo: Juan y Luna (aeronáutica), Angela Barrio y Juan Bautista (software)
 - [x] 14‑nov · [Registro de uso de IA](IA.md), con todo lo hecho hasta ahora y cómo se marca
+- [x] 14‑nov · [Plan](PLAN.md) propuesto: método, tecnologías, entregables, reparto y calendario (pendiente de revisar entre los cuatro el sábado)
 - [ ] Team Owner, equipo creado en la web y reto elegido (sábado, 10:30)
 - [ ] Prototipo
 - [ ] Página de equipo, primera versión (domingo, 16:00)
