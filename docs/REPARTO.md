@@ -6,14 +6,19 @@ Cada tarea dice qué hay que entregar y cuándo está hecha. Contexto en
 
 ## Cómo se reparte el software
 
-Juan y Luna manejan **algo de Python** (13‑nov). Lo complejo es de Juan
-Bautista; ellos hacen las fórmulas cortas y la verificación, con ayuda de IA.
+**Todo el código lo hace Juan Bautista con IA** (decidido el 14‑nov: es más
+rápido que repartir y luego integrar). Juan y Luna manejan algo de Python, pero
+**no escriben código: verifican**. Si quien escribe el código también lo
+comprueba, los errores de la IA pasan sin que nadie los vea.
 
 | Quién | Qué |
 |---|---|
-| **Juan Bautista** | Efemérides con SPICE, trazado de rayos del horizonte, carga de los mapas de LOLA, exportación a JSON, IA, despliegue e integración |
-| **Juan y Luna** | **Fórmulas de ingeniería** (funciones cortas): fracción del disco solar visible, potencia, noche más larga, batería, ventanas de comunicación y de operación. **Notebooks de verificación** |
-| **Angela** | La web |
+| **Juan Bautista** | Todo el código: efemérides con SPICE, horizonte, fórmulas de ingeniería, exportación a JSON, IA, despliegue. Más el **notebook de verificación ya montado** (carga los CSV, compara, dibuja) |
+| **Juan y Luna** | Parámetros, sus propios datos de Horizons, predicciones de sentido físico, ejecutar e interpretar el notebook, visto bueno en los puntos de control, tabla de validación, escenario, textos y pitch |
+| **Angela** | La web, desde el principio con datos de prueba según el contrato de datos |
+
+⚠️ **Juan Bautista es el cuello de botella.** Respetar los puntos de decisión
+del plan y el orden de recorte del alcance.
 
 ### El kit de verificación (sin leer el código de Juan Bautista)
 
