@@ -190,6 +190,8 @@ Name*: «N/A»). ⚠️ Comprobar dónde están las DNS de `volmer.es`.
 
 ## 5. Quién hace qué (propuesta)
 
+> El detalle por persona, con entregables y horas, está en [`REPARTO.md`](REPARTO.md).
+
 | Quién | Qué |
 |---|---|
 | **Juan y Luna** | El modelo físico: cifras, potencia, batería, márgenes de antena. La lista de sitios y fechas. La **validación** (Horizons, Quickmap, literatura). La sección de método. Uno de ellos sale al pitch |
