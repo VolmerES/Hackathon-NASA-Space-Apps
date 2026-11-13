@@ -33,6 +33,7 @@ docs/
   INTERFAZ.md     Cómo se ve: recorrido, boceto y piezas de la interfaz
   REPARTO.md      Qué hace cada uno, con entregables y horas
   ALCANCE.md      Qué entra en el MVP, qué si da tiempo y qué se queda fuera
+  STACK.md        Plataforma (web), tecnologías, estructura del repo y contrato de datos
   PLAN.md         Cómo lo resolvemos: método, tecnologías, entregables, reparto y calendario
   HACKATHON.md    Diario: cómo avanzó
   IA.md           Registro de uso de IA, obligatorio en Space Apps

@@ -162,6 +162,9 @@ cifra.** Es el patrón de Medicci.
 
 ## 3. Tecnologías
 
+> El detalle (plataforma, estructura del repo, contrato de datos) está en
+> [`STACK.md`](STACK.md).
+
 | Parte | Tecnología | Por qué |
 |---|---|---|
 | Efemérides | Python 3.12 + **spiceypy** + kernels de NAIF | Estándar de la NASA, sin red, con libración |
