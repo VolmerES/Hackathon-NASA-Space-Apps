@@ -32,6 +32,7 @@ docs/
   DATOS.md        Fuentes de datos: Quickmap, Moon Trek, relieve e iluminación de LOLA
   INTERFAZ.md     Cómo se ve: recorrido, boceto y piezas de la interfaz
   REPARTO.md      Qué hace cada uno, con entregables y horas
+  ALCANCE.md      Qué entra en el MVP, qué si da tiempo y qué se queda fuera
   PLAN.md         Cómo lo resolvemos: método, tecnologías, entregables, reparto y calendario
   HACKATHON.md    Diario: cómo avanzó
   IA.md           Registro de uso de IA, obligatorio en Space Apps

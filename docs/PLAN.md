@@ -4,6 +4,9 @@
 es un plan, no código. Según las reglas, el proyecto empieza el sábado 14 a las
 9:00. Lo marcado ⚠️ está sin comprobar y se verifica el sábado a primera hora.
 
+> **El alcance** (MVP, si da tiempo, fuera) está en [`ALCANCE.md`](ALCANCE.md)
+> y se cierra antes que las tecnologías.
+
 ## 1. El problema que resolvemos de verdad
 
 Del enunciado: cuando una misión CLPS se retrasa o cambia de sitio, los

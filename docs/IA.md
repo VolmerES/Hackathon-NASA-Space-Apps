@@ -42,6 +42,7 @@ Todo esto es contexto, no proyecto: no hay código del producto.
 | Interfaz (`INTERFAZ.md`) | Propuso el recorrido, el boceto de la pantalla y las piezas (tarjetas de veredicto, cronograma, panorama del horizonte, explicación, sello de validación) | Juan Bautista lo pidió. ⚠️ Pendiente de que lo decida Angela con el equipo | Las cifras del boceto son inventadas y así se dice |
 | Reparto (`REPARTO.md`) | Desglosó las tareas de Juan y Luna (sitios, Horizons, modelo de ingeniería, validación, escenario, textos, pitch) | Juan Bautista lo pidió. ⚠️ Pendiente de cerrarlo con el equipo el sábado | — |
 | Vista 3D desde el sitio (`INTERFAZ.md`) | Valoró la idea (pros, contras, técnica, cuándo) | **La idea es de Juan Bautista** | — |
+| Alcance (`ALCANCE.md`) | Repasó cada objetivo y sugerencia del enunciado y los clasificó en MVP, si da tiempo y fuera; definió cuándo está hecho el MVP | Juan Bautista pidió fijar el alcance antes que la tecnología. ⚠️ Pendiente de cerrarlo con el equipo | — |
 | Repo en GitHub | Creó el repo, hizo el commit y lo subió | Juan Bautista lo pidió y decidió hacerlo público | — |
 
 ### 14‑nov · sábado
