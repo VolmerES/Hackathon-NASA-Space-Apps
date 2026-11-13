@@ -89,6 +89,20 @@ de la NASA.
   incluye la paralaje de la Tierra (hasta ~0,26°, nada despreciable cuando la
   Tierra está a 1–2° del horizonte).
 
+### Si se cae Horizons, la app sigue
+
+**La app no llama a Horizons en tiempo de uso.** Las efemérides salen de SPICE
+(kernels descargados una vez), se precalculan a JSON y van dentro de la web
+estática. Horizons solo se usa para **validar**, una vez.
+
+- En el **plan B** (efemérides desde Horizons si SPICE no cuadra), las
+  respuestas se descargan una vez y se guardan en el repo: tampoco hay llamada
+  en tiempo de uso.
+- **Fuera del MVP, si da tiempo:** botón «Check against JPL Horizons» que
+  consulta Horizons en directo para el sitio y la fecha en pantalla y muestra
+  la diferencia con nuestro cálculo. Si Horizons no responde, el botón lo dice
+  y todo lo demás sigue igual. Suma en Validez.
+
 ### Horizonte real: LOLA
 
 - Para cada sitio, se trazan **720 rayos** (cada 0,5° de acimut) sobre el mapa
