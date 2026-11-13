@@ -144,6 +144,16 @@ herramientas, y que se vea, refuerza la historia:
   Quickmap / Moon Trek» en cada sitio**, centrado en sus coordenadas.
 - **LOLA / PGDA** (Goddard): el relieve y la validación.
 
+### El horizonte: trazado de rayos propio
+
+1. **Principal:** trazado de rayos propio con `numpy` sobre los mapas de LOLA.
+   720 direcciones; paso no mayor que el píxel; interpolación bilineal; mapa de
+   5 m hasta ~10 km y regional hasta ~200 km; curvatura de la Luna.
+2. **Fuera del fin de semana:** SPICE con el relieve en formato DSK (utilidad
+   de NAIF para convertir mapas) y trazado de rayos de SPICE. Sería «todo
+   NASA», pero ⚠️ no sabemos cómo rinde ni cuánto cuesta montarlo. Como mucho,
+   para comprobar unos pocos rayos.
+
 ## Herramientas externas que pueden ayudar
 
 Buscadas la noche del 13‑nov. ⚠️ Ninguna probada todavía: se prueban el
@@ -151,7 +161,7 @@ sábado a primera hora.
 
 | Herramienta | Qué es | Para qué | Riesgo |
 |---|---|---|---|
-| [**HORAYZON**](https://gmd.copernicus.org/articles/15/6817/2022/) (ETH Zúrich, 2022) | Librería de Python que calcula el horizonte del terreno desde un mapa de relieve con trazado de rayos (Embree). Unas 100 veces más rápida que el método clásico y simplifica el relieve lejano | **El horizonte de cada sitio**, la pieza más difícil | ⚠️ Pensada para la Tierra: comprobar si acepta la esfera lunar y coordenadas proyectadas. Si no, trazado de rayos propio |
+| [**HORAYZON**](https://gmd.copernicus.org/articles/15/6817/2022/) (ETH Zúrich, 2022) | Librería de Python que calcula el horizonte del terreno desde un mapa de relieve con trazado de rayos (Embree). Unas 100 veces más rápida que el método clásico y simplifica el relieve lejano | ~~El horizonte de cada sitio~~ **Descartada** | Está pensada para calcular el horizonte de millones de píxeles; nosotros necesitamos 8–10 sitios. Un trazado de rayos propio con `numpy` cuesta ~2 millones de lecturas por sitio (segundos), es transparente, lo revisan Juan y Luna y sigue el mismo método que Mazarico et al. (2011) |
 | [**Skyfield**](https://rhodesmill.org/skyfield/planetary.html) | Librería de astronomía en Python. Su documentación trae el ejemplo de un observador en la superficie de la Luna en `MOON_ME_DE421` | Solo **comprobación cruzada** de SPICE, si hace falta. Trabaja en el mismo sistema que los mapas de PGDA 78 | **No es de la NASA.** La herramienta principal es **SPICE** (NAIF/JPL), por Relevancia y coherencia con Horizons |
 | [**lunarsky**](https://github.com/aelanman/lunarsky/) | Extensión de astropy con sistema local (este, norte, arriba) en la Luna | Alternativa a Skyfield | — |
 | **astroquery** (`jplhorizons`) | Acceso a Horizons desde Python | Automatizar la validación | ⚠️ Comprobar que acepta un observador en la superficie lunar |
