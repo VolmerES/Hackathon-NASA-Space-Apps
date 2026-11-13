@@ -166,7 +166,8 @@ cifra.** Es el patrón de Medicci.
 | Validación | API de **JPL Horizons** + capas de **Quickmap** | Las fuentes de la NASA que da el reto |
 | Web | **Vite + React + TypeScript** | Rápido de montar y de desplegar como web estática |
 | Gráficas | **Plotly.js** | Gráfica polar del cielo y cronogramas sin dibujarlos a mano |
-| Mapa | Imagen del relieve de LOLA con los sitios marcados | Sin servidor de mapas: no se cae |
+| Mapa | Teselas WMTS de Moon Trek, o imagen del relieve de LOLA | Sin servidor de mapas propio; la imagen es la reserva |
+| 3D (opcional) | **three.js** con **React Three Fiber** y **drei** | Escena local alrededor del sitio, integrada en React. Relieve exportado desde Python como mapa de alturas; malla lejana **con la curvatura de la Luna** (a 100 km el suelo cae ~2,9 km); luz desde el Sol de SPICE, sin luz ambiente. Descartados CesiumJS (globos, pesado), Babylon.js y deck.gl |
 | IA | **API de Claude** (servidor pequeño con FastAPI para la demo) | Explicaciones basadas en las cifras calculadas |
 | Web publicada | **Hostinger**, en **`nasaspaceapps.volmer.es`** | Web estática con HTTPS automático: sin servidor que se caiga en el pitch |
 | Servidor (opcional) | **Contabo**: el VPS de whoshuman y telegrupos (alias SSH `whoshuman-vps`), en un contenedor Docker propio y un subdominio aparte (p. ej. `api.nasaspaceapps.volmer.es`) | Solo para la IA en directo o el horizonte con coordenadas propias. **Sin tocar whoshuman ni telegrupos**; el cálculo pesado de LOLA se hace en local. Si cae, la web sigue con lo precalculado |
