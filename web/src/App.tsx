@@ -750,9 +750,9 @@ export default function App() {
     landing: start.toISOString().slice(0, 16) + 'Z',
     days: mission.durationDays,
     missing: [
-      ...(!focused ? ['no site chosen yet: pick one of the five (button "sites")'] : []),
-      ...(!mission.batteryWh ? ['battery not set (battery_wh): without it, the tool cannot say whether the battery lasts the longest night'] : []),
-      ...(!mission.survivalPowerW ? ['survival power not set (survival_power_w): the power the lander needs at night'] : []),
+      ...(!focused ? [`no site chosen yet: the button "${t.chooseSiteShort}" at the top left, or a site on the Moon`] : []),
+      ...(!mission.batteryWh ? [`battery not set (${t.ms.battery}, under "${t.whenTitle}" in the site card): without it, the tool cannot say whether the battery lasts the longest night`] : []),
+      ...(!mission.survivalPowerW ? [`survival power not set (${t.survivalPower}): the power the lander needs at night`] : []),
     ],
     pointable: ['sites', 'timebar', 'verdict', 'tiles', 'actions', 'sky', 'when', 'compare', 'options', 'moon-tools', 'franky'],
   })
