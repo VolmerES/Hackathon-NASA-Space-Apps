@@ -129,6 +129,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const canvas = canvasRef.current
     const labels = labelsRef.current
     if (!canvas || !labels) return
+    // Set when this scene is torn down: late callbacks (a texture arriving after an unmount, as with
+    // React's double mount in development) must not add labels to the page nobody will move or hide.
+    let disposed = false
     let renderer: THREE.WebGLRenderer
     try {
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' })
@@ -433,6 +436,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const ringGeo = new THREE.RingGeometry(0.010, 0.0135, 48)
     const dotGeo = new THREE.CircleGeometry(0.0045, 24)
     const syncSites = () => {
+      if (disposed) return
       for (const m of markers) {
         moon.remove(m.ring, m.dot)
         ;(m.ring.material as THREE.Material).dispose()
@@ -1060,6 +1064,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     raf = requestAnimationFrame(frame)
 
     return () => {
+      disposed = true
       window.clearTimeout(slowTimer)
       canvas.removeEventListener('webglcontextlost', lost)
       cancelAnimationFrame(raf)
@@ -1074,6 +1079,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       window.clearTimeout(dropTimer)
       canvas.removeEventListener('wheel', wheel)
       for (const m of markers) m.el.remove()
+      earthEl.remove()
       api.current = null
       heatTex?.dispose()
       cesium?.dispose()
