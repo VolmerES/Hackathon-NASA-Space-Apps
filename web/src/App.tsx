@@ -1,11 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA, MADRID_DSN, SITES, clampToData, customSite, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { DATA, MADRID_DSN, SITES, clampToData, customSite, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, subearthAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
 import { YearStrip, type YearMetric } from './components/YearView'
 import { readScenario, writeScenario } from './scenario'
-import { LIGHT_CAP_DEG, LIGHT_GRADIENT, lightMap, type LightMap } from './data/lightmap'
+import { LIGHT_CAP_DEG, LIGHT_GRADIENT, lightMap, lightUpTo, type LightMap } from './data/lightmap'
 import { SiteLight } from './components/SiteLight'
 import { LangContext, STRINGS, readLang, useT, type Lang, type Strings } from './i18n'
 import { useBoxHeight, useStay } from './hooks'
@@ -333,7 +333,11 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lightOn, ready, start.getTime(), mission.durationDays])
-  const heat = useMemo(() => (lightOn && light ? { canvas: light.canvas, deg: LIGHT_CAP_DEG } : null), [lightOn, light])
+  // The map fills up with the hour of the time bar: light received from landing until then. With
+  // no hour chosen (the bar at its start), the whole stay.
+  const [lightHour, setLightHour] = useState(0)
+  const lightShown = useMemo(() => (light && lightHour > 0 ? lightUpTo(light, lightHour) : light), [light, lightHour])
+  const heat = useMemo(() => (lightOn && lightShown ? { canvas: lightShown.canvas, deg: LIGHT_CAP_DEG } : null), [lightOn, lightShown])
   const end = new Date(start.getTime() + mission.durationDays * 86400000)
 
   const landOn = (d: Date) => {
@@ -378,6 +382,8 @@ export default function App() {
   // start of the stay. With no site chosen yet the time bar keeps its own hour.
   const [freeHour, setFreeHour] = useState(0)
   const litAt = cursor?.t ?? (focused ? start : new Date(start.getTime() + freeHour * 3600000))
+  const hourNow = focused ? (playIdx ?? 0) : freeHour
+  useEffect(() => setLightHour(hourNow), [hourNow])
   // The date field of the time bar sets the start of the stay; a slip already set is kept.
   const setStart = (d: Date) => set('landing', new Date(clampToData(d.getTime()) - mission.slipDays * 86400000))
   // Landing calendar of the chosen site for the stay that is set; never green where our result and the
@@ -394,6 +400,11 @@ export default function App() {
     else setFreeHour(i)
   }
   const sunAt = useMemo(() => (ready ? subsolarAt(litAt) : undefined), [ready, litAt.getTime()]) // eslint-disable-line react-hooks/exhaustive-deps
+  const earthAt = useMemo(() => {
+    if (!ready) return undefined
+    const e = subearthAt(litAt)
+    return { ...e, t: litAt.getTime(), label: t.earthFar((Math.round(e.km / 100) * 100).toLocaleString(t.locale)) }
+  }, [ready, litAt.getTime(), t]) // eslint-disable-line react-hooks/exhaustive-deps
   const togglePlay = () => {
     if (!focused) return
     if (!playing && (playIdx === null || playIdx >= focused.samples.length - 1)) setPlayIdx(0)
@@ -404,7 +415,8 @@ export default function App() {
     setPanel(null)
     setDiving(true)
     const instant = !moonOk || window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    window.setTimeout(() => setStreetOpen(true), instant ? 0 : 2400)
+    // The view starts fading in while the camera is still closing in on the site.
+    window.setTimeout(() => setStreetOpen(true), instant ? 0 : 1300)
   }
   const closeStreet = () => {
     setStreetOpen(false)
@@ -486,7 +498,7 @@ export default function App() {
     <LangContext.Provider value={t}>
       {moonOk ? (
         <Suspense fallback={null}>
-        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} answerLabel={t.seeAnswer} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
+        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} earth={earthAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} answerLabel={t.seeAnswer} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, earth: t.viewEarth, fromEarth: t.viewFromEarth, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />
@@ -708,7 +720,7 @@ export default function App() {
                     </div>
                   ))}
                 </dl>
-                <SiteLight site={focused.site} light={lightOn ? light : null} onTurnOn={() => setLightOn(true)} busy={lightBusy} />
+                <SiteLight site={focused.site} light={lightOn ? lightShown : null} onTurnOn={() => setLightOn(true)} busy={lightBusy} />
                 <div className="mt-3">
                   <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
                   <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-muted">
@@ -836,7 +848,7 @@ export default function App() {
               {/* Legend of the heat map: what the colours mean, and how far to trust them. */}
               {splashDone && moonOk && lightOn && (
                 <div className="ui-in glass absolute bottom-2 left-2 max-w-[min(300px,calc(100%-88px))] px-3 py-2 text-xs">
-                  <p className="font-semibold">{t.lightLegend}{lightBusy ? '…' : ''}</p>
+                  <p className="font-semibold">{lightHour > 0 ? t.lightLegendTo(fmtDateTime(litAt)) : t.lightLegend}{lightBusy ? '…' : ''}</p>
                   <div className="mt-1.5 h-2.5" style={{ background: LIGHT_GRADIENT }} />
                   <p className="mt-0.5 flex justify-between tabular-nums text-white/80">
                     <span>0 %</span>

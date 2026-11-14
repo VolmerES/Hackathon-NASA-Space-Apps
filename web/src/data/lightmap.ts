@@ -92,6 +92,40 @@ export type LightMap = {
   n: number
   /** The same as a picture in the colours of the legend, transparent outside the cap. */
   canvas: HTMLCanvasElement
+  /** Sunlit samples of every point up to each sample of the stay (count x N x N), to show the map
+   *  filling up as the stay goes by. */
+  cum: Uint8Array
+  count: number
+  hours: number
+}
+
+function paint(sum: Uint8Array, count: number): { share: Float32Array; canvas: HTMLCanvasElement } | null {
+  const share = new Float32Array(N * N)
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = N
+  const g = canvas.getContext('2d')
+  if (!g) return null
+  const im = g.createImageData(N, N)
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const p = y * N + x
+      share[p] = sum[p] / count
+      const [r, gg, b] = lightColor(share[p])
+      // Fades out over the last degrees, so the map melts into the ground with no rim.
+      const colat = Math.hypot(((x + 0.5) / N - 0.5) * 2, ((y + 0.5) / N - 0.5) * 2) * LIGHT_CAP_DEG
+      const a = Math.min(1, Math.max(0, (LIGHT_CAP_DEG - colat) / 2.5))
+      im.data.set([r, gg, b, 255 * a * a * (3 - 2 * a)], p * 4)
+    }
+  }
+  g.putImageData(im, 0, 0)
+  return { share, canvas }
+}
+
+/** The map as it stands `hour` hours after landing: sunlight received so far, as a share of the whole stay. */
+export function lightUpTo(m: LightMap, hour: number): LightMap {
+  const s = Math.min(m.count - 1, Math.max(0, Math.round((hour / m.hours) * (m.count - 1))))
+  const p = paint(m.cum.subarray(s * N * N, (s + 1) * N * N), m.count)
+  return p ? { ...m, ...p } : m
 }
 
 /** Sunlit share of the stay for every point of the grid. `alive` lets a newer request cancel it. */
@@ -99,7 +133,8 @@ export async function lightMap(from: Date, days: number, alive: () => boolean = 
   const { hz, frame } = await loadGrid()
   const hours = Math.max(1, Math.round(days * 24))
   const count = Math.min(MAX_SAMPLES, hours + 1)
-  const sum = new Float32Array(N * N)
+  const sum = new Uint8Array(N * N) // at most 240 samples
+  const cum = new Uint8Array(count * N * N)
   for (let s = 0; s < count; s++) {
     if (s % 12 === 0) {
       await pause() // keep the page moving
@@ -126,27 +161,11 @@ export async function lightMap(from: Date, days: number, alive: () => boolean = 
       // The same rule as the site model: lit when more than half of the Sun's disc is above the terrain.
       if ((el - hor + SUN_RADIUS_DEG) / (2 * SUN_RADIUS_DEG) > 0.5) sum[p]++
     }
+    cum.set(sum, s * N * N)
   }
-  const share = new Float32Array(N * N)
-  const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = N
-  const g = canvas.getContext('2d')
-  if (!g) return null
-  const im = g.createImageData(N, N)
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const p = y * N + x
-      share[p] = sum[p] / count
-      const [r, gg, b] = lightColor(share[p])
-      // Fades out over the last degree, so the map has no hard rim.
-      const colat = Math.hypot(((x + 0.5) / N - 0.5) * 2, ((y + 0.5) / N - 0.5) * 2) * LIGHT_CAP_DEG
-      im.data.set([r, gg, b, 255 * Math.min(1, Math.max(0, LIGHT_CAP_DEG - colat))], p * 4)
-    }
-  }
-  g.putImageData(im, 0, 0)
-  return { share, n: N, canvas }
+  const p = paint(sum, count)
+  return p ? { ...p, n: N, cum, count, hours } : null
 }
-
 /** Grid pixel of a place (fractional), or null outside the map. */
 export function lightPixel(lat: number, lon: number): { x: number; y: number } | null {
   const colat = lat + 90

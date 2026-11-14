@@ -377,6 +377,11 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     dust.visible = false
     scene.add(dust)
     let land: { t: number; ground: number; lastHud: number } | null = null
+    // The lander comes down upright and, as its pads touch, settles to the slope of the ground.
+    const slopeQ = new THREE.Quaternion()
+    const yawQ = new THREE.Quaternion()
+    const UP = new THREE.Vector3(0, 1, 0)
+    let landYaw = 0
     let landed = false
     const groundAt = (x: number, z: number) => {
       const hit = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)).intersectObject(ground)[0]
@@ -393,7 +398,9 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         const alt = LAND_FROM * Math.pow(1 - p, 2.4)
         const speed = (LAND_FROM * 2.4 * Math.pow(1 - p, 1.4)) / LAND_SECONDS
         lander.position.y = land.ground + alt
-        lander.rotation.y += dt * 0.12 * (1 - p)
+        landYaw += dt * 0.12 * (1 - p)
+        const settle = THREE.MathUtils.smoothstep(1 - alt / 1.4, 0, 1)
+        lander.quaternion.identity().slerp(slopeQ, settle).multiply(yawQ.setFromAxisAngle(UP, landYaw))
         plume.visible = p < 1
         engineGlow.intensity = p < 1 ? 260 + 60 * Math.sin(now / 31) : 0
         plume.scale.set(1 + 0.25 * Math.sin(now / 37), 0.75 + 0.5 * (1 - p) + 0.12 * Math.sin(now / 23), 1 + 0.25 * Math.sin(now / 37))
@@ -570,6 +577,14 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
             lander.visible = true
             landed = false
             dust.position.set(x, groundAt(x, z) + 0.05, z)
+            // Slope under the footpads (about 4 m apart either way), at most 25 degrees.
+            const d = 2.2
+            const n = new THREE.Vector3(groundAt(x - d, z) - groundAt(x + d, z), 2 * d, groundAt(x, z - d) - groundAt(x, z + d)).normalize()
+            slopeQ.setFromUnitVectors(UP, n)
+            const lean = 2 * Math.acos(Math.min(1, Math.abs(slopeQ.w)))
+            if (lean > 25 * DEG) slopeQ.identity().slerp(new THREE.Quaternion().setFromUnitVectors(UP, n), (25 * DEG) / lean)
+            landYaw = 0
+            lander.quaternion.identity()
             land = { t: 0, ground: groundAt(x, z), lastHud: 0 }
             yawGoal += 24
             vYaw = vPitch = 0

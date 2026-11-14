@@ -249,6 +249,12 @@ export function subsolarAt(t: Date): { lat: number; lon: number } {
   return { lat: r.sLat, lon: r.sLon }
 }
 
+/** Sub-Earth point on the Moon (deg) and Earth-Moon distance (km) at time t, from the Horizons rows. */
+export function subearthAt(t: Date): { lat: number; lon: number; km: number } {
+  const r = row(t.getTime())
+  return { lat: r.eLat, lon: r.eLon, km: r.km }
+}
+
 function sampleAt(site: Site, t: number, minAntennaElevDeg: number): Sample {
   const r = row(t)
   const sun = local(site.lat, site.lon, unit(r.sLat, r.sLon))

@@ -290,6 +290,31 @@ Visualization Studio».
   de la herramienta sale de ellos.
 - Los ficheros originales no van al repo: se bajan de la URL de arriba.
 
+### 2 quinquies. La Tierra de la escena: Blue Marble (NASA)
+
+La Tierra que se ve en el cielo de la Luna usa la imagen **Blue Marble Next
+Generation** de diciembre de 2004 (NASA Earth Observatory, R. Stöckli),
+`world.topo.bathy.200412.3x5400x2700.jpg`, reducida a 1024 × 512 px en
+`web/public/moon/earth_1k.jpg`. Sin nubes; la escena la aclara y le añade un
+velo azul para que no salga oscura. **Solo se usa para dibujar.**
+
+- **Dónde está y cuánto mide**: la dirección es el punto subterrestre de
+  `subpoints.json` (JPL Horizons) y el tamaño aparente sale de la distancia
+  Tierra–Luna de ese mismo fichero. Se dibuja más cerca y más pequeña en
+  proporción, así que el tamaño angular es el real (unos 1,9°).
+- **Qué cara enseña**: se calcula en el navegador con la dirección del Sol
+  que ya tiene la escena y la fecha (eje inclinado 23,44° hacia la longitud
+  eclíptica 90°; el Sol sobre el meridiano del mediodía, con ecuación del
+  tiempo). Se toma el polo de la Luna como polo de la eclíptica (se separan
+  1,5°). **Comprobado**: la elevación de la Luna sobre Madrid que da este
+  cálculo se compara con la de `madrid.json` (JPL Horizons) en las 10.249
+  horas: diferencia media 0,72°, máxima 1,62°. Es una aproximación para
+  dibujar, no un dato de la herramienta.
+- **Vistas**: «Desde la Tierra» pone la cámara en la línea Luna–Tierra con un
+  teleobjetivo (a 30 radios lunares, no a los 221 reales: se ve un 1 % menos
+  de disco que desde aquí). «Mirar a la Tierra» la pone detrás de la Luna, al
+  sur, con la Tierra sobre el limbo polar.
+
 ### 3. Otros, por si hacen falta
 
 - [PGDA 81](https://pgda.gsfc.nasa.gov/products/81) y [PGDA 90](https://pgda.gsfc.nasa.gov/products/90):
