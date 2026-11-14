@@ -218,8 +218,14 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const capMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0, vertexColors: true, transparent: true, side: THREE.FrontSide })
     // Heat map: its colours tint the sunlit ground (relief and real shadows stay readable) and glow
     // faintly where the ground is dark; where the picture is transparent the Moon is untouched.
+    // In HD the cap stays solid almost to its edge (see showHd): 1 there, 0 otherwise.
+    const capHd = { value: 0 }
     capMat.onBeforeCompile = (shader) => {
-      shader.fragmentShader = shader.fragmentShader.replace(
+      shader.uniforms.capHd = capHd
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float capHd;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a = mix(diffuseColor.a, clamp(diffuseColor.a * 5.0, 0.0, 1.0), capHd);')
+        .replace(
         '#include <emissivemap_fragment>',
         `#ifdef USE_EMISSIVEMAP
           vec4 heatColor = texture2D( emissiveMap, vEmissiveMapUv );
@@ -248,6 +254,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       // In HD the tiles replace the globe; the polar cap stays (see cesiumMoon.ts).
       globe.visible = !on && shownAt > 0
       cap.visible = shownAt > 0
+      // Their mosaic has black blocks of painted shadow right where the cap fades out (65 to 70 S):
+      // with the tiles on, the cap is solid to 24 degrees and fades over the last one.
+      capHd.value = on ? 1 : 0
       setCredit(on)
     }
     const setHd = (on: boolean) => {

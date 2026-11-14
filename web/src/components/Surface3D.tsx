@@ -967,12 +967,12 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
   return (
     <div className="relative bg-black">
       <div ref={mount} style={{ height }} />
-      <p className="pointer-events-none absolute left-3 top-2 text-sm text-white/80">
+      <p className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-24px)] text-sm text-white/80">
         {t.looking(t.compassLong[Math.round(heading / 45) % 8])}
         {ridgeKmAt(site, heading) !== null && <span className="block text-xs text-white/65">{t.reliefSeen(ridgeKmAt(site, heading)!)}</span>}
       </p>
       {/* Landing simulation: height above the ground, descent speed and what is happening. */}
-      <div className="pointer-events-none absolute right-3 top-2 flex max-h-[calc(100%-76px)] w-[min(260px,calc(100%-24px))] flex-col gap-1.5 overflow-y-auto">
+      <div className="pointer-events-none absolute right-3 top-14 flex max-h-[calc(100%-124px)] sm:top-2 sm:max-h-[calc(100%-76px)] w-[min(260px,calc(100%-24px))] flex-col gap-1.5 overflow-y-auto">
       {hud && (
         <details open={hudOpen} onToggle={(e) => setHudOpen((e.target as HTMLDetailsElement).open)} className="ui-in glass pointer-events-auto px-3 py-2 text-sm" role="status">
           <summary className={`flex cursor-pointer list-none items-center gap-2 font-semibold ${hud.phase === 'down' ? 'text-ok' : hud.phase === 'failed' ? 'text-warn' : 'text-sun'}`}>

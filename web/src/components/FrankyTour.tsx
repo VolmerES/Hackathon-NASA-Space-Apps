@@ -154,14 +154,14 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
           ))}
         </div>
       </div>
-      <TourWalker bubble={{ ...bubblePos, h: bubbleH }} step={i} exit={exit} />
+      <TourWalker bubble={{ ...bubblePos, h: bubbleH }} target={rect ? { top: rect.top, bottom: rect.bottom } : null} step={i} exit={exit} />
     </div>
   )
 }
 
 // Franky in 3D beside the bubble: on the left of it if there is room, else on the right, standing on
 // its bottom edge. He rolls from place to place and waves when he arrives.
-function TourWalker({ bubble, step, exit }: { bubble: { left: number; top: number; h: number }; step: number; exit: { x: number; y: number } | null }) {
+function TourWalker({ bubble, target, step, exit }: { bubble: { left: number; top: number; h: number }; target: { top: number; bottom: number } | null; step: number; exit: { x: number; y: number } | null }) {
   const small = window.innerWidth < 640
   const W = small ? 96 : 150
   const H = small ? 118 : 185
@@ -170,8 +170,13 @@ function TourWalker({ bubble, step, exit }: { bubble: { left: number; top: numbe
   const prev = useRef<number | null>(null)
   const bw = Math.min(380, window.innerWidth - 16)
   const onLeft = bubble.left - W + 18 > 0
-  const left = onLeft ? bubble.left - W + 18 : Math.min(window.innerWidth - W, bubble.left + bw - 18)
-  const top = Math.max(4, bubble.top + bubble.h - H + 10)
+  // No room at either side (a phone: the bubble is as wide as the screen): he stands on top of the
+  // bubble, at its right end, or hangs under it if the bubble is at the top; never over its buttons.
+  const beside = onLeft || bubble.left + bw - 18 + W <= window.innerWidth
+  // On top only if he fits there without standing in front of what the step points at.
+  const onTop = bubble.top - H + 16 > 4 && !(target && target.bottom > bubble.top - H + 16 && target.top < bubble.top)
+  const left = onLeft ? bubble.left - W + 18 : beside ? bubble.left + bw - 18 : bubble.left + bw - W - 6
+  const top = beside ? Math.max(4, bubble.top + bubble.h - H + 10) : onTop ? bubble.top - H + 16 : bubble.top + bubble.h - 8
 
   useEffect(() => {
     const el = box.current

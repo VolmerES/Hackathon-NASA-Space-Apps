@@ -343,6 +343,9 @@ export default function App() {
     setChosen((c) => (c.includes(id) ? c : [id, ...c].slice(0, MAX_SITES)))
     setFocus(id)
     setPicking(false)
+    // On a wide screen the answer opens beside the Moon at once; on a phone it would cover the Moon,
+    // so the verdict shows in the pill and the card is one tap away.
+    if (window.innerWidth >= 1024) setCardOpen(true)
   }, [])
   const remove = (id: string) =>
     setChosen((c) => {
@@ -1140,7 +1143,7 @@ export default function App() {
         <Assistant open={assistantOpen} onClose={() => setAssistantOpen(false)} lang={lang} text={t.assistant} tools={assistantTools} confirm={assistantConfirm} context={assistantContext} onTour={() => setTourOn(true)} />
         {tourOn && <FrankyTour steps={tourSteps} text={t.tour} onClose={endTour} onChat={() => setAssistantOpen(true)} />}
 
-        <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
+        <div role="main" className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
           {/* Phones: a dimmed backdrop behind the pop-up; tapping it closes the card. */}
           {cardOpen && <div className="ui-fade pointer-events-auto fixed inset-0 z-30 bg-black/55 sm:hidden" onClick={() => setCardOpen(false)} aria-hidden="true" />}
           {/* The guided card: find a site, then the answer. A drawer on the left at every size: over the
@@ -1161,7 +1164,7 @@ export default function App() {
               if (st && st.x - p.clientX > 70 && Math.abs(p.clientY - st.y) < 50) setCardOpen(false)
             }}
           >
-          <section className="glass max-h-[82dvh] overflow-y-auto overscroll-contain rounded-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:h-full sm:max-h-none sm:rounded-l-none sm:rounded-r-xl lg:rounded-none lg:p-5">
+          <section className="glass card-phone max-h-[82dvh] overflow-y-auto overscroll-contain rounded-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:h-full sm:max-h-none sm:rounded-l-none sm:rounded-r-xl lg:rounded-none lg:p-5">
             {/* Phones: the pop-up's close button, always in reach at the top right. */}
             <div className="sticky top-0 z-10 -mx-1 -mt-1 flex justify-end sm:hidden">
               <button type="button" onClick={() => setCardOpen(false)} aria-label={t.closePanel} title={t.closePanel} className="flex size-10 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white backdrop-blur hover:bg-white/15">
@@ -1548,7 +1551,7 @@ export default function App() {
             <div ref={frameRef} className="relative min-h-0 flex-1">
               {splashDone && moonOk && !panel && !lightOn && mode === 'guided' && !focused && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
               {/* Desktop: the sky curves button, centred at the very bottom of the Moon's area. */}
-                {focused && !picking && panel !== 'sky' && !skyOpen && !skyStay.value && (
+                {focused && !picking && !panel && !skyOpen && !skyStay.value && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-3 hidden justify-center lg:flex">
                   <button onClick={() => setSkyOpen(true)} className="sky-btn ui-in pointer-events-auto">
                     <SkyThumb site={focused.site} samples={focused.samples} />
@@ -1589,13 +1592,15 @@ export default function App() {
               onClick={() => setCardOpen(true)}
               aria-label={t.showPanel}
               data-franky="sites"
-              className="drawer-in glass pointer-events-auto absolute left-4 top-2 z-20 flex min-h-8 max-w-[min(62vw,320px)] items-center gap-1.5 rounded-full py-1 pl-2.5 pr-2 text-xs font-semibold sm:top-3 sm:min-h-10 sm:gap-2 sm:py-1.5 sm:pl-3 sm:pr-3 sm:text-sm lg:left-3"
+              className={`drawer-in glass pointer-events-auto absolute left-4 top-2 z-20 flex min-h-8 max-w-[min(72vw,340px)] items-center gap-1.5 py-1 pl-2.5 pr-2 text-xs font-semibold sm:top-3 sm:min-h-10 sm:gap-2 sm:rounded-full sm:py-1.5 sm:pl-3 sm:pr-3 sm:text-sm lg:left-3 ${focused && !picking ? 'rounded-2xl' : 'rounded-full'}`}
             >
               {focused && !picking ? (
                 <>
                   <i className="inline-block size-2 shrink-0 rounded-full sm:size-2.5" style={{ background: VERDICT_HEX[focused.m.verdict] }} />
-                  <span className="truncate">{siteName(focused.site)}</span>
-                  <span className={`hidden shrink-0 text-xs sm:inline ${VERDICT_CLS[focused.m.verdict]}`}>{t.verdictLong[focused.m.verdict]}</span>
+                  <span className="flex min-w-0 flex-col text-left sm:flex-row sm:items-center sm:gap-2">
+                    <span className="truncate">{siteName(focused.site)}</span>
+                    <span className={`truncate text-[11px] leading-tight sm:shrink-0 sm:text-xs ${VERDICT_CLS[focused.m.verdict]}`}>{t.verdictLong[focused.m.verdict]}</span>
+                  </span>
                 </>
               ) : (
                 <span>{t.chooseSiteShort}</span>

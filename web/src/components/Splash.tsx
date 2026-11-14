@@ -253,13 +253,18 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <button type="button" autoFocus disabled={leaving} onClick={() => choose('guided')} className="mode-btn">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg>
+              {/* Educational mode: Franky himself is in the button and says he comes along. */}
+              <button type="button" autoFocus disabled={leaving} onClick={() => choose('guided')} className="mode-btn mode-btn-franky">
+                <span className="flex w-full items-center gap-3">
+                  <img src="franky-head.png" alt="" width={52} height={52} className="mode-franky shrink-0" />
+                  <span className="mode-says">{t.modeGuidedFranky}</span>
+                </span>
                 <span className="block text-base font-semibold">{t.modeGuided}</span>
                 <span className="block text-sm font-normal text-white/65">{t.modeGuidedSub}</span>
               </button>
               <button type="button" disabled={leaving} onClick={() => choose('expert')} className="mode-btn">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><path d="M4 20h16M6 16l4-5 3 3 5-7" /><circle cx="18" cy="7" r="1.5" /></svg>
+                {/* As tall as Franky in the other button, so the two titles line up. */}
+                <span className="flex h-10 items-center sm:h-[52px]"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><path d="M4 20h16M6 16l4-5 3 3 5-7" /><circle cx="18" cy="7" r="1.5" /></svg></span>
                 <span className="block text-base font-semibold">{t.modeExpert}</span>
                 <span className="block text-sm font-normal text-white/65">{t.modeExpertSub}</span>
               </button>
