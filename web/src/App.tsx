@@ -13,6 +13,7 @@ import { CloseButton, FloatPanel, HamburgerMenu, NumberField, Overlay, Snackbar 
 import { Splash, SKIP as SKIP_SPLASH } from './components/Splash'
 import { TimeBar } from './components/TimeBar'
 import { Missions, type Evaluated } from './components/Missions'
+import { missionReportHtml, type ReportRow } from './report'
 import { applyMission, kindOf, loadMissions, saveMissions, uid, type MissionDef, type SavedScenario } from './missions'
 import { Logo } from './components/Logo'
 import { StayHeatmap } from './components/StayHeatmap'
@@ -551,6 +552,44 @@ export default function App() {
     const name = openScenario.name === autoName(openScenario.kind, openScenario) ? autoName(kind, current) : openScenario.name
     patchScenario(active.id, openScenario.id, { ...current, kind, name })
     setToast(t.ms.updated(name))
+  }
+  // A mission's report: every scenario recomputed with the current data, plus the best landing days at
+  // its baseline site, as one readable HTML file to keep or print to PDF.
+  const downloadReport = (m: MissionDef) => {
+    if (!ready) return
+    const rows: ReportRow[] = m.scenarios.map((sc) => {
+      const site = resolveSite(sc.focus)
+      const landing = new Date(sc.landing)
+      const from = landing.getTime() + sc.slipDays * 86400000
+      if (!site || Number.isNaN(from) || from < DATA.start.getTime() || from + m.durationDays * 86400000 > DATA.end.getTime()) return { sc, siteName: site ? siteName(site) : undefined }
+      const params = applyMission(m, { ...mission, landing, slipDays: sc.slipDays })
+      const samples = simulate(site, params)
+      return { sc, site, siteName: siteName(site), params, samples, m: cautious(site, metrics(samples, params)) }
+    })
+    const baseRow = rows.find((x) => x.site && x.sc.kind === 'baseline') ?? rows.find((x) => x.site)
+    const plan = baseRow?.site ? landingCalendar(baseRow.site, m.durationDays, m.minAntennaElevDeg, m.req, m.survivalPowerW, m.batteryWh || undefined) : undefined
+    const status = !m.scenarios.length ? 'draft' : rows.every((x) => x.m?.verdict === 'viable') ? 'planned' : 'at-risk'
+    const html = missionReportHtml({
+      mission: m,
+      status,
+      rows,
+      plan: plan && baseRow?.site && disagrees(baseRow.site) ? plan.map((d) => ({ ...d, hours: d.hours.map((v) => (v === 'viable' ? 'marginal' : v)) })) : plan,
+      planSite: baseRow?.siteName,
+      t,
+      fmt: { num, date: fmtDate, dateTime: fmtDateTime },
+      dataStart: DATA.start,
+      dataEnd: DATA.end,
+      appUrl: window.location.origin + window.location.pathname,
+    })
+    const slug = m.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'mission'
+    const file = `${slug}-report-${new Date().toISOString().slice(0, 10)}.html`
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = file
+    a.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setToast(t.rp.downloaded(file))
   }
   const evaluateScenario = (m: MissionDef, sc: SavedScenario): Evaluated => {
     if (!ready) return null
@@ -1425,7 +1464,7 @@ export default function App() {
       )}
 
       <Overlay open={missionsOpen} title={t.ms.title} onClose={() => { setMissionsOpen(false); pendingScenario.current = null }}>
-        <Missions key={missionsStartNew} startNew={missionsStartNew > 0 && pendingScenario.current !== null} missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} openScenarioId={scenarioId} />
+        <Missions key={missionsStartNew} startNew={missionsStartNew > 0 && pendingScenario.current !== null} missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} onReport={downloadReport} openScenarioId={scenarioId} />
       </Overlay>
       <Overlay open={sourcesOpen} title={t.dataSources} onClose={() => setSourcesOpen(false)}>
         <p className="text-muted">{t.sourcesIntro}</p>

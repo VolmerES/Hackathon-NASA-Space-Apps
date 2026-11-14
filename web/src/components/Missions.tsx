@@ -15,7 +15,7 @@ const STATUS_CLS: Record<Status, string> = { draft: 'border-white/30 text-muted'
 
 // The missions of this browser: list, create or edit one, and its scenarios side by side. Every figure
 // is recomputed from the current data each time (evaluate), with the mission's own requirements.
-export function Missions({ startNew = false, missions, activeId, openScenarioId, evaluate, num, onSave, onDelete, onOpen, onDeleteScenario, onRenameScenario }: {
+export function Missions({ onReport, startNew = false, missions, activeId, openScenarioId, evaluate, num, onSave, onDelete, onOpen, onDeleteScenario, onRenameScenario }: {
   missions: MissionDef[]
   activeId: string | null
   evaluate: (m: MissionDef, s: SavedScenario) => Evaluated
@@ -29,6 +29,8 @@ export function Missions({ startNew = false, missions, activeId, openScenarioId,
   openScenarioId: string | null
   /** Open straight on the form for a new mission ("Add to mission" → "New mission"). */
   startNew?: boolean
+  /** Download the mission's report. */
+  onReport: (m: MissionDef) => void
 }) {
   const t = useT()
   const [view, setView] = useState<{ kind: 'list' } | { kind: 'edit'; draft: MissionDef } | { kind: 'detail'; id: string }>(() => (startNew ? { kind: 'edit', draft: newMission() } : { kind: 'list' }))
@@ -143,6 +145,10 @@ export function Missions({ startNew = false, missions, activeId, openScenarioId,
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={() => onOpen(m)} className="min-h-11 rounded-sm bg-sun px-4 text-sm font-semibold text-black hover:brightness-110">{activeId === m.id ? t.ms.planMore : t.ms.useThis}</button>
           <button type="button" onClick={() => setView({ kind: 'edit', draft: structuredClone(m) })} className="min-h-11 rounded-sm border border-white/30 px-4 text-sm hover:bg-white/10">{t.ms.edit}</button>
+          <button type="button" onClick={() => onReport(m)} className="flex min-h-11 items-center gap-2 rounded-sm border border-white/30 px-4 text-sm hover:bg-white/10">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+            {t.rp.download}
+          </button>
         </div>
       </div>
     )
@@ -165,6 +171,10 @@ export function Missions({ startNew = false, missions, activeId, openScenarioId,
                   <span className="block text-xs text-muted">{t.ms.types[m.type]} · {t.ms.daysN(m.durationDays)} · {t.ms.scenariosN(m.scenarios.length)}</span>
                 </button>
                 <span className={`border px-2 py-0.5 text-xs ${STATUS_CLS[st]}`}>{t.ms.status[st]}</span>
+                <button type="button" onClick={() => onReport(m)} aria-label={`${t.rp.download}: ${m.name}`} title={t.rp.download} className="flex min-h-9 items-center gap-1.5 rounded-sm border border-white/30 px-2.5 text-xs hover:bg-white/10">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+                  {t.rp.button}
+                </button>
                 {confirm === m.id ? (
                   <span className="flex items-center gap-1 text-xs">
                     {t.ms.sure}
