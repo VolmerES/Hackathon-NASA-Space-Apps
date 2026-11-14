@@ -638,7 +638,6 @@ export default function App() {
 
   // The assistant's tools: the same calculations the web shows, with every figure taken from them.
   const [assistantOpen, setAssistantOpen] = useState(false)
-  const VERDICT_WORD = { viable: 'favourable', marginal: 'tight', 'not-viable': 'unfavourable' } as const
   const teamSites = () => (SITES.some((s) => s.team) ? SITES.filter((s) => s.team) : SITES)
   const siteOf = (id: unknown) => teamSites().find((s) => s.id === id)
   const dayOf = (v: unknown) => {
@@ -662,7 +661,7 @@ export default function App() {
       longest_darkness_h: m.longestNightH,
       hours_to_first_sunset: m.hoursToSunset,
       hours_to_first_earthset: m.hoursToEarthset,
-      verdict: VERDICT_WORD[m.verdict],
+      verdict: t.verdictLong[m.verdict], // the same words as the card, in the language of the page
     }
   }
   const assistantTools: AssistantTools = {
