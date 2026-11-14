@@ -789,10 +789,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       } else if (spinTarget !== null) {
         spin += (spinTarget - spin) * (1 - Math.exp(-dt * 1.6))
         if (Math.abs(spinTarget - spin) < 0.001) spinTarget = null
-      } else if (!drag && !reduce && now > holdUntil && now > hoverHold) {
-        // Slower while choosing, so labels are easy to tap.
-        const choosing = !state.current.focusId
-        spin += SPIN * dt * (k < 0.5 ? 1.6 : choosing ? 0.35 : 1)
+      } else if (!drag && !reduce && now > holdUntil && now > hoverHold && (k < 0.5 || !state.current.focusId)) {
+        // Slower while choosing, so labels are easy to tap. With a site picked, the Moon holds still.
+        spin += SPIN * dt * (k < 0.5 ? 1.6 : 0.35)
       }
       moon.rotation.y = spin
       canvas.dataset.spin = spin.toFixed(4) // read by the automated checks
