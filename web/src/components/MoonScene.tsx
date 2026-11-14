@@ -46,8 +46,6 @@ type Props = {
   /** Street view button inside the callout: stand on that site. */
   onStreet?: (id: string) => void
   streetLabel?: string
-  /** Label of the callout button that opens the full answer of the site. */
-  answerLabel?: string
 }
 
 const DEG = Math.PI / 180
@@ -114,7 +112,7 @@ function polarCap(q: Quality) {
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
-export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, compactControls = false, sunAt, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer', heat = null, earth }: Props) {
+export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, compactControls = false, sunAt, onStreet, streetLabel = 'Street view', heat = null, earth }: Props) {
   const [view, setView] = useState<0 | 1 | 2>(0) // 0: the pole; 1: the Moon seen from the Earth; 2: looking at the Earth
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
@@ -1341,16 +1339,6 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
               </svg>
               <div className="moon-callout-card" role="group">
                 {info(hover)}
-                <button
-                  type="button"
-                  className="moon-callout-answer"
-                  onClick={() => {
-                    api.current?.closeCallout()
-                    onPick(hover)
-                  }}
-                >
-                  {answerLabel}
-                </button>
                 {onStreet && (
                   <button
                     type="button"

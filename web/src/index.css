@@ -415,24 +415,6 @@ details.soft-moving { overflow: hidden }
   transition: filter 0.2s ease;
 }
 .moon-callout-street:hover { filter: brightness(1.1) }
-.moon-callout-answer {
-  display: flex;
-  width: 100%;
-  min-height: 40px;
-  margin-top: 10px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgb(255 255 255 / 0.35);
-  border-radius: 2px;
-  background: rgb(255 255 255 / 0.06);
-  color: var(--color-ink);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-.moon-callout-answer:hover { background: rgb(255 255 255 / 0.15); border-color: rgb(255 255 255 / 0.6) }
-.moon-callout-answer + .moon-callout-street { margin-top: 8px }
 /* Phones: the callout opens by touch, centred, over the bottom sheet. */
 .moon-callout[data-side="center"] .moon-callout-card { left: var(--card-left, -124px); right: auto }
 .moon-callout[data-side="center"] .moon-callout-lead path { display: none }
