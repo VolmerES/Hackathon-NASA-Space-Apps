@@ -454,6 +454,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let hoverId: string | null = null
     let sticky = false // opened by a finger: stays until a tap elsewhere
     let overCallout = false
+    let labelFocus: string | undefined = undefined // picked site the labels were last laid out for
     let hoverVia: 'dot' | 'label' = 'dot' // where the mouse found the site: the callout opens next to it
     let dropTimer = 0
     const setHoverId = (id: string | null, byTouch = false) => {
@@ -1039,6 +1040,12 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       const pulse = 1 + 0.25 * Math.sin(now / 260)
       const placed: { x: number; y: number; w: number; h: number }[] = []
       const order = state.current.focusId ? [...markers].sort((a, b) => Number(b.id === state.current.focusId) - Number(a.id === state.current.focusId)) : markers
+      // A new picked site: every label looks for its spot again from the best one.
+      if (labelFocus !== state.current.focusId) {
+        labelFocus = state.current.focusId
+        for (const mk of markers) mk.spot = 0
+      }
+      let focusPx: { x: number; y: number } | null = null // the picked site on screen (it comes first)
       for (const m of order) {
         const on = m.id === state.current.focusId
         const ringMat = m.ring.material as THREE.MeshBasicMaterial
@@ -1061,6 +1068,12 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         tmp.copy(world).project(camera)
         const x = (tmp.x * 0.5 + 0.5) * w
         const y = (-tmp.y * 0.5 + 0.5) * h
+        // Sites a few km apart land on the same pixels: the picked one is drawn on top and a dot hidden
+        // under it is left out (its label still shows, with its leader to the shared point).
+        m.ring.renderOrder = m.dot.renderOrder = on ? 4 : 2
+        if (on) focusPx = { x, y }
+        else if (focusPx && Math.hypot(x - focusPx.x, y - focusPx.y) < 10) m.ring.visible = m.dot.visible = false
+        else m.dot.visible = true
         // Only where the Moon is in the clear: no label shows through the panels.
         const inFrame = !frameBox || (x > frameBox.left - 4 && x < frameBox.right - 8 && y > frameBox.top - 4 && y < frameBox.bottom - 8)
         const show = inFrame && k > 0.85 && facing > 0.08 && (on || (state.current.showLabels && (!small || !!state.current.focusId)))
@@ -1089,7 +1102,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         const free = (bx: number, by: number) =>
           bx >= left && bx + lw <= right && by >= top && by + lh <= bottom && !placed.some((p) => bx < p.x + p.w + 6 && p.x < bx + lw + 6 && by < p.y + p.h + 4 && p.y < by + lh + 4)
         // Keep the spot it had while it stays free, so labels do not hop around as the Moon turns.
-        let pick = free(...spots[m.spot] ?? spots[0]) ? m.spot : spots.findIndex(([bx, by]) => free(bx, by))
+        // Others keep the spot they had while it stays free (no hopping as the Moon turns); the picked
+        // site always takes the best free spot, right by its dot.
+        let pick = !on && free(...spots[m.spot] ?? spots[0]) ? m.spot : spots.findIndex(([bx, by]) => free(bx, by))
         if (pick >= 0) m.spot = pick
         else pick = 0
         let [lx, ly] = spots[pick]
