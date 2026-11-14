@@ -4,6 +4,7 @@ Reprojects the NASA SVS CGI Moon Kit maps (https://svs.gsfc.nasa.gov/4720/) to a
 equidistant grid centred on the south pole, out to CAP_DEG of colatitude:
   polar_color.jpg   albedo from the LROC colour map, softened so the LOLA relief does the shading
   polar_normal.jpg  tangent-space normals from the LOLA elevation (ldem_16_uint.tif, 16 px/deg)
+  polar_height.png  the same LOLA elevation as a height map, to raise the mesh itself
 
 Grid convention (must match MoonScene.tsx): pixel (u, v) in [0,1], v up;
   X = (u - 0.5) * 2 * CAP, Y = (v - 0.5) * 2 * CAP   (degrees)
@@ -64,6 +65,15 @@ inv = 1 / np.sqrt(nx * nx + ny * ny + nz * nz)
 normal = (np.stack([nx * inv, ny * inv, nz * inv], -1) * 0.5 + 0.5) * 255
 Image.fromarray(normal.clip(0, 255).astype(np.uint8), 'RGB').save(out / 'polar_normal.jpg', quality=90, optimize=True)
 
+# Height for the mesh (displacement), 8 bits: 0 = lowest point in the cap, 1 = highest. It fades
+# to 0 over the last 5 degrees so the cap meets the smooth globe without a step. The scale the
+# app needs (HEIGHT_RANGE_M in MoonScene.tsx) is printed below.
+inside = colat <= CAP
+lo, hi = np.percentile(h[inside], 0.2), np.percentile(h[inside], 99.8)
+h01 = np.clip((h - lo) / (hi - lo), 0, 1) * np.clip((CAP - colat) / 5.0, 0, 1)
+Image.fromarray((h01 * 255).round().astype(np.uint8), 'L').resize((1024, 1024), Image.LANCZOS).save(out / 'polar_height.png', optimize=True)
+print('height range for polar_height.png (m):', float(lo), float(hi))
+
 # Albedo: the colour map near the pole is a low-resolution fill, so keep only its broad tone and
 # let the real relief carry the detail.
 col = tifffile.imread(src / 'lroc_color_16bit_srgb_4k.tif')[..., :3].astype(np.float32) / 65535.0
@@ -73,6 +83,6 @@ tone = 0.62 + 0.38 * (lum - lum.mean()) / (lum.std() + 1e-6) * 0.18
 rgb = np.clip(np.concatenate([tone * 0.985, tone * 0.975, tone * 0.955], -1), 0, 1) * 255
 Image.fromarray(rgb.astype(np.uint8), 'RGB').save(out / 'polar_color.jpg', quality=88, optimize=True)
 
-for f in ('polar_color.jpg', 'polar_normal.jpg'):
+for f in ('polar_color.jpg', 'polar_normal.jpg', 'polar_height.png'):
     print(f, round((out / f).stat().st_size / 1e6, 2), 'MB')
 print('relief range in cap (m):', float(h.min()), float(h.max()))

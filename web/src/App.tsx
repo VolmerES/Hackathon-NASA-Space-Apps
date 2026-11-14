@@ -282,6 +282,9 @@ export default function App() {
     [panel, chosen, overviewFrom, mission.minAntennaElevDeg, ready],
   )
   const slipped = mission.slipDays !== 0
+  // The stay in hours (one sample per hour), so every percentage can also be read as hours.
+  const stayH = Math.max(1, focused?.samples.length ?? 1)
+  const hrs = (pct: number) => t.hoursOf(num((pct * stayH) / 100), num(stayH))
   const start = new Date(mission.landing.getTime() + mission.slipDays * 86400000)
   const end = new Date(start.getTime() + mission.durationDays * 86400000)
 
@@ -602,6 +605,7 @@ export default function App() {
                   {(
                     [
                       {
+                        sub: hrs(focused.m.sunlightPct),
                         label: t.sunlight,
                         value: `${num(focused.m.sunlightPct)} %`,
                         fill: focused.m.sunlightPct / 100,
@@ -611,6 +615,7 @@ export default function App() {
                         was: slipped && Math.round(focused.m.sunlightPct) !== Math.round(focused.base.sunlightPct) ? t.was(`${num(focused.base.sunlightPct)} %`) : '',
                       },
                       {
+                        sub: hrs(focused.m.earthLinkPct),
                         label: t.earthContact,
                         value: `${num(focused.m.earthLinkPct)} %`,
                         fill: focused.m.earthLinkPct / 100,
@@ -620,6 +625,7 @@ export default function App() {
                         was: slipped && Math.round(focused.m.earthLinkPct) !== Math.round(focused.base.earthLinkPct) ? t.was(`${num(focused.base.earthLinkPct)} %`) : '',
                       },
                       {
+                        sub: hrs(focused.m.opsPct),
                         label: t.both,
                         value: `${num(focused.m.opsPct)} %`,
                         fill: focused.m.opsPct / 100,
@@ -629,6 +635,7 @@ export default function App() {
                         was: slipped && Math.round(focused.m.opsPct) !== Math.round(focused.base.opsPct) ? t.was(`${num(focused.base.opsPct)} %`) : '',
                       },
                       {
+                        sub: t.ofStay(num((100 * focused.m.longestNightH) / stayH)),
                         label: t.longestDarkness,
                         value: fmtDuration(focused.m.longestNightH),
                         fill: Math.min(focused.m.longestNightH / 96, 1),
@@ -638,13 +645,14 @@ export default function App() {
                         was: slipped && focused.m.longestNightH !== focused.base.longestNightH ? t.was(fmtDuration(focused.base.longestNightH).toLowerCase()) : '',
                       },
                     ] as const
-                  ).map(({ label, value, fill, bar, tone, ticks, was }) => (
+                  ).map(({ label, value, sub, fill, bar, tone, ticks, was }) => (
                     <div key={label} className="border border-white/10 bg-black/30 p-2.5">
                       <dt className="flex items-center justify-between gap-2 text-xs text-muted">
                         <span>{label}</span>
                         {tone && <i aria-hidden="true" className={`inline-block size-2 rounded-full ${tone === 'ok' ? 'bg-ok' : tone === 'warn' ? 'bg-warn' : 'bg-bad'}`} />}
                       </dt>
                       <dd className="mt-1 text-2xl font-bold tabular-nums leading-none">{value}</dd>
+                      <dd className="mt-1 text-xs tabular-nums text-white/80">{sub}</dd>
                       <div className="relative mt-2 h-1.5 bg-white/10" role="presentation">
                         <div className={`h-full ${bar} transition-[width] duration-500`} style={{ width: `${Math.max(0, Math.min(1, fill)) * 100}%` }} />
                         {ticks.map((x) => (
@@ -656,14 +664,19 @@ export default function App() {
                   ))}
                 </dl>
                 <div className="mt-3">
-                  <StayBar samples={focused.samples} madrid={madrid} />
+                  <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
                   <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-muted">
                     <span className="flex items-center gap-1.5">
-                      <i className="inline-block size-2 bg-sun" /> {t.sunlight}
+                      <i className="inline-block size-2 bg-sun" /> {t.sunlight}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.sunlightPct * stayH) / 100)} h</b>
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <i className="inline-block size-2 bg-earth" /> {t.earthInView}
+                      <i className="inline-block size-2 bg-earth" /> {t.earthInView}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.earthLinkPct * stayH) / 100)} h</b>
                     </span>
+                    {madrid && (
+                      <span className="flex items-center gap-1.5">
+                        <i className="inline-block size-2 bg-nasa-red" /> {t.madridShort}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.madridPct * stayH) / 100)} h</b>
+                      </span>
+                    )}
                   </p>
                 </div>
 

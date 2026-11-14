@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import * as THREE from 'three'
+import { measureQuality, qualityAt, type Quality } from './quality'
 
 // The real Moon, behind the whole app. Colour: LRO LROC mosaic; relief: LRO LOLA elevation turned
 // into a normal map (NASA's Scientific Visualization Studio, CGI Moon Kit). One scene does three jobs:
@@ -49,9 +50,14 @@ function surface(lat: number, lon: number, r = 1) {
 // South polar cap: azimuthal equidistant textures (scripts/moon_polar_cap.py), so the pole has none
 // of the stretching an equirectangular map has there. Its edge fades into the globe.
 const CAP_DEG = 25
-function polarCap() {
-  const rings = 120
-  const segs = 256
+// Real relief on the polar cap: polar_height.png spans this range of LOLA heights (printed by
+// scripts/moon_polar_cap.py), raised RELIEF times so craters and massifs read from any angle.
+const HEIGHT_RANGE_M = 12578
+const RELIEF = 2.5
+const HEIGHT_SCALE = (HEIGHT_RANGE_M * RELIEF) / 1737400
+const CAP_R = 1.0006
+function polarCap(q: Quality) {
+  const { rings, segs } = q
   const pos: number[] = []
   const uv: number[] = []
   const col: number[] = []
@@ -62,7 +68,7 @@ function polarCap() {
     const fade = Math.min(1, Math.max(0, (CAP_DEG - c) / 5))
     for (let j = 0; j <= segs; j++) {
       const L = (j / segs) * 360 - 180
-      const p = surface(-90 + c, L, 1.0006)
+      const p = surface(-90 + c, L, CAP_R)
       pos.push(p.x, p.y, p.z)
       const n = p.clone().normalize()
       nrm.push(n.x, n.y, n.z)
@@ -121,7 +127,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     }, 12000)
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const small = Math.min(window.innerWidth, window.innerHeight) < 700
-    renderer.setPixelRatio(Math.min(small ? 1.5 : 1.75, window.devicePixelRatio || 1))
+    // Measure the computer once: it decides mesh detail, shadows, sharp maps and resolution.
+    let q = measureQuality(renderer, small)
+    canvas.dataset.quality = String(q.level)
+    renderer.setPixelRatio(Math.min(q.pixelRatio, window.devicePixelRatio || 1))
     renderer.setClearColor(0x000000)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -152,20 +161,23 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     globe.visible = false
     moon.add(globe)
     const capMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0, vertexColors: true, transparent: true, side: THREE.FrontSide })
-    const cap = new THREE.Mesh(polarCap(), capMat)
+    const cap = new THREE.Mesh(polarCap(q), capMat)
+    // The cap casts shadows on itself: with the Sun a few degrees high, crater floors go dark.
+    cap.castShadow = true
+    cap.receiveShadow = true
     cap.visible = false
     cap.renderOrder = 1
     moon.add(cap)
     let loaded = 0
     let shownAt = 0
     const ready = () => {
-      if (++loaded < 4) return
+      if (++loaded < 5) return
       globe.visible = true
       cap.visible = true
       shownAt = performance.now()
       onReady?.()
       // Sharper maps for big screens, once the light ones are on screen.
-      if (!small) {
+      if (q.maps4k) {
         loader.load('moon/moon_color_4k.jpg', (tex) => {
           tex.colorSpace = THREE.SRGBColorSpace
           tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
@@ -195,6 +207,34 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       capMat.needsUpdate = true
       ready()
     }, undefined, () => onFail())
+    // Height of the cap under each site, so the markers sit on the raised ground.
+    let heights: { data: Uint8ClampedArray; n: number } | null = null
+    const heightAt = (lat: number, lon: number) => {
+      const c = lat + 90
+      if (!heights || c >= CAP_DEG) return 0
+      const r = c / CAP_DEG / 2
+      const u = 0.5 + r * Math.sin(lon * DEG)
+      const v = 0.5 + r * Math.cos(lon * DEG)
+      const x = Math.min(heights.n - 1, Math.max(0, Math.round(u * heights.n - 0.5)))
+      const y = Math.min(heights.n - 1, Math.max(0, Math.round((1 - v) * heights.n - 0.5)))
+      return (heights.data[(y * heights.n + x) * 4] / 255) * HEIGHT_SCALE
+    }
+    loader.load('moon/polar_height.png', (tex) => {
+      capMat.displacementMap = tex
+      capMat.displacementScale = HEIGHT_SCALE
+      capMat.needsUpdate = true
+      const img = tex.image as HTMLImageElement
+      const n = img.width
+      const c2 = document.createElement('canvas')
+      c2.width = c2.height = n
+      const g2 = c2.getContext('2d', { willReadFrequently: true })
+      if (g2) {
+        g2.drawImage(img, 0, 0)
+        heights = { data: g2.getImageData(0, 0, n, n).data, n }
+        syncSites()
+      }
+      ready()
+    }, undefined, () => onFail())
     const fail = () => onFail()
     loader.load('moon/moon_color_2k.jpg', (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace
@@ -214,6 +254,19 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Sunlight grazing the south pole, plus a faint earthshine so the night side is not pure black.
     const sun = new THREE.DirectionalLight(0xfff4e6, 3.2)
     scene.add(sun)
+    // Shadows only over the polar cap, where the camera lives.
+    renderer.shadowMap.enabled = q.shadows > 0
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    sun.castShadow = q.shadows > 0
+    sun.shadow.mapSize.set(Math.max(512, q.shadows), Math.max(512, q.shadows))
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -0.47
+    sun.shadow.camera.right = sun.shadow.camera.top = 0.47
+    sun.shadow.camera.near = 0.5
+    sun.shadow.camera.far = 6
+    sun.shadow.bias = -0.0004
+    sun.shadow.normalBias = 0.0025
+    sun.target.position.set(0, -1, 0)
+    scene.add(sun.target)
     scene.add(new THREE.AmbientLight(0x9fb4d8, 0.05))
 
     // Site markers: a ring flat on the surface; the label is HTML so it is readable and tappable.
@@ -237,7 +290,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         m.el.remove()
       }
       markers = state.current.sites.map((s) => {
-        const local = surface(s.lat, s.lon, 1.0015)
+        const local = surface(s.lat, s.lon, 1.0015 + heightAt(s.lat, s.lon))
         const n = local.clone().normalize()
         const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n)
         const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide, depthWrite: false }))
@@ -459,7 +512,26 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       const avg = slowSum / slowN
       slowSum = 0
       slowN = 0
-      if (avg > 0.045 && ratio > 0.6) {
+      if (avg <= 0.03) return
+      if (q.level > 0) {
+        // Slow: one level down. Fewer triangles, smaller or no shadows, lower resolution.
+        q = qualityAt((q.level - 1) as 0 | 1, q.gpu)
+        canvas.dataset.quality = String(q.level)
+        cap.geometry.dispose()
+        cap.geometry = polarCap(q)
+        if (q.shadows > 0) {
+          sun.shadow.map?.dispose()
+          sun.shadow.map = null
+          sun.shadow.mapSize.set(q.shadows, q.shadows)
+        } else {
+          sun.castShadow = false
+          renderer.shadowMap.enabled = false
+          capMat.needsUpdate = true
+        }
+        ratio = Math.min(ratio, q.pixelRatio)
+        renderer.setPixelRatio(ratio)
+        resize()
+      } else if (avg > 0.045 && ratio > 0.6) {
         ratio = Math.max(0.6, ratio * 0.75)
         renderer.setPixelRatio(ratio)
         resize()
@@ -515,7 +587,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
 
       // The Sun walks slowly around the horizon of the pole; grazing, a few degrees high.
       const az = (150 + (reduce ? 0 : (now - t0) / 1000) * 1.2) * DEG
-      sun.position.set(Math.cos(az), -0.13, Math.sin(az)).normalize().multiplyScalar(10)
+      sun.position.set(Math.cos(az), -0.13, Math.sin(az)).normalize().multiplyScalar(3).add(sun.target.position)
 
       // Camera framing. Intro: whole Moon from afar, its disc low so the limb sits under the title.
       // App: close over the south pole, placed in the centre of the free frame of the layout.
