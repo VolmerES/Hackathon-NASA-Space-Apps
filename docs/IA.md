@@ -73,6 +73,7 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 | Street view nuevo: picado de la cámara sobre la Luna 3D hasta el sitio y vista a pantalla completa con relieve real (LOLA) y textura del polo (LROC), Sol con halo, Tierra con su fase real, zoom y arrastre suave | Programado y probado en navegador (Malapert K2023: Sol visible sobre un horizonte negativo, Tierra con fase) | Petición de Juan Bautista | Corregidos el horizonte negativo, una costura al norte y un intervalo de tiempo negativo |
 | Gráfica 2D rehecha a mano en SVG (cielo con estrellas, relieve con grano, recorridos con brillo, iconos de Sol y Tierra con fase, guía al pasar el ratón) e inercia en el giro de la Luna con ratón y dedo | Programado y probado en escritorio y móvil emulado | Petición de Juan Bautista | Capturas sin errores; giro con inercia medido |
 | Transiciones más suaves (cámara de la Luna con deslizamientos lentos, entrada y salida de paneles, ficha flotante, street view), botón «Quitar» con el estilo de cerrar y etiquetas de la Luna solo dentro de la zona libre | Programado y probado en escritorio y móvil emulado | Petición de Juan Bautista | Pruebas de street view, región, inercia y paneles sin errores |
+| Guía para asistentes (`CLAUDE.md`) | Leyó la documentación y el código de `web/` y redactó la guía: comandos, flujo de datos, bilingüismo, despliegue y convenios | Angela lo pidió (`/init`) | ⚠️ Sin revisar |
 
 ### 15‑nov · domingo
 
