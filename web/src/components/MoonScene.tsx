@@ -35,6 +35,8 @@ type Props = {
   heat?: { canvas: HTMLCanvasElement; deg: number } | null
   /** Street view: dive down onto the focused site until the camera skims its ground. */
   dive?: boolean
+  /** View buttons show only their icons (a big panel is open beside the Moon). */
+  compactControls?: boolean
   /** Sub-solar point (deg) at the chosen date and hour, from JPL Horizons. In app mode the sunlight
    *  comes from there, so day, night and the terminator on the Moon are the real ones. */
   sunAt?: { lat: number; lon: number }
@@ -112,7 +114,7 @@ function polarCap(q: Quality) {
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
-export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, sunAt, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer', heat = null, earth }: Props) {
+export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, compactControls = false, sunAt, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer', heat = null, earth }: Props) {
   const [view, setView] = useState<0 | 1 | 2>(0) // 0: the pole; 1: the Moon seen from the Earth; 2: looking at the Earth
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
@@ -1177,7 +1179,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       <canvas ref={canvasRef} className="fixed inset-0 z-0 h-full w-full touch-none" aria-hidden="true" />
       <div ref={labelsRef} className="pointer-events-none fixed inset-0 z-[5] overflow-hidden" />
       {controls && (
-        <div ref={controlsRef} className="moon-controls" style={{ opacity: 0 }}>
+        <div ref={controlsRef} className={`moon-controls${compactControls ? ' compact' : ''}`} style={{ opacity: 0 }}>
           <button type="button" onClick={() => api.current?.zoomBy(1 / 1.6)} aria-label={controls.zoomIn} title={controls.zoomIn}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           </button>

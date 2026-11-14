@@ -117,6 +117,7 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 | Borrar escenarios | Botones «Abrir» y «Borrar» visibles bajo el nombre de cada escenario (también en móvil), con confirmación; si se borra el base, el siguiente pasa a ser el base y los demás se reclasifican | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | «More options» y la misión, sincronizados | Guardar una misión desde «Editar» la activa y aplica sus valores; con una misión activa, los cambios de «More options» (potencia, antena, batería) y los días de la barra se guardan en ella; «More options» dice de dónde salen los valores y añade la batería | **Angela lo detectó**: «More options» no reflejaba las ediciones de la misión | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | Campos numéricos que se pueden escribir a mano | Componente `NumberField`: deja el campo vacío o a medio escribir, aplica cada valor válido al momento y ajusta al rango al salir; flechas ↑↓ y Enter. En los días de la barra, el formulario de misión y «More options» | **Angela lo detectó**: no se podía borrar el 1 para escribir 30 | Compila y pasa el lint. ⚠️ Sin probar a mano |
+| Botones de la Luna compactos con un panel abierto | Con «See the sky», «Best dates» o «Compare» abierto, los botones del mapa solo muestran el icono, a la derecha de la zona de la Luna (el nombre, en el `title`) | **Petición de Angela**, con una captura | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 
 ### 15‑nov · domingo
 
