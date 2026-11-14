@@ -478,11 +478,14 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 1.7, sizeAttenuation: false, vertexColors: true })))
 
     // Look around: smooth drag with a little inertia, wheel or pinch to zoom (field of view).
+    // Arriving: the eyes come up from the ground to the horizon, and the view narrows a little.
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let introT = calm ? 99 : 0
     let yaw = 0
-    let pitch = 4
+    let pitch = calm ? 4 : -10
     let yawGoal = 0
     let pitchGoal = 4
-    let fov = 60
+    let fov = calm ? 60 : 76
     let fovGoal = 60
     let vYaw = 0
     let vPitch = 0
@@ -721,10 +724,11 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         if (Math.abs(vYaw) < 0.5) vYaw = 0
         if (Math.abs(vPitch) < 0.5) vPitch = 0
       }
-      const e = 1 - Math.exp(-dt * 16)
+      introT += dt
+      const e = 1 - Math.exp(-dt * (introT < 2.6 ? 2.2 : 16))
       yaw += (yawGoal - yaw) * e
       pitch += (pitchGoal - pitch) * e
-      fov += (fovGoal - fov) * (1 - Math.exp(-dt * 12))
+      fov += (fovGoal - fov) * (1 - Math.exp(-dt * (introT < 2.6 ? 1.8 : 12)))
       camera.fov = fov
       camera.updateProjectionMatrix()
       // The engine shakes the view a little near the ground; the touchdown gives it a jolt.
@@ -772,6 +776,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     const down = (e: PointerEvent) => {
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       renderer.domElement.setPointerCapture(e.pointerId)
+      introT = 99 // a hand on the view: it follows at once
       vYaw = vPitch = 0
       if (pointers.size >= 2) {
         pinch = { d: spread(), fov: fovGoal }
@@ -965,8 +970,12 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
   }
 
   return (
-    <div className="relative bg-black">
+    <div className={`relative overflow-hidden bg-black ${hud?.phase === 'descent' || hud?.phase === 'load' ? 'cine-on' : ''}`}>
       <div ref={mount} style={{ height }} />
+      {/* Landing: cinema bars while the lander comes down, the word when it touches. */}
+      <div className="cine-bar top" aria-hidden="true" />
+      <div className="cine-bar bottom" aria-hidden="true" />
+      {hud?.phase === 'down' && <p className="touchdown" aria-hidden="true"><b>{t.simTouchdown}</b><i /></p>}
       <p className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-24px)] text-sm text-white/80">
         {t.looking(t.compassLong[Math.round(heading / 45) % 8])}
         {ridgeKmAt(site, heading) !== null && <span className="block text-xs text-white/65">{t.reliefSeen(ridgeKmAt(site, heading)!)}</span>}

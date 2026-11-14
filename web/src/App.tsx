@@ -243,6 +243,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const clearToast = useCallback(() => setToast(null), [])
   const [sourcesOpen, setSourcesOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   // Missions of this browser, and the one being planned with (its requirements drive every verdict).
   const [missions, setMissions] = useState<MissionDef[]>(() => loadMissions())
   // No mission applies until one is opened: by default the tool explores freely, with its usual thresholds.
@@ -437,7 +438,12 @@ export default function App() {
   // Panels, street view and the sky strip fade out before they go.
   const panelStay = useStay(focused ? panel : null)
   const shownPanel = panelStay.value
-  const streetStay = useStay(streetOpen && !!focused, 520)
+  const streetStay = useStay(streetOpen && !!focused, 700)
+  // Going down to the ground: the Moon alone on screen, its tools and labels out of the way.
+  useEffect(() => {
+    document.body.classList.toggle('is-diving', diving)
+    return () => document.body.classList.remove('is-diving')
+  }, [diving])
   const skyStay = useStay(!!focused && !picking && panel !== 'sky' && skyOpen)
   const cardStay = useStay(cardOpen)
   const swipe = useRef<{ x: number; y: number } | null>(null)
@@ -1056,7 +1062,7 @@ export default function App() {
     <LangContext.Provider value={t}>
       {moonOk ? (
         <Suspense fallback={null}>
-        <MoonScene compactControls={!!panel} mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} earth={earthAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, earth: t.viewEarth, fromEarth: t.viewFromEarth, newMoon: t.newMoonNote, hd: t.viewHd, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
+        <MoonScene compactControls={!!panel} mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels && !diving} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} earth={earthAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, earth: t.viewEarth, fromEarth: t.viewFromEarth, newMoon: t.newMoonNote, hd: t.viewHd, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />
@@ -1065,7 +1071,7 @@ export default function App() {
         <MoonFallback />
       )}
 
-      <div className={`pointer-events-none relative z-10 flex h-dvh flex-col transition-opacity duration-700 ${splashDone ? 'opacity-100' : 'opacity-0'}`}>
+      <div inert={diving && !streetOpen} className={`pointer-events-none relative z-10 flex h-dvh flex-col transition-opacity ${diving ? 'duration-500' : 'duration-700'} ${splashDone && !diving ? 'opacity-100' : 'opacity-0'}`}>
         <header className="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 bg-gradient-to-b from-black/85 to-transparent px-4 pb-4 pt-3">
           <div className="flex items-center gap-3">
             <button onClick={() => setPicking(true)} aria-label={t.findTitle} className="min-h-11">
@@ -1103,6 +1109,7 @@ export default function App() {
                     </div>
                     <div className="border-t border-white/10 pt-1">
                       {[
+                        { label: t.about.title, onSelect: () => setAboutOpen(true) },
                         { label: t.ms.title, onSelect: () => setMissionsOpen(true) },
                         { label: t.copyLink, onSelect: share, hidden: !chosen.length },
                         { label: focused ? t.downloadCsv(siteName(focused.site)) : '', onSelect: downloadCsv, hidden: !focused },
@@ -1806,15 +1813,19 @@ export default function App() {
       </div>
 
       <Snackbar message={toast} onDone={clearToast} />
-      {landing > 0 && diving && !streetOpen && (
-        <p className="ui-in glass pointer-events-none fixed left-1/2 top-24 z-30 -translate-x-1/2 rounded-full px-5 py-2 text-sm font-semibold text-sun" role="status">
-          {t.simApproach}
-        </p>
+      {/* The way down: the view closes in around the site, with where it is going. */}
+      {diving && !streetOpen && focused && (
+        <div className="pointer-events-none fixed inset-0 z-30 flex flex-col items-center justify-end px-4 pb-[16vh] text-center" role="status">
+          <div className="dive-veil absolute inset-0 -z-10" aria-hidden="true" />
+          <p className="dive-kicker">{landing > 0 ? t.simApproach : t.streetApproach}</p>
+          <p className="dive-title">{siteName(focused.site)}</p>
+          <p className="dive-coords">{Math.abs(focused.site.lat).toFixed(2)}° {focused.site.lat < 0 ? 'S' : 'N'} · {Math.abs(focused.site.lon).toFixed(2)}° {focused.site.lon < 0 ? 'W' : 'E'}</p>
+        </div>
       )}
       {/* Street view, full screen: the ground of the site, its Sun and Earth, and the stay to play. */}
       {streetStay.value && focused && (
         <div className={`${streetStay.leaving ? 'street-out' : 'street-in'} fixed inset-0 z-40 flex flex-col bg-black`} role="dialog" aria-modal="true" aria-label={t.streetView}>
-          <div className="glass flex items-center gap-3 px-3 py-2 sm:px-4">
+          <div className="street-top glass flex items-center gap-3 px-3 py-2 sm:px-4">
             <span className={VERDICT_CLS[focused.m.verdict]}>
               <VerdictIcon v={focused.m.verdict} size={22} />
             </span>
@@ -1831,7 +1842,7 @@ export default function App() {
               </Suspense>
             )}
           </div>
-          <div className="glass flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 sm:px-4">
+          <div className="street-bottom glass flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 sm:px-4">
             <button onClick={togglePlay} className="min-h-11 rounded-sm bg-sun px-4 font-semibold text-black">
               {playing ? t.pause : t.play}
             </button>
@@ -1858,6 +1869,45 @@ export default function App() {
 
       <Overlay open={missionsOpen} title={t.ms.title} onClose={() => { setMissionsOpen(false); pendingScenario.current = null }}>
         <Missions key={missionsStartNew} startNew={missionsStartNew > 0 && pendingScenario.current !== null} missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} onReport={downloadReport} openScenarioId={scenarioId} onUseSpot={(id, def) => { loadGrid().then(() => { setGridTick((n) => n + 1); setMission((cur) => ({ ...cur, landing: new Date(def.landing), slipDays: 0, durationDays: def.durationDays, survivalPowerW: def.survivalPowerW })); pick(id); setMissionsOpen(false) }) }} />
+      </Overlay>
+      {/* The project in one minute: why it matters, what is new, why trust it, the NASA data, and three ways in. */}
+      <Overlay open={aboutOpen} title={t.about.title} onClose={() => setAboutOpen(false)}>
+        <p className="text-muted">{t.about.intro}</p>
+        <div className="mt-4">
+          {t.about.cards.map((c, n) => (
+            <section key={c.k} className="about-card">
+              <p className="about-n" aria-hidden="true">{n + 1}</p>
+              <div className="min-w-0">
+              <p className="about-k">{c.k}</p>
+              <h3 className="mt-1 text-lg font-semibold leading-snug">{c.h}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-white/75">
+                {typeof c.p === 'string' ? c.p : c.p(DATA.validation ? { sites: DATA.validation.sites, median: DATA.validation.medianAbsDiffDays, corr: DATA.validation.correlation } : null)}
+              </p>
+              </div>
+            </section>
+          ))}
+        </div>
+        <p className="border-t border-white/15 pt-4 text-sm font-semibold">{t.about.tryTitle}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {[
+            { label: t.about.trySim, primary: true, run: simulateLanding },
+            { label: t.about.tryDates, primary: false, run: () => setPanel('when') },
+            { label: t.about.tryTour, primary: false, run: () => setTourOn(true) },
+          ].map((b) => (
+            <button
+              key={b.label}
+              type="button"
+              onClick={() => {
+                setAboutOpen(false)
+                if (!focused && catalogue[0]) pick(catalogue[0].site.id)
+                window.setTimeout(b.run, 350)
+              }}
+              className={`min-h-11 rounded-sm px-4 text-sm font-semibold ${b.primary ? 'bg-sun text-black hover:brightness-110' : 'border border-white/35 text-white hover:bg-white/10'}`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
       </Overlay>
       <Overlay open={sourcesOpen} title={t.dataSources} onClose={() => setSourcesOpen(false)}>
         <p className="text-muted">{t.sourcesIntro}</p>

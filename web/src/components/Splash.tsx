@@ -245,25 +245,44 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              {/* Educational mode: Franky himself is in the button and says he comes along. */}
-              <button type="button" autoFocus disabled={leaving} onClick={() => choose('guided')} className="mode-btn mode-btn-franky">
-                {/* Franky in 3D rolls into the button, waves and says he comes along; on a choice he says goodbye and rolls off. */}
-                <span className="flex w-full items-center gap-3">
-                  <span className="-my-2 -ml-2 shrink-0">
-                    <SplashBot width={wide ? 150 : 100} height={wide ? 185 : 123} leaving={leaving} onWave={() => setBotWaved(true)} />
+              {/* Two cards with the same build: a stage on top, then the name, what it is, and "Start". */}
+              <button type="button" autoFocus disabled={leaving} onClick={() => choose('guided')} className="mode-btn">
+                {/* Franky in 3D rolls onto the stage, waves and says he comes along; on a choice he says goodbye and rolls off. */}
+                <span className="mode-stage">
+                  <span className="shrink-0 self-end">
+                    <SplashBot width={wide ? 150 : 96} height={wide ? 178 : 114} leaving={leaving} onWave={() => setBotWaved(true)} />
                   </span>
-                  <span className="min-w-0">
-                    <span className="block min-h-[52px]">{botWaved && <BotBubble key={leaving ? 'bye' : 'ask'} text={leaving ? t.botBye : t.modeGuidedFranky} />}</span>
-                    <span className="mt-2 block text-base font-semibold">{t.modeGuided}</span>
-                  </span>
+                  <span className="min-w-0 flex-1 pr-3">{botWaved && <BotBubble key={leaving ? 'bye' : 'ask'} text={leaving ? t.botBye : t.modeGuidedFranky} />}</span>
                 </span>
-                <span className="block text-sm font-normal text-white/65">{t.modeGuidedSub}</span>
+                <span className="mode-body">
+                  <span className="block text-lg font-semibold leading-tight">{t.modeGuided}</span>
+                  <span className="mt-1 block text-sm font-normal text-white/70">{t.modeGuidedSub}</span>
+                  <span className="mode-go">{t.modeStart}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
+                </span>
               </button>
-              <button type="button" disabled={leaving} onClick={() => choose('expert')} className="mode-btn sm:justify-end">
-                {/* As tall as Franky in the other button, so the two titles line up. */}
-                <span className="flex h-10 items-center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><path d="M4 20h16M6 16l4-5 3 3 5-7" /><circle cx="18" cy="7" r="1.5" /></svg></span>
-                <span className="block text-base font-semibold">{t.modeExpert}</span>
-                <span className="block text-sm font-normal text-white/65">{t.modeExpertSub}</span>
+              <button type="button" disabled={leaving} onClick={() => choose('expert')} className="mode-btn">
+                {/* The expert's desk in small: the Sun's path over the terrain and the landing calendar. A drawing, not data. */}
+                <span className="mode-stage">
+                  <svg viewBox="0 20 320 124" preserveAspectRatio="xMidYMax slice" className="size-full" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="mode-terrain" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8a8d91" stopOpacity="0.75" /><stop offset="1" stopColor="#8a8d91" stopOpacity="0.08" /></linearGradient>
+                      <radialGradient id="mode-sun"><stop offset="0" stopColor="#fff" /><stop offset="0.35" stopColor="#f2b705" /><stop offset="1" stopColor="#f2b705" stopOpacity="0" /></radialGradient>
+                    </defs>
+                    {[30, 60, 90].map((y) => <path key={y} d={`M0 ${y}H320`} stroke="#fff" strokeOpacity="0.07" />)}
+                    {[64, 128, 192, 256].map((x) => <path key={x} d={`M${x} 8V112`} stroke="#fff" strokeOpacity="0.07" />)}
+                    <path d="M0 78 L28 74 L52 80 L80 66 L104 72 L132 90 L160 96 L190 92 L214 82 L240 86 L268 72 L296 68 L320 74 V112 H0 Z" fill="url(#mode-terrain)" />
+                    <path className="mode-path" d="M40 96 C 110 108, 190 90, 262 52" fill="none" stroke="#f2b705" strokeWidth="2.5" strokeLinecap="round" />
+                    <circle cx="262" cy="52" r="15" fill="url(#mode-sun)" className="mode-sun" />
+                    <circle cx="70" cy="56" r="5" fill="#4f97ea" />
+                    <path d="M70 61V74" stroke="#4f97ea" strokeWidth="1.5" />
+                    <rect x="14.0" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="25.2" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="36.4" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="47.6" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="58.8" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="70.0" y="126" width="9" height="12" rx="1.5" fill="#f2a93b" opacity="0.9" /><rect x="81.2" y="126" width="9" height="12" rx="1.5" fill="#f2a93b" opacity="0.9" /><rect x="92.4" y="126" width="9" height="12" rx="1.5" fill="#f2a93b" opacity="0.9" /><rect x="103.6" y="126" width="9" height="12" rx="1.5" fill="#ff5a6a" opacity="0.75" /><rect x="114.8" y="126" width="9" height="12" rx="1.5" fill="#ff5a6a" opacity="0.75" /><rect x="126.0" y="126" width="9" height="12" rx="1.5" fill="#ff5a6a" opacity="0.75" /><rect x="137.2" y="126" width="9" height="12" rx="1.5" fill="#ff5a6a" opacity="0.75" /><rect x="148.4" y="126" width="9" height="12" rx="1.5" fill="#f2a93b" opacity="0.9" /><rect x="159.6" y="126" width="9" height="12" rx="1.5" fill="#f2a93b" opacity="0.9" /><rect x="170.8" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="182.0" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="193.2" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="204.4" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="215.6" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="226.8" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="238.0" y="126" width="9" height="12" rx="1.5" fill="#3fcf8e" opacity="0.9" /><rect x="249.2" y="126" width="9" height="12" rx="1.5" fill="#f2a93b" opacity="0.9" /><rect x="260.4" y="126" width="9" height="12" rx="1.5" fill="#f2a93b" opacity="0.9" /><rect x="271.6" y="126" width="9" height="12" rx="1.5" fill="#ff5a6a" opacity="0.75" /><rect x="282.8" y="126" width="9" height="12" rx="1.5" fill="#ff5a6a" opacity="0.75" /><rect x="294.0" y="126" width="9" height="12" rx="1.5" fill="#ff5a6a" opacity="0.75" />
+                  </svg>
+                </span>
+                <span className="mode-body">
+                  <span className="block text-lg font-semibold leading-tight">{t.modeExpert}</span>
+                  <span className="mt-1 block text-sm font-normal text-white/70">{t.modeExpertSub}</span>
+                  <span className="mode-go">{t.modeStart}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
+                </span>
               </button>
             </div>
           </div>

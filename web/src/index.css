@@ -158,26 +158,42 @@ body {
 .mode-btn {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  min-height: 132px;
-  padding: 18px 20px;
+  overflow: hidden;
+  padding: 0;
   text-align: left;
   color: #fff;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-  backdrop-filter: blur(8px);
+  background: rgba(6, 8, 12, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
-.mode-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--color-sun); transform: translateY(-2px) }
-@media (max-width: 639px) { .mode-btn { min-height: 0; padding: 12px 16px; gap: 4px } }
+.mode-btn:hover:not(:disabled) { border-color: var(--color-sun); transform: translateY(-3px); box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(242, 183, 5, 0.35) }
 .mode-btn:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 3px }
-/* Educational mode: Franky in 3D lives in the button, with what he says beside him. */
-.mode-btn-franky { border-color: rgba(242, 183, 5, 0.5) }
-.mode-btn-franky:disabled { opacity: 1 }
-.mode-btn .bot-bubble { display: inline-block; padding: 7px 12px; font-size: 13px; border-radius: 12px; box-shadow: none }
+/* The stage on top of each card: the same height in both, a faint glow behind what stands on it. */
+.mode-stage {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 178px;
+  background: radial-gradient(120% 100% at 30% 100%, rgba(242, 183, 5, 0.1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.mode-body { display: flex; flex: 1; flex-direction: column; width: 100%; padding: 14px 18px 14px }
+.mode-go { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 12px; font: 600 13px/1 var(--font-sans); color: var(--color-sun) }
+.mode-go svg { transition: transform 0.2s }
+.mode-btn:hover:not(:disabled) .mode-go svg { transform: translateX(4px) }
+.mode-btn:disabled { cursor: default }
+.mode-btn:disabled .mode-body { opacity: 0.5 }
+.mode-sun { animation: mode-sun-pulse 3s ease-in-out infinite; transform-origin: 262px 52px }
+@keyframes mode-sun-pulse { 50% { transform: scale(1.25) } }
+.mode-path { stroke-dasharray: 260; stroke-dashoffset: 260; animation: mode-path-draw 1.6s ease-out 0.6s forwards }
+@keyframes mode-path-draw { to { stroke-dashoffset: 0 } }
+@media (max-width: 639px) { .mode-stage { height: 114px } .mode-body { padding: 10px 14px 12px } .mode-go { padding-top: 8px } }
+@media (prefers-reduced-motion: reduce) { .mode-sun { animation: none } .mode-path { animation: none; stroke-dashoffset: 0 } }
+.mode-btn .bot-bubble { display: inline-block; padding: 8px 12px; font-size: 13px; border-radius: 12px; box-shadow: none }
 .mode-btn .bot-bubble::before { left: -6px; top: calc(50% - 5px); width: 10px; height: 10px; transform: rotate(-45deg) }
 /* Franky's speech bubble, its tail towards him (left on wide screens, up on phones). */
 .bot-bubble {
@@ -208,7 +224,6 @@ body {
 .bot-caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--color-sun); animation: bot-blink 0.8s steps(1) infinite }
 .bot-caret-done { animation-delay: 0.8s; opacity: 0.8 }
 @keyframes bot-blink { 50% { opacity: 0 } }
-.mode-btn:disabled { opacity: 0.55; cursor: default; transform: none }
 .moon-controls button:active { transform: scale(0.96) }
 /* The heat map layer, on. */
 .moon-controls .moon-layer[data-on="true"] { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
@@ -437,9 +452,36 @@ input[type="range"] {
 
 /* Street view opens after the dive: a short fade from black. */
 /* It fades in over the Moon while the camera is still closing in on the site, growing a little: one continuous push-in. */
-.street-in { animation: street-in 1.6s cubic-bezier(0.33, 0, 0.2, 1) both }
-@keyframes street-in { from { opacity: 0; transform: scale(0.9) } }
-@media (prefers-reduced-motion: reduce) { .street-in { animation: none } }
+/* Arriving on the ground: the view comes out of the dark, growing the last bit and coming into focus;
+   then its top bar comes down and its bottom bar comes up. */
+.street-in { animation: street-in 1.25s cubic-bezier(0.22, 0.7, 0.2, 1) both }
+@keyframes street-in { from { opacity: 0; transform: scale(0.93); filter: blur(10px) brightness(1.6) } 60% { opacity: 1; filter: blur(0) brightness(1) } }
+.street-in .street-top { animation: street-top 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.75s both }
+.street-in .street-bottom { animation: street-bottom 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.9s both }
+@keyframes street-top { from { opacity: 0; transform: translateY(-100%) } }
+@keyframes street-bottom { from { opacity: 0; transform: translateY(100%) } }
+/* The way down from orbit: the view closes in around the site, with its name. */
+.dive-veil { background: radial-gradient(ellipse at 50% 46%, transparent 0, transparent 16%, rgba(0, 0, 0, 0.82) 62%, #000 100%); animation: dive-veil 1.3s cubic-bezier(0.5, 0, 0.8, 0.6) both }
+@keyframes dive-veil { from { opacity: 0; transform: scale(2.4) } to { opacity: 1; transform: scale(1) } }
+.dive-kicker { font: 600 11px/1 var(--font-sans); letter-spacing: 0.32em; text-transform: uppercase; color: var(--color-sun); animation: ui-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both }
+.dive-title { margin-top: 10px; font: 700 clamp(22px, 3.4vw, 40px) / 1.1 var(--font-sans); color: #fff; text-shadow: 0 2px 24px #000; animation: ui-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both }
+.dive-coords { margin-top: 8px; font: 500 13px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.75); animation: ui-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both }
+body.is-diving .moon-controls { opacity: 0 !important; pointer-events: none; transition: opacity 0.4s }
+/* The project at a glance: four cards. */
+.about-card { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.16) }
+.about-n { width: 1.6rem; flex-shrink: 0; font: 300 28px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--color-sun) }
+.about-k { font: 500 12px/1.2 var(--font-sans); color: rgba(255, 255, 255, 0.6) }
+/* Landing: cinema bars while the lander comes down, and the word when it touches. */
+.cine-bar { position: absolute; left: 0; right: 0; height: 9%; background: #000; transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1); pointer-events: none }
+.cine-bar.top { top: 0; transform: translateY(-101%) }
+.cine-bar.bottom { bottom: 0; transform: translateY(101%) }
+.cine-on .cine-bar { transform: none }
+.touchdown { position: absolute; left: 0; right: 0; top: 22%; text-align: center; pointer-events: none; animation: touchdown 3.4s cubic-bezier(0.22, 1, 0.36, 1) both }
+.touchdown b { display: block; font: 700 clamp(28px, 6vw, 68px) / 1 var(--font-sans); letter-spacing: 0.3em; margin-right: -0.3em; text-transform: uppercase; color: #fff; text-shadow: 0 0 40px rgba(242, 183, 5, 0.55), 0 2px 20px #000 }
+.touchdown i { display: block; width: min(320px, 50%); height: 1px; margin: 14px auto 0; background: linear-gradient(90deg, transparent, var(--color-sun), transparent) }
+@keyframes touchdown { 0% { opacity: 0; letter-spacing: 0.2em; transform: scale(1.12) } 14% { opacity: 1; transform: scale(1) } 72% { opacity: 1 } 100% { opacity: 0; transform: translateY(-10px) } }
+@media (min-width: 640px) { .touchdown { right: 284px } }
+@media (prefers-reduced-motion: reduce) { .street-in, .street-in .street-top, .street-in .street-bottom, .dive-veil, .dive-kicker, .dive-title, .dive-coords { animation: none } .cine-bar { transition: none } .touchdown { animation: none; opacity: 0 } }
 
 /* Panels, strips and floating buttons arrive softly: a slow fade with a short rise (ease-out-quint). */
 .ui-in { animation: ui-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both }
@@ -459,8 +501,9 @@ input[type="range"] {
 /* Everything opens and closes softly. */
 .ui-out { animation: ui-out 0.38s cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none }
 @keyframes ui-out { to { opacity: 0; transform: translateY(12px) } }
-.street-out { animation: street-out 0.52s cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none }
-@keyframes street-out { to { opacity: 0; transform: scale(1.03) } }
+/* Leaving the ground: the view falls away below as the camera rises back to orbit. */
+.street-out { animation: street-out 0.7s cubic-bezier(0.4, 0, 0.8, 0.4) both; pointer-events: none }
+@keyframes street-out { to { opacity: 0; transform: scale(0.9); filter: blur(8px) } }
 .sheet-out { animation: sheet-out 0.38s cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none }
 @keyframes sheet-out { to { opacity: 0; transform: translateY(24px) } }
 .pop-out { animation: pop-out 0.22s ease-in both; pointer-events: none }
