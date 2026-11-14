@@ -441,11 +441,12 @@ details.soft-moving { overflow: hidden }
 @keyframes pop-card-in { from { opacity: 0; transform: translateY(10px) scale(0.97) } }
 @keyframes pop-card-out { to { opacity: 0; transform: translateY(10px) scale(0.97) } }
 
-/* Callout opened from a label: right beside the label, no leader (the label already is the site). */
+/* Callout opened from a label: the card itself is placed beside the label (top-left at the anchor), no leader. */
 .moon-callout[data-anchor="label"] .moon-callout-lead { display: none }
-.moon-callout[data-anchor="label"] .moon-callout-card { left: 6px; top: -10px }
-.moon-callout[data-anchor="label"][data-side="left"] .moon-callout-card { left: auto; right: 6px }
-.moon-callout[data-anchor="label"][data-drop="down"] .moon-callout-card { top: 10px }
-.moon-callout[data-anchor="label"] .moon-callout-bridge { left: -2px; top: -14px; width: 14px; height: 28px }
-.moon-callout[data-anchor="label"][data-side="left"] .moon-callout-bridge { left: auto; right: -2px }
-.moon-callout[data-anchor="label"][data-drop="down"] .moon-callout-bridge { top: -14px }
+.moon-callout[data-anchor="label"] .moon-callout-card,
+.moon-callout[data-anchor="label"][data-drop="down"] .moon-callout-card,
+.moon-callout[data-anchor="label"][data-side="left"] .moon-callout-card { left: 0; right: auto; top: 0; transform: none }
+/* The 8 px gap between label and card stays hoverable. */
+.moon-callout[data-anchor="label"] .moon-callout-bridge,
+.moon-callout[data-anchor="label"][data-drop="down"] .moon-callout-bridge { left: -10px; right: auto; top: 0; width: 12px; height: var(--card-h, 280px) }
+.moon-callout[data-anchor="label"][data-side="left"] .moon-callout-bridge { left: calc(var(--card-w, 248px) - 2px); right: auto }

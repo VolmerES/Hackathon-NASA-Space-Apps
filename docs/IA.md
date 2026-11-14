@@ -122,6 +122,7 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 | Ficha flotante al alcance del ratón | La ficha que sale al pasar por un sitio aparece mucho más cerca del punto (línea guía la mitad de larga), con un puente invisible entre el punto y la ficha que la mantiene abierta por el camino, y 0,9 s de margen antes de cerrarse; el punto sigue libre para elegir el sitio con un clic | **Angela lo detectó**: la ficha se cerraba antes de poder pulsarla | Compila. ⚠️ Sin probar con el ratón |
 | Ficha flotante junto a la etiqueta | Si se llega a un sitio por su etiqueta (apartada de su punto, como Nobile), la ficha sale pegada a la etiqueta y no al punto | **Angela lo detectó** con Nobile | Compila. ⚠️ Sin probar con el ratón |
 | Ficha flotante: junto al ratón y siempre dentro | Al llegar por una etiqueta, la ficha se ancla donde está el ratón (la Luna se queda quieta mientras tanto); mide su alto y se abre hacia arriba o hacia abajo según quepa, sin meterse bajo la cabecera | **Angela lo detectó** con una captura (salía lejos y cortada por arriba) | Compila. ⚠️ Sin probar con el ratón |
+| Ficha flotante al lado de la etiqueta | Al llegar por una etiqueta, la ficha se coloca a su derecha (o izquierda), centrada en altura con ella y ajustada a la zona de la Luna, en vez de abrirse hacia arriba tapando las demás etiquetas | **Angela lo pidió** | Compila. ⚠️ Sin probar con el ratón |
 
 ### 15‑nov · domingo
 
