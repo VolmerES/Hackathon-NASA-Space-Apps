@@ -249,7 +249,14 @@ function earthTexture() {
 export default function Surface3D({ site, sample, height = 420, landing = 0 }: { site: Site; sample: Sample; height?: number; /** Changes to a new number to play a landing. */ landing?: number }) {
   const t = useT()
   const [real, setReal] = useState<Ground | null>(null)
-  const [skyOpen, setSkyOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768)
+  // Sun, Earth and ground cards: each opens on its own; open on wide screens, folded on phones.
+  const wide = typeof window === 'undefined' || window.innerWidth >= 768
+  const [open, setOpen] = useState({ sun: wide, earth: wide, ground: wide })
+  const [cardsShown, setCardsShown] = useState(wide) // the whole stack, hidden behind one pill
+  const toggle = (k: keyof typeof open) => (e: React.SyntheticEvent<HTMLDetailsElement>) => {
+    const isOpen = e.currentTarget.open
+    setOpen((o) => (o[k] === isOpen ? o : { ...o, [k]: isOpen }))
+  }
   const mount = useRef<HTMLDivElement>(null)
   const api = useRef<{ setSite: (s: Site, g: Ground | null) => void; setSample: (s: Sample) => void; lookAt: (az: number) => void; land: () => void } | null>(null)
   const [hud, setHud] = useState<{ alt: number; speed: number; clock: number; phase: 'load' | 'descent' | 'down' | 'failed' } | null>(null)
@@ -694,7 +701,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         {ridgeKmAt(site, heading) !== null && <span className="block text-xs text-white/65">{t.reliefSeen(ridgeKmAt(site, heading)!)}</span>}
       </p>
       {/* Landing simulation: height above the ground, descent speed and what is happening. */}
-      <div className="pointer-events-none absolute right-3 top-2 flex max-h-[calc(100%-76px)] w-[min(260px,calc(100%-24px))] flex-col gap-2 overflow-y-auto">
+      <div className="pointer-events-none absolute right-3 top-2 flex max-h-[calc(100%-76px)] w-[min(260px,calc(100%-24px))] flex-col gap-1.5 overflow-y-auto">
       {hud && (
         <div className="ui-in glass px-3 py-2 text-sm" role="status">
           <p className={`font-semibold ${hud.phase === 'down' ? 'text-ok' : hud.phase === 'failed' ? 'text-warn' : 'text-sun'}`}>
@@ -719,27 +726,49 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         </div>
       )}
       {/* What the sky and the ground are like at this hour, from the data of the tool. */}
-      <details open={skyOpen} onToggle={(e) => setSkyOpen((e.target as HTMLDetailsElement).open)} className="glass pointer-events-auto px-3 py-2 text-sm">
-        <summary className="cursor-pointer font-semibold">{t.skyPanel}</summary>
-        <dl className="mt-1.5 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 tabular-nums">
-          <dt className="col-span-2 mt-1 flex items-center gap-1.5 font-semibold text-sun"><i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />{t.sunWord}</dt>
+      <button type="button" onClick={() => setCardsShown((v) => !v)} aria-expanded={cardsShown} title={cardsShown ? t.hideCards : t.skyPanel} className="glass pointer-events-auto flex min-h-9 items-center gap-2 self-end px-3 text-xs font-semibold hover:bg-white/10">
+        {t.skyPanel}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 transition-transform ${cardsShown ? 'rotate-180' : ''}`} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {cardsShown && (
+      <>
+      <details open={open.sun} onToggle={toggle('sun')} className="glass pointer-events-auto border-l-2 border-l-sun px-3 py-2 text-xs tabular-nums">
+        <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-sun">
+          <i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />{t.sunWord}
+          {!open.sun && <span className="ml-auto text-xs font-normal text-white/80">{sample.sunEl.toFixed(1)}° · {sample.sunVisible > 0.5 ? t.yesCap : t.noCap}</span>}
+        </summary>
+        <dl className="mt-1 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
           <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.sunAz.toFixed(1)}°</dd>
           <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.sunEl.toFixed(1)}°</dd>
           <dt className="text-white/75">{t.litSite}</dt><dd className="text-right">{sample.sunVisible > 0.5 ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
-          <dt className="col-span-2 mt-1.5 flex items-center gap-1.5 font-semibold text-earth"><i className="inline-block size-2.5 rounded-full bg-earth" aria-hidden="true" />{t.earthWord}</dt>
-          <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.earthAz.toFixed(1)}°</dd>
-          <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.earthEl.toFixed(1)}°</dd>
-          <dt className="text-white/75">{t.earthAbove}</dt><dd className="text-right">{sample.earthVisible ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
-          {real && (
-            <>
-              <dt className="col-span-2 mt-1.5 font-semibold">{t.groundHere}</dt>
-              <dt className="text-white/75">{t.slope}</dt><dd className="text-right">{real.slopeDeg.toFixed(1)}°</dd>
-              <dt className="text-white/75">{t.incidence}</dt><dd className="text-right">{incidenceDeg(real, sample.sunAz, sample.sunEl).toFixed(1)}°</dd>
-            </>
-          )}
         </dl>
         <p className="mt-1.5 text-[11px] leading-snug text-muted">{real ? t.skyNoteGround : t.skyNote}</p>
       </details>
+      <details open={open.earth} onToggle={toggle('earth')} className="glass pointer-events-auto border-l-2 border-l-earth px-3 py-2 text-xs tabular-nums">
+        <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-earth">
+          <i className="inline-block size-2.5 rounded-full bg-earth" aria-hidden="true" />{t.earthWord}
+          {!open.earth && <span className="ml-auto text-xs font-normal text-white/80">{sample.earthEl.toFixed(1)}° · {sample.earthVisible ? t.yesCap : t.noCap}</span>}
+        </summary>
+        <dl className="mt-1 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
+          <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.earthAz.toFixed(1)}°</dd>
+          <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.earthEl.toFixed(1)}°</dd>
+          <dt className="text-white/75">{t.earthAbove}</dt><dd className="text-right">{sample.earthVisible ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
+        </dl>
+      </details>
+      {real && (
+        <details open={open.ground} onToggle={toggle('ground')} className="glass pointer-events-auto border-l-2 border-l-white/40 px-3 py-2 text-xs tabular-nums">
+          <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold">
+            {t.groundHere}
+            {!open.ground && <span className="ml-auto text-xs font-normal text-white/80">{real.slopeDeg.toFixed(1)}°</span>}
+          </summary>
+          <dl className="mt-1 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
+            <dt className="text-white/75">{t.slope}</dt><dd className="text-right">{real.slopeDeg.toFixed(1)}°</dd>
+            <dt className="text-white/75">{t.incidence}</dt><dd className="text-right">{incidenceDeg(real, sample.sunAz, sample.sunEl).toFixed(1)}°</dd>
+          </dl>
+        </details>
+      )}
+      </>
+      )}
       </div>
       <div className="absolute bottom-3 right-3 flex gap-2">
         <button onClick={() => api.current?.lookAt(sample.sunAz)} className="flex min-h-11 items-center gap-2 rounded-sm border border-white/40 bg-black/60 px-3.5 text-sm font-semibold text-white backdrop-blur-md hover:bg-white/15">
