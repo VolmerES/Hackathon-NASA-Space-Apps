@@ -312,25 +312,22 @@ details::details-content {
 }
 details[open]::details-content { block-size: auto; opacity: 1 }
 
-/* The modal dialog rises in and sinks out over a backdrop that fades. */
-dialog.modal-soft {
-  opacity: 0;
-  transform: translateY(16px) scale(0.98);
-  transition: opacity 0.35s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), overlay 0.42s allow-discrete, display 0.42s allow-discrete;
-}
-dialog.modal-soft[open] { opacity: 1; transform: none }
-@starting-style { dialog.modal-soft[open] { opacity: 0; transform: translateY(16px) scale(0.98) } }
-dialog.modal-soft::backdrop {
-  background-color: rgb(0 0 0 / 0);
-  backdrop-filter: blur(0);
-  transition: background-color 0.35s ease, backdrop-filter 0.35s ease, overlay 0.42s allow-discrete, display 0.42s allow-discrete;
-}
-dialog.modal-soft[open]::backdrop { background-color: rgb(0 0 0 / 0.5); backdrop-filter: blur(4px) }
-@starting-style { dialog.modal-soft[open]::backdrop { background-color: rgb(0 0 0 / 0); backdrop-filter: blur(0) } }
+/* The modal dialog rises in and sinks out over a backdrop that fades (plain animations: every browser). */
+dialog.modal-soft[open] { animation: modal-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both }
+dialog.modal-soft[open]::backdrop { background-color: rgb(0 0 0 / 0.5); backdrop-filter: blur(4px); animation: ui-fade 0.35s ease both }
+dialog.modal-soft.modal-leaving { animation: modal-out 0.3s cubic-bezier(0.4, 0, 1, 1) both }
+dialog.modal-soft.modal-leaving::backdrop { animation: modal-backdrop-out 0.3s ease both }
+@keyframes modal-in { from { opacity: 0; transform: translateY(16px) scale(0.98) } }
+@keyframes modal-out { to { opacity: 0; transform: translateY(16px) scale(0.98) } }
+@keyframes modal-backdrop-out { to { opacity: 0 } }
+
+/* Folding sections where the browser cannot animate them in CSS: softDetails.ts does it. */
+details.soft-moving { overflow: hidden }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-out, .street-out, .sheet-out, .pop-out { animation: none }
-  details::details-content, dialog.modal-soft, dialog.modal-soft::backdrop { transition: none }
+  details::details-content { transition: none }
+  dialog.modal-soft[open], dialog.modal-soft[open]::backdrop { animation: none }
 }
 /* Street view button inside the Moon callout. */
 .moon-callout-card { pointer-events: auto }
@@ -351,4 +348,26 @@ dialog.modal-soft[open]::backdrop { background-color: rgb(0 0 0 / 0.5); backdrop
   transition: filter 0.2s ease;
 }
 .moon-callout-street:hover { filter: brightness(1.1) }
+.moon-callout-answer {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 10px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.06);
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.moon-callout-answer:hover { background: rgb(255 255 255 / 0.15); border-color: rgb(255 255 255 / 0.6) }
+.moon-callout-answer + .moon-callout-street { margin-top: 8px }
+/* Phones: the callout opens by touch, centred, over the bottom sheet. */
+.moon-callout[data-side="center"] .moon-callout-card { left: var(--card-left, -124px); right: auto }
+.moon-callout[data-side="center"] .moon-callout-lead path { display: none }
+@media (max-width: 1023px) { .moon-callout { z-index: 20 } }
 .moon-callout-street:focus-visible { outline: 2px solid #fff; outline-offset: 2px }

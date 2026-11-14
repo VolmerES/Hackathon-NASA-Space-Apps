@@ -32,6 +32,8 @@ type Props = {
   /** Street view button inside the callout: stand on that site. */
   onStreet?: (id: string) => void
   streetLabel?: string
+  /** Label of the callout button that opens the full answer of the site. */
+  answerLabel?: string
 }
 
 const DEG = Math.PI / 180
@@ -54,9 +56,9 @@ function surface(lat: number, lon: number, r = 1) {
 // of the stretching an equirectangular map has there. Its edge fades into the globe.
 const CAP_DEG = 25
 // Real relief on the polar cap: polar_height.png spans this range of LOLA heights (printed by
-// scripts/moon_polar_cap.py), raised RELIEF times so craters and massifs read from any angle.
+// scripts/moon_polar_cap.py), raised RELIEF times (a choice of the team) so craters and massifs read from any angle.
 const HEIGHT_RANGE_M = 12578
-const RELIEF = 2.5
+const RELIEF = 1.5
 const HEIGHT_SCALE = (HEIGHT_RANGE_M * RELIEF) / 1737400
 const CAP_R = 1.0006
 function polarCap(q: Quality) {
@@ -98,7 +100,7 @@ function polarCap(q: Quality) {
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
-export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, onStreet, streetLabel = 'Street view' }: Props) {
+export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer' }: Props) {
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
@@ -106,7 +108,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
   const labelsRef = useRef<HTMLDivElement>(null)
   const state = useRef({ mode, sites, focusId, onPick, showLabels })
   state.current = { mode, sites, focusId, onPick, showLabels }
-  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void } | null>(null)
+  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void } | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -280,11 +282,24 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let hoverHold = 0
     // Site under the mouse: shows the callout and holds the Moon still.
     let hoverId: string | null = null
-    let hoverGrace = 0
-    const setHoverId = (id: string | null) => {
+    let sticky = false // opened by a finger: stays until a tap elsewhere
+    let overCallout = false
+    let dropTimer = 0
+    const setHoverId = (id: string | null, byTouch = false) => {
+      window.clearTimeout(dropTimer)
+      dropTimer = 0
+      sticky = !!id && byTouch
       if (id === hoverId) return
       hoverId = id
       setHover(id)
+    }
+    // The mouse left the site: give it a moment to reach the callout before closing it.
+    const dropHoverSoon = () => {
+      if (dropTimer || !hoverId || sticky) return
+      dropTimer = window.setTimeout(() => {
+        dropTimer = 0
+        if (!overCallout && !sticky) setHoverId(null)
+      }, 600)
     }
     const ringGeo = new THREE.RingGeometry(0.010, 0.0135, 48)
     const dotGeo = new THREE.CircleGeometry(0.0045, 24)
@@ -322,7 +337,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         el.addEventListener('pointerenter', (e) => {
           if (e.pointerType === 'mouse') setHoverId(s.id)
         })
-        el.addEventListener('pointerleave', () => setHoverId(null))
+        el.addEventListener('pointerleave', dropHoverSoon)
         el.addEventListener('click', (e) => {
           e.stopPropagation()
           state.current.onPick(s.id)
@@ -375,7 +390,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       spinVel = tiltVel = 0
       holdUntil = performance.now() + 60000
     }
-    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo }
+    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null) }
     syncSites()
 
     const pointers = new Map<number, { x: number; y: number }>()
@@ -422,9 +437,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           const d = Math.hypot(m.sx - e.clientX, m.sy - e.clientY)
           if (d < 22 && (!best || d < best.d)) best = { id: m.id, d }
         }
-        if (best) hoverGrace = performance.now() + 700
-        else if (hoverId && performance.now() < hoverGrace) return // on the way to the callout
-        setHoverId(best ? best.id : null)
+        if (best) setHoverId(best.id)
+        else dropHoverSoon()
         canvas.style.cursor = best ? 'pointer' : ''
         return
       }
@@ -472,27 +486,30 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         const d = Math.hypot(x - e.clientX, y - e.clientY)
         if (d < 34 && (!best || d < best.d)) best = { id: m.id, d }
       }
-      if (best) state.current.onPick(best.id)
+      // A finger first opens the callout of the site (its numbers, the answer, street view);
+      // a mouse, which already saw the callout on hover, picks the site.
+      if (best && e.pointerType === 'touch' && calloutRef.current) setHoverId(best.id, true)
+      else if (best) state.current.onPick(best.id)
     }
     canvas.addEventListener('pointerdown', down)
     canvas.addEventListener('pointermove', move)
     canvas.addEventListener('pointerup', up)
     canvas.addEventListener('pointercancel', up)
-    // Moving from a site to its figure keeps the site hovered; leaving both drops it.
     // The callout can be reached with the mouse: over it, the site stays hovered.
-    const inCallout = (n: EventTarget | null) => !!n && !!calloutRef.current?.contains(n as Node)
     const leave = (e: PointerEvent) => {
-      if (inCallout(e.relatedTarget)) return
-      setHoverId(null)
+      if (e.pointerType === 'mouse') dropHoverSoon()
     }
     canvas.addEventListener('pointerleave', leave)
-    const calloutLeave = (e: PointerEvent) => {
-      if (e.relatedTarget === canvas) {
-        hoverGrace = performance.now() + 500
-        return
-      }
-      if (!inCallout(e.relatedTarget)) setHoverId(null)
+    const calloutEnter = () => {
+      overCallout = true
+      window.clearTimeout(dropTimer)
+      dropTimer = 0
     }
+    const calloutLeave = () => {
+      overCallout = false
+      dropHoverSoon()
+    }
+    calloutRef.current?.addEventListener('pointerenter', calloutEnter)
     calloutRef.current?.addEventListener('pointerleave', calloutLeave)
     const wheel = (e: WheelEvent) => {
       if (state.current.mode !== 'app') return
@@ -695,11 +712,13 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         if (on) dotMat.color.set(0xf2b705)
         else dotMat.color.copy(m.color)
         m.ring.visible = on || state.current.showLabels
-        const size = Math.min(1, dist / 1.05) * 0.75
+        world.copy(m.local).applyMatrix4(moon.matrixWorld)
+        // About the same size on screen wherever the marker is: those near the camera do not balloon.
+        const reach = THREE.MathUtils.clamp(camera.position.distanceTo(world) / dist, 0.3, 1.4)
+        const size = Math.min(1, dist / 1.05) * 0.75 * reach
         m.ring.scale.setScalar(size * (on ? 1.5 * pulse : 1))
         m.dot.scale.setScalar(size * (state.current.showLabels ? 1 : 1.35))
         ringMat.opacity = dotMat.opacity = k
-        world.copy(m.local).applyMatrix4(moon.matrixWorld)
         tmp.copy(world).normalize()
         camToPoint.copy(camera.position).sub(world).normalize()
         const facing = tmp.dot(camToPoint)
@@ -757,7 +776,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             co.dataset.pos = key
             co.style.transform = `translate(${Math.round(hm.sx)}px, ${Math.round(hm.sy)}px)`
           }
-          co.dataset.side = hm.sx > w - 360 ? 'left' : 'right'
+          if (small) {
+            co.dataset.side = 'center'
+            co.style.setProperty('--card-left', `${Math.round(Math.min(w - 256, Math.max(8, hm.sx - 124)) - hm.sx)}px`)
+          } else co.dataset.side = hm.sx > w - 360 ? 'left' : 'right'
           co.dataset.drop = hm.sy < 330 ? 'down' : 'up'
           co.style.visibility = 'visible'
         } else co.style.visibility = 'hidden'
@@ -779,7 +801,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       canvas.removeEventListener('pointerup', up)
       canvas.removeEventListener('pointercancel', up)
       canvas.removeEventListener('pointerleave', leave)
+      calloutRef.current?.removeEventListener('pointerenter', calloutEnter)
       calloutRef.current?.removeEventListener('pointerleave', calloutLeave)
+      window.clearTimeout(dropTimer)
       canvas.removeEventListener('wheel', wheel)
       for (const m of markers) m.el.remove()
       api.current = null
@@ -831,8 +855,25 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
               </svg>
               <div className="moon-callout-card" role="group">
                 {info(hover)}
+                <button
+                  type="button"
+                  className="moon-callout-answer"
+                  onClick={() => {
+                    api.current?.closeCallout()
+                    onPick(hover)
+                  }}
+                >
+                  {answerLabel}
+                </button>
                 {onStreet && (
-                  <button type="button" className="moon-callout-street" onClick={() => onStreet(hover)}>
+                  <button
+                    type="button"
+                    className="moon-callout-street"
+                    onClick={() => {
+                      api.current?.closeCallout()
+                      onStreet(hover)
+                    }}
+                  >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <circle cx="12" cy="5" r="2.2" />
                       <path d="M12 8v6M9 21l3-7 3 7M8.5 11.5h7" />

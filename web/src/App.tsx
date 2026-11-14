@@ -9,15 +9,18 @@ import { LangContext, STRINGS, readLang, useT, type Lang, type Strings } from '.
 import { useBoxHeight, useStay } from './hooks'
 import { CloseButton, FloatPanel, Menu, Overlay, Snackbar } from './components/Ui'
 import { Splash, SKIP as SKIP_SPLASH } from './components/Splash'
-import { MoonScene } from './components/MoonScene'
 import { Logo } from './components/Logo'
 import { StayHeatmap } from './components/StayHeatmap'
 import { MoonFallback } from './components/MoonFallback'
 
 // three.js for the 3D view from the surface is loaded only when that view is opened.
+// three.js lives in its own file: the page and the opening screen do not wait for it.
+const MoonScene = lazy(() => import('./components/MoonScene').then((m) => ({ default: m.MoonScene })))
 const Surface3D = lazy(() => import('./components/Surface3D'))
 
 const MAX_SITES = 4
+// The tool proposes only the best few of the candidate sites for the chosen stay (a choice of the team).
+const TOP_SITES = 5
 const PLAY_STEP = 2
 const PLAY_MS = 90
 const OVERVIEW_MONTHS = 14
@@ -155,7 +158,6 @@ export default function App() {
       /* private mode: just not remembered */
     }
   }
-  const [query, setQuery] = useState('')
   const [customLat, setCustomLat] = useState('-88.5')
   const [customLon, setCustomLon] = useState('45')
   const [playIdx, setPlayIdx] = useState<number | null>(null)
@@ -227,7 +229,6 @@ export default function App() {
     setChosen((c) => (c.includes(id) ? c : [id, ...c].slice(0, MAX_SITES)))
     setFocus(id)
     setPicking(false)
-    setQuery('')
   }, [])
   const remove = (id: string) =>
     setChosen((c) => {
@@ -265,9 +266,22 @@ export default function App() {
     [chosen, evaluate, ready],
   )
   const focused = results.find((r) => r.site.id === focus) ?? results[0]
-  // The list of sites already shows each verdict for the current dates, so the choice is informed.
+  // Every candidate site is evaluated for the current dates; the tool proposes the best five:
+  // verdict first, then more sunlight, shorter darkness, more contact with Earth.
   const catalogue = useMemo(
-    () => (ready ? SITES.map((s) => ({ site: s, m: cautious(s, metrics(simulate(s, mission), mission)) })) : []),
+    () =>
+      ready
+        ? SITES.map((s) => ({ site: s, m: cautious(s, metrics(simulate(s, mission), mission)) }))
+            .sort(
+              (a, b) =>
+                RANK[a.m.verdict] - RANK[b.m.verdict] ||
+                b.m.sunlightPct - a.m.sunlightPct ||
+                a.m.longestNightH - b.m.longestNightH ||
+                b.m.earthLinkPct - a.m.earthLinkPct ||
+                a.site.name.localeCompare(b.site.name),
+            )
+            .slice(0, TOP_SITES)
+        : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mission, ready],
   )
@@ -362,24 +376,12 @@ export default function App() {
   const ghost = 'min-h-11 rounded-sm border border-white/25 px-4 hover:bg-white/10'
   const seg = (on: boolean) => `min-h-11 px-3 text-sm ${on ? 'bg-ink font-semibold text-paper' : 'hover:bg-white/10'}`
 
-  const q = query.trim().toLowerCase()
-  const matches = catalogue.filter((c) => !q || `${c.site.name} ${c.site.code} ${c.site.regionName ?? ''}`.toLowerCase().includes(q))
-  // Grouped by Artemis candidate region, best verdicts first inside each region.
-  const groups = useMemo(() => {
-    const by = new Map<string, typeof matches>()
-    for (const c of matches) {
-      const k = c.site.regionName ?? ''
-      by.set(k, [...(by.get(k) ?? []), c])
-    }
-    return [...by.entries()].map(([region, list]) => ({ region, list: [...list].sort((a, b) => RANK[a.m.verdict] - RANK[b.m.verdict] || b.m.opsPct - a.m.opsPct) }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogue, q])
   const moonSites = useMemo(() => {
-    const list = picking ? matches.map((c) => c.site) : results.map((r) => r.site)
+    const list = picking ? catalogue.map((c) => c.site) : results.map((r) => r.site)
     const verdictOf = new Map([...catalogue.map((c) => [c.site.id, c.m.verdict] as const), ...results.map((r) => [r.site.id, r.m.verdict] as const)])
     return list.map((s) => ({ id: s.id, name: siteName(s), lat: s.lat, lon: s.lon, color: VERDICT_HEX[verdictOf.get(s.id) ?? 'not-viable'] }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picking, results, siteName, catalogue, q])
+  }, [picking, results, siteName, catalogue])
   const moonLabels = !picking || moonSites.length <= 12
   // What the callout on the 3D Moon says about a site under the mouse.
   const byId = useMemo(() => new Map([...catalogue.map((c) => [c.site.id, c] as const), ...results.map((r) => [r.site.id, { site: r.site, m: r.m }] as const)]), [catalogue, results])
@@ -416,7 +418,7 @@ export default function App() {
           ))}
         </div>
         <p className="mt-2.5 border-t border-white/10 pt-2 text-[11px] text-muted">
-          {t.stayDays(mission.durationDays)}. {t.hoverHint}
+          {t.stayDays(mission.durationDays)}
         </p>
       </>
     )
@@ -427,10 +429,12 @@ export default function App() {
   return (
     <LangContext.Provider value={t}>
       {moonOk ? (
-        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
+        <Suspense fallback={null}>
+        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} answerLabel={t.seeAnswer} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />
+        </Suspense>
       ) : (
         <MoonFallback />
       )}
@@ -481,10 +485,6 @@ export default function App() {
                 )}
                 <h1 className="text-2xl font-bold">{t.findTitle}</h1>
                 <p className="mt-1 text-muted">{t.findHelp}</p>
-                <label className="mt-4 block">
-                  <span className="sr-only">{t.searchLabel}</span>
-                  <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.searchPlaceholder} className={field} autoComplete="off" />
-                </label>
                 {!ready && <p className="mt-4 text-sm text-muted">{dataFailed ? t.dataFailed : t.loadingData}</p>}
                 {ready && (
                   <>
@@ -496,63 +496,27 @@ export default function App() {
                         </span>
                       ))}
                     </p>
-                    <p className="mt-2 text-xs text-muted">{t.sitesCount(matches.length, groups.length)}</p>
+                    <p className="mt-2 text-xs text-muted">{t.topSites(catalogue.length, SITES.length)}</p>
                   </>
                 )}
                 <div className="mt-2 border-t border-white/10">
-                  {groups.map(({ region, list }) => (
-                    <details key={region} open={!!q || groups.length <= 3} className="border-b border-white/10">
-                      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 py-2 hover:bg-white/5">
-                        <span className="flex-1 font-semibold">{region}</span>
-                        <span className="flex gap-1" aria-hidden="true">
-                          {list.slice(0, 12).map(({ site, m }) => (
-                            <span key={site.id} className={`size-1.5 rounded-full ${VERDICT_BG[m.verdict]}`} />
-                          ))}
-                        </span>
-                        <span className="w-6 text-right text-xs text-muted">{list.length}</span>
-                      </summary>
-                      {/* A region has several sites with different answers: say how many work and which is best. */}
-                      <div className="mb-2 border-l-2 border-sun/70 bg-white/5 py-2 pl-3 pr-2">
-                        <p className="text-sm">
-                          {t.regionSummary(
-                            list.filter((c) => c.m.verdict === 'viable').length,
-                            list.filter((c) => c.m.verdict === 'marginal').length,
-                            list.length,
-                          )}
-                        </p>
-                        {list[0].m.verdict !== 'not-viable' && (
-                          <button onClick={() => pick(list[0].site.id)} className="mt-2 flex min-h-11 w-full items-center gap-2.5 rounded-sm border border-white/30 bg-black/30 px-3 text-left text-sm hover:border-white/60 hover:bg-white/10">
-                            <span className={VERDICT_CLS[list[0].m.verdict]}>
-                              <VerdictIcon v={list[0].m.verdict} size={18} />
+                  <ol>
+                    {catalogue.map(({ site, m }, n) => (
+                      <li key={site.id} className="border-b border-white/10">
+                        <button onClick={() => pick(site.id)} className="flex min-h-14 w-full items-center gap-3 py-2 pl-1 text-left hover:bg-white/5">
+                          <span className="w-5 text-center text-sm font-bold tabular-nums text-muted">{n + 1}</span>
+                          <span className={`size-2.5 shrink-0 rounded-full ${VERDICT_BG[m.verdict]}`} aria-hidden="true" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-semibold">{site.name}</span>
+                            <span className="block truncate text-xs text-muted">
+                              {t.sunlight} {num(m.sunlightPct)} %, {t.earthInView} {num(m.earthLinkPct)} %
                             </span>
-                            <span className="flex-1">
-                              <span className="block text-xs text-muted">{t.regionBest}</span>
-                              <span className="block font-semibold">{list[0].site.name}</span>
-                            </span>
-                            <span className={`text-sm font-semibold ${VERDICT_CLS[list[0].m.verdict]}`}>{t.verdict[list[0].m.verdict]}</span>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                          </button>
-                        )}
-                      </div>
-                      <ul className="pb-2">
-                        {list.map(({ site, m }) => (
-                          <li key={site.id}>
-                            <button onClick={() => pick(site.id)} className="flex min-h-12 w-full items-center gap-3 py-1.5 pl-2 text-left hover:bg-white/5">
-                              <span className={`size-2.5 shrink-0 rounded-full ${VERDICT_BG[m.verdict]}`} aria-hidden="true" />
-                              <span className="flex-1">
-                                <span className="block text-sm font-semibold">{site.name}</span>
-                                <span className="block text-xs text-muted">
-                                  {site.lat.toFixed(2)}°, {site.lon.toFixed(2)}°
-                                </span>
-                              </span>
-                              <span className={`text-sm font-semibold ${VERDICT_CLS[m.verdict]}`}>{t.verdict[m.verdict]}</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  ))}
-                  {ready && !matches.length && <p className="py-4 text-sm text-muted">{t.noResults}</p>}
+                          </span>
+                          <span className={`shrink-0 text-sm font-semibold ${VERDICT_CLS[m.verdict]}`}>{t.verdict[m.verdict]}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
                 <details className="mt-4 text-sm">
                   <summary className="min-h-11 cursor-pointer py-2 text-nasa-blue underline underline-offset-4">{t.useOwnCoords}</summary>
@@ -575,7 +539,7 @@ export default function App() {
                 </details>
                 {!moonOk && (
                   <div className="mt-5 max-w-[240px]">
-                    <SiteMap sites={SITES} chosen={chosen} onToggle={pick} />
+                    <SiteMap sites={catalogue.map((c) => c.site)} chosen={chosen} onToggle={pick} />
                   </div>
                 )}
               </div>
