@@ -12,7 +12,7 @@ const ORDER: Service[] = ['ephem', 'sites', 'horizons', 'madrid', 'moon']
 const FIRST_MS = 1100 // name and Moon first
 const STEP_MS = 850 // each service stays long enough to be read
 const END_MS = 1000 // a beat on "ready" before the tool appears
-const CAP_MS = 16000 // never hold anyone longer, whatever happens
+const CAP_MS = 30000 // never hold anyone longer, whatever happens (a very slow line)
 const LEAVE_MS = 550
 
 // `nosplash` in the link opens the tool directly (shared links, demos, tests).
@@ -20,8 +20,8 @@ export const SKIP = /(^|[#&])nosplash/.test(window.location.hash)
 
 // Opening screen over the live 3D Moon. It shows the real services the tool starts, one by one,
 // with what each brought (hours of ephemerides, sites, horizons...), while the Sun crosses a lunar
-// horizon as the progress bar and Earth rises once the ephemerides are in. Any click, tap or key
-// skips it. `showMoon` draws a still SVG Moon when WebGL is not available.
+// horizon as the progress bar and Earth rises once the ephemerides are in. Once everything is
+// in, a click, tap or key skips the rest of the reveal. `showMoon` draws a still SVG Moon when WebGL is not available.
 export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoon: boolean; moon: 'pending' | 'done' | 'failed' }) {
   const t = useT()
   const [phase, setPhase] = useState<'show' | 'leave' | 'gone'>(() => (SKIP ? 'gone' : 'show'))
@@ -65,8 +65,12 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
       })
       if (now - t0 > CAP_MS) setPhase('leave')
     }, 120)
-    const skip = () => setPhase('leave')
-    window.addEventListener('keydown', skip, { once: true })
+    // A key skips the wait for the slow reveal, never the loading: the tool only shows once
+    // everything is in and the Moon is drawn.
+    const skip = () => {
+      if (ORDER.every((s) => status[s].state !== 'pending')) setPhase('leave')
+    }
+    window.addEventListener('keydown', skip)
     return () => {
       window.clearInterval(tick)
       window.removeEventListener('keydown', skip)
@@ -140,7 +144,9 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
     <div
       role="status"
       aria-label={t.splashLabel}
-      onClick={() => setPhase('leave')}
+      onClick={() => {
+        if (ORDER.every((s) => status[s].state !== 'pending')) setPhase('leave')
+      }}
       className={`fixed inset-0 z-[60] cursor-pointer overflow-hidden text-white ${showMoon ? 'bg-black' : 'bg-transparent'} ${phase === 'leave' ? 'sp-leave' : ''}`}
     >
       {showMoon && (

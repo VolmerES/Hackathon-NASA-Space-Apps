@@ -240,21 +240,43 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           setHdState(0)
         })
     }
+    // The Moon is "ready" only once it is drawn: maps in, the 4k ones too on the strongest computers
+    // (so nothing swaps in front of the viewer), shaders compiled and two frames on screen. The
+    // splash screen waits for this.
     const ready = () => {
       if (++loaded < 5) return
+      if (q.maps4k) load4k(show)
+      else show()
+    }
+    let showing = false
+    const show = () => {
+      if (showing) return
+      showing = true
       globe.visible = true
       cap.visible = true
-      shownAt = performance.now()
-      onReady?.()
-      // Sharper maps for big screens, once the light ones are on screen.
-      if (q.maps4k) load4k()
+      try {
+        renderer.compile(scene, camera)
+      } catch {
+        /* compiled on the first frame instead */
+      }
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          shownAt = performance.now()
+          onReady?.()
+        }),
+      )
     }
     // The 4k maps of the whole globe: at once on the strongest computers; on middle ones, the first
     // time the camera backs off far enough to see the whole Moon.
     let got4k = false
-    const load4k = () => {
+    const load4k = (then?: () => void) => {
       if (got4k) return
       got4k = true
+      let left = 2
+      const one = () => {
+        if (--left === 0) then?.()
+      }
+      if (then) window.setTimeout(then, 6000) // a slow line does not hold the splash for the 4k maps
       {
         loader.load('moon/moon_color_4k.jpg', (tex) => {
           tex.colorSpace = THREE.SRGBColorSpace
@@ -262,13 +284,15 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           mat.map?.dispose()
           mat.map = tex
           mat.needsUpdate = true
-        })
+          one()
+        }, undefined, one)
         loader.load('moon/moon_normal_4k.jpg', (tex) => {
           tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
           mat.normalMap?.dispose()
           mat.normalMap = tex
           mat.needsUpdate = true
-        })
+          one()
+        }, undefined, one)
       }
     }
     loader.load('moon/polar_color.jpg', (tex) => {
