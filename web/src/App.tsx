@@ -489,8 +489,13 @@ export default function App() {
     pendingScenario.current = null
     const def = pend && !missions.some((x) => x.id === m.id) ? { ...m, scenarios: [{ id: uid(), name: autoName('baseline', pend), kind: 'baseline' as const, ...pend }] } : m
     storeMissions(missions.some((x) => x.id === def.id) ? missions.map((x) => (x.id === def.id ? def : x)) : [def, ...missions])
-    if (activeId === def.id) setMission((cur) => applyMission(def, cur))
     if (pend) setToast(t.ms.addedTo(def.name))
+    else {
+      // Editing a mission is working on it: its values apply from now on (back to free exploration with ×).
+      activate(def.id)
+      setMission((cur) => applyMission(def, cur))
+      setToast(t.ms.opened(def.name))
+    }
   }
   const deleteMission = (id: string) => {
     storeMissions(missions.filter((x) => x.id !== id))
@@ -603,6 +608,11 @@ export default function App() {
   }
 
   const set = <K extends keyof Mission>(k: K, v: Mission[K]) => setMission((m) => ({ ...m, [k]: v }))
+  // Mission values edited from the card or the time bar: with a mission open, they are saved to it too.
+  const setMissionValue = (k: 'durationDays' | 'survivalPowerW' | 'minAntennaElevDeg' | 'batteryWh', v: number) => {
+    set(k, k === 'batteryWh' ? v || undefined : v)
+    if (active) storeMissions(missions.map((x) => (x.id === active.id ? { ...x, [k]: v, updated: new Date().toISOString() } : x)))
+  }
   const field = 'min-h-11 w-full rounded-sm border border-white/20 bg-black/40 px-3 py-2 text-ink'
   const ghost = 'min-h-11 rounded-sm border border-white/25 px-4 hover:bg-white/10'
   const seg = (on: boolean) => `min-h-11 px-3 text-sm ${on ? 'bg-ink font-semibold text-paper' : 'hover:bg-white/10'}`
@@ -717,7 +727,7 @@ export default function App() {
           {/* Quick date and hour: the Moon's light and shadows follow it. A second line on phones. */}
           {splashDone && ready && (
             <div className="order-last min-w-0 basis-full lg:order-none lg:ml-auto lg:max-w-2xl lg:flex-1 lg:basis-auto">
-              <TimeBar start={start} min={DATA.start} max={DATA.end} stay={mission.durationDays} index={focused ? (playIdx ?? 0) : freeHour} sunHours={focused?.samples.map((x) => x.sunVisible)} plan={plan} label={fmtDateTime} onStart={setStart} onStay={(n) => set('durationDays', n)} onScrub={scrub} />
+              <TimeBar start={start} min={DATA.start} max={DATA.end} stay={mission.durationDays} index={focused ? (playIdx ?? 0) : freeHour} sunHours={focused?.samples.map((x) => x.sunVisible)} plan={plan} label={fmtDateTime} onStart={setStart} onStay={(n) => setMissionValue('durationDays', n)} onScrub={scrub} />
             </div>
           )}
         </header>
@@ -1069,13 +1079,18 @@ export default function App() {
                   <details className="mt-1 text-sm">
                     <summary className="min-h-11 cursor-pointer py-2 text-nasa-blue underline underline-offset-4">{t.options}</summary>
                     <div className="mt-1 grid grid-cols-1 gap-3">
+                      <p className={`border-l-2 pl-2 text-xs ${active ? 'border-sun/60 text-white/85' : 'border-white/25 text-muted'}`}>{active ? t.ms.valuesOf(active.name) : t.ms.valuesFree}</p>
+                      <label>
+                        {t.ms.battery}
+                        <input type="number" min={0} step={100} value={mission.batteryWh ?? 0} onChange={(e) => setMissionValue('batteryWh', Math.max(0, Number(e.target.value) || 0))} className={`mt-1 ${field}`} />
+                      </label>
                       <label>
                         {t.survivalPower}
-                        <input type="number" min={0} value={mission.survivalPowerW} onChange={(e) => set('survivalPowerW', Math.max(0, Number(e.target.value) || 0))} className={`mt-1 ${field}`} />
+                        <input type="number" min={0} value={mission.survivalPowerW} onChange={(e) => setMissionValue('survivalPowerW', Math.max(0, Number(e.target.value) || 0))} className={`mt-1 ${field}`} />
                       </label>
                       <label>
                         {t.antennaAngle}
-                        <input type="number" step={0.5} min={0} value={mission.minAntennaElevDeg} onChange={(e) => set('minAntennaElevDeg', Math.max(0, Number(e.target.value) || 0))} className={`mt-1 ${field}`} />
+                        <input type="number" step={0.5} min={0} value={mission.minAntennaElevDeg} onChange={(e) => setMissionValue('minAntennaElevDeg', Math.max(0, Number(e.target.value) || 0))} className={`mt-1 ${field}`} />
                       </label>
                       <label className="flex cursor-pointer items-start gap-3">
                         <input type="checkbox" checked={madrid} onChange={(e) => setMadrid(e.target.checked)} className="mt-1 size-5 shrink-0 accent-sun" />
