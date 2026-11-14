@@ -676,7 +676,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       // With the view rolled over, screen directions turn round: keep "grab the ground and move it".
       const flip = roll > 0.5 ? -1 : 1
       spinDrag = drag.spin + flip * ((e.clientX - drag.x) / Math.max(320, window.innerWidth * 0.5)) * Math.PI * gain
-      tiltGoal = clampTilt(drag.tilt - flip * ((e.clientY - drag.y) / Math.max(320, window.innerHeight * 0.6)) * Math.PI * 0.6)
+      // Vertical drag the natural way: the ground follows the hand.
+      tiltGoal = clampTilt(drag.tilt + flip * ((e.clientY - drag.y) / Math.max(320, window.innerHeight * 0.6)) * Math.PI * 0.6)
       const t = performance.now()
       track.push({ t, s: spinDrag, a: tiltGoal })
       while (track.length > 2 && t - track[0].t > 100) track.shift()
