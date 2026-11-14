@@ -407,3 +407,6 @@ details.soft-moving { overflow: hidden }
   .moon-controls button { padding: 0; width: 44px }
   .moon-controls button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
 }
+
+/* Narrow phones: the header wordmark stays on one line. */
+@media (max-width: 399px) { .wordmark-tight { letter-spacing: 0.12em } }

@@ -1103,11 +1103,11 @@ export default function App() {
             <button
               onClick={() => setCardOpen(true)}
               aria-label={t.showPanel}
-              className="drawer-in glass pointer-events-auto absolute left-0 top-3 z-20 flex min-h-10 max-w-[min(70vw,320px)] items-center gap-2 rounded-r-full py-1.5 pl-3 pr-3 text-sm font-semibold lg:left-3 lg:rounded-full"
+              className="drawer-in glass pointer-events-auto absolute left-0 top-2 z-20 flex min-h-8 max-w-[min(62vw,320px)] items-center gap-1.5 rounded-r-full py-1 pl-2.5 pr-2 text-xs font-semibold sm:top-3 sm:min-h-10 sm:gap-2 sm:py-1.5 sm:pl-3 sm:pr-3 sm:text-sm lg:left-3 lg:rounded-full"
             >
               {focused && !picking ? (
                 <>
-                  <i className="inline-block size-2.5 shrink-0 rounded-full" style={{ background: VERDICT_HEX[focused.m.verdict] }} />
+                  <i className="inline-block size-2 shrink-0 rounded-full sm:size-2.5" style={{ background: VERDICT_HEX[focused.m.verdict] }} />
                   <span className="truncate">{siteName(focused.site)}</span>
                   <span className={`hidden shrink-0 text-xs sm:inline ${VERDICT_CLS[focused.m.verdict]}`}>{t.verdictLong[focused.m.verdict]}</span>
                 </>

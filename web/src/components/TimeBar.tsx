@@ -1,4 +1,5 @@
 // Written with Claude Code (Claude Opus 5.5); reviewed by <name>
+import { useState } from 'react'
 import type { DayPlan } from '../data/model'
 import { useT } from '../i18n'
 import { LandingCalendar } from './LandingCalendar'
@@ -28,14 +29,31 @@ export function TimeBar({ start, min, max, stay, index, sunHours, plan, label, o
   onScrub: (hours: number) => void
 }) {
   const t = useT()
+  // Phones: folded into one line until tapped; from sm up it is always open.
+  const [open, setOpen] = useState(false)
   const last = Math.max(1, sunHours?.length ? sunHours.length - 1 : stay * 24)
   const at = new Date(start.getTime() + Math.min(index, last) * HOUR)
   // Where the thumb is: day of the stay, and its date and hour.
   const day = Math.min(stay, Math.floor(Math.min(index, last) / 24) + 1)
   const when = `${at.toLocaleDateString(t.locale, { day: 'numeric', month: 'short', timeZone: 'UTC' })}, ${at.toISOString().slice(11, 16)} UTC`
 
+  const startLabel = `${start.toLocaleDateString(t.locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })} · ${start.toISOString().slice(11, 16)}`
+
   return (
-    <div className="glass flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1 sm:flex-nowrap" title={t.timeBarTitle}>
+    <>
+    {/* Phones, folded: one line with the date, hour and days; tap to open the whole bar. */}
+    {!open && (
+      <button type="button" onClick={() => setOpen(true)} aria-expanded={false} aria-label={`${t.timeBarTitle}: ${startLabel} UTC, ${stay} ${t.daysShort}`} className="glass flex min-h-9 w-full items-center gap-2 px-2.5 text-xs sm:hidden">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-sun" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </svg>
+        <span className="truncate tabular-nums text-ink">{startLabel} UTC</span>
+        <span className="shrink-0 text-muted">· {stay} {t.daysShort}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="ml-auto shrink-0 text-muted" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+    )}
+    <div className={`glass flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1 sm:flex sm:flex-nowrap ${open ? 'flex' : 'hidden'}`} title={t.timeBarTitle}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-sun" aria-hidden="true">
         <circle cx="12" cy="12" r="4" />
         <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
@@ -90,6 +108,10 @@ export function TimeBar({ start, min, max, stay, index, sunHours, plan, label, o
           className="time-range relative block h-8 w-full cursor-pointer"
         />
       </div>
+      <button type="button" onClick={() => setOpen(false)} aria-label={t.timeBarFold} title={t.timeBarFold} className="ml-auto flex size-8 shrink-0 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-ink sm:hidden">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+      </button>
     </div>
+    </>
   )
 }
