@@ -1906,7 +1906,7 @@ export default function App() {
         <p className="mt-4 border-t border-rule pt-3 text-sm">{t.caveat}</p>
         <p className="mt-2 text-sm text-muted">{t.footer}</p>
       </Overlay>
-      <Splash onDone={() => setSplashDone(true)} onMode={setMode} showMoon={false} moon={moonState} />
+      <Splash onDone={() => setSplashDone(true)} onMode={setMode} lang={lang} onLang={setLang} showMoon={false} moon={moonState} />
     </LangContext.Provider>
   )
 }

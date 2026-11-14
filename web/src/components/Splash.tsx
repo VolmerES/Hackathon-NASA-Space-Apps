@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { LogoMark } from './Logo'
 import { SplashHorizon } from './SplashHorizon'
+import { SplashBot } from './SplashBot'
 import { onDataProgress, type DataPart } from '../data/model'
 import { launch, ready, startAmbient, tick, unlockAudio, whoosh } from '../sound'
 
@@ -28,11 +29,13 @@ export const LINK_MODE: Mode = /(^|[#&])mode=expert/.test(window.location.hash) 
 // with what each brought (hours of ephemerides, sites, horizons...), while the Sun crosses a lunar
 // horizon as the progress bar and Earth rises once the ephemerides are in. Once everything is
 // in, a click, tap or key skips the rest of the reveal. `showMoon` draws a still SVG Moon when WebGL is not available.
-export function Splash({ onDone, onMode, showMoon, moon }: { onDone: () => void; onMode: (m: Mode) => void; showMoon: boolean; moon: 'pending' | 'done' | 'failed' }) {
+export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDone: () => void; onMode: (m: Mode) => void; lang: 'en' | 'es'; onLang: (l: 'en' | 'es') => void; showMoon: boolean; moon: 'pending' | 'done' | 'failed' }) {
   const t = useT()
   const [phase, setPhase] = useState<'show' | 'leave' | 'gone'>(() => (SKIP ? 'gone' : 'show'))
   const [status, setStatus] = useState<Record<Service, State>>(() => Object.fromEntries(ORDER.map((s) => [s, { state: 'pending' }])) as Record<Service, State>)
   const [stage, setStage] = useState<'choose' | 'load'>('choose')
+  const [botWaved, setBotWaved] = useState(false)
+  const wide = useMemo(() => window.innerWidth >= 640, [])
   const [shown, setShown] = useState(0)
   const lastReveal = useRef(0)
   const reduce = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
@@ -219,8 +222,33 @@ export function Splash({ onDone, onMode, showMoon, moon }: { onDone: () => void;
         </div>
         <p className="sp-sub max-w-xl text-balance text-base font-light text-white/80 sm:text-lg" style={{ animationDelay: '1.5s' }}>{t.splashTagline}</p>
         {stage === 'choose' ? (
-          <div className="sp-ui mt-[3vh] w-[min(760px,100%)]" role="group" aria-label={t.modeTitle}>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{t.modeTitle}</p>
+          <div className="sp-ui mt-[2vh] flex w-[min(1000px,100%)] flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-4">
+          {/* Franky rolls in, waves, and his speech bubble asks the question. */}
+          <div className="flex shrink-0 flex-col items-center">
+            <SplashBot width={wide ? 220 : 104} height={wide ? 270 : 128} onWave={() => setBotWaved(true)} />
+            <p className="text-[10px] text-white/45">{t.botAiNote}</p>
+          </div>
+          <div className="w-full min-w-0 flex-1" role="group" aria-label={t.modeTitle}>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              {botWaved ? (
+                <p className="bot-bubble pop-in text-sm font-semibold text-white" aria-live="polite">{t.botAsk}</p>
+              ) : (
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{t.modeTitle}</p>
+              )}
+              {/* Language, before anything else: the whole tool follows it. */}
+              <div className="inline-flex border border-white/30" role="group" aria-label={t.language}>
+                {(
+                  [
+                    ['en', 'English'],
+                    ['es', 'Español'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button key={id} type="button" lang={id} onClick={() => onLang(id)} aria-pressed={lang === id} className={`min-h-9 px-3 text-xs ${lang === id ? 'bg-ink font-semibold text-paper' : 'text-white/80 hover:bg-white/10'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <button type="button" autoFocus onClick={() => choose('guided')} className="mode-btn">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg>
@@ -233,6 +261,7 @@ export function Splash({ onDone, onMode, showMoon, moon }: { onDone: () => void;
                 <span className="block text-sm font-normal text-white/65">{t.modeExpertSub}</span>
               </button>
             </div>
+          </div>
           </div>
         ) : (
         <div className="sp-ui mt-[2vh] w-[min(880px,100%,88vh)] text-left">

@@ -676,6 +676,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         drag = null
       } else {
         drag = { x: e.clientX, y: e.clientY, spin, tilt: tiltGoal, moved: 0 }
+        sfx.grab()
         spinDrag = spin
         spinVel = tiltVel = 0
         track = [{ t: performance.now(), s: spin, a: tiltGoal }]
@@ -913,7 +914,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       }
       moon.rotation.y = spin
       // The sound of the rotation follows its speed (silent for the slow idle drift and in the intro).
-      sfx.setSpin(state.current.mode === 'app' && dt > 0 ? Math.abs(spin - lastSpinSound) / dt : 0)
+      sfx.setSpin(state.current.mode === 'app' && dt > 0 ? Math.abs(spin - lastSpinSound) / dt : 0, spin)
       lastSpinSound = spin
       canvas.dataset.spin = spin.toFixed(4) // read by the automated checks
 

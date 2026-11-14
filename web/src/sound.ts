@@ -309,28 +309,47 @@ export function touchdown() {
 
 // ── Continuous sounds ────────────────────────────────────────────────────────────────────────
 
-let spinSrc: AudioBufferSourceNode | null = null
-let spinFlt: BiquadFilterNode
+let spinOsc: OscillatorNode | null = null
 let spinGain: GainNode
-/** Rotation of the Moon: air whose level and brightness follow the speed (rad/s). Call every frame. */
-export function setSpin(speed: number) {
+let lastDetent = 0
+let lastDetentAt = 0
+/** Rotation of the Moon, kept subtle: a low servo hum that barely rises with the speed (rad/s), and
+ *  a soft detent every 5 degrees of turn, like a rotary knob. No noise (it read as rustling paper). */
+export function setSpin(speed: number, angle = 0) {
   const c = live()
   if (!c) return
-  if (!spinSrc) {
-    spinSrc = c.createBufferSource()
-    spinSrc.buffer = noiseBuf
-    spinSrc.loop = true
-    spinFlt = c.createBiquadFilter()
-    spinFlt.type = 'bandpass'
-    spinFlt.Q.value = 0.9
+  if (!spinOsc) {
+    spinOsc = c.createOscillator()
+    spinOsc.type = 'sine'
+    spinOsc.frequency.value = 70
     spinGain = c.createGain()
     spinGain.gain.value = 0
-    spinSrc.connect(spinFlt).connect(spinGain).connect(sfxBus)
-    spinSrc.start()
+    spinOsc.connect(spinGain).connect(sfxBus)
+    spinOsc.start()
+    lastDetent = Math.round(angle / DETENT)
   }
-  const s = Math.min(1, Math.abs(speed) / 2)
-  spinGain.gain.setTargetAtTime(s < 0.02 ? 0 : 0.02 + 0.13 * s, c.currentTime, 0.08)
-  spinFlt.frequency.setTargetAtTime(250 + 1500 * s, c.currentTime, 0.08)
+  const s = Math.min(1, Math.abs(speed) / 2.5)
+  spinGain.gain.setTargetAtTime(s < 0.03 ? 0 : 0.012 + 0.03 * s, c.currentTime, 0.12)
+  spinOsc.frequency.setTargetAtTime(70 + 40 * s, c.currentTime, 0.12)
+  // Detents: one per 5 degrees crossed, at most 14 a second, quieter as it spins faster.
+  const d = Math.round(angle / DETENT)
+  if (d !== lastDetent) {
+    lastDetent = d
+    const now = performance.now()
+    if (s >= 0.03 && now - lastDetentAt > 70) {
+      lastDetentAt = now
+      tone(c, { f: 1500, dur: 0.018, type: 'sine', gain: 0.012 * (1 - 0.6 * s) })
+    }
+  }
+}
+const DETENT = (5 * Math.PI) / 180
+
+/** Taking hold of the Moon: a soft low tap. */
+export function grab() {
+  log('grab')
+  const c = live()
+  if (!c) return
+  tone(c, { f: 180, f2: 120, dur: 0.06, type: 'sine', gain: 0.05 })
 }
 
 let eng: { osc: OscillatorNode; src: AudioBufferSourceNode; gain: GainNode; flt: BiquadFilterNode } | null = null

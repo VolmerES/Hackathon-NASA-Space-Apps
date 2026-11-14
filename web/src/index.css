@@ -167,7 +167,12 @@ body {
   transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 .mode-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--color-sun); transform: translateY(-2px) }
+@media (max-width: 639px) { .mode-btn { min-height: 0; padding: 12px 16px; gap: 4px } }
 .mode-btn:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 3px }
+/* Franky's speech bubble, its tail towards him (left on wide screens, up on phones). */
+.bot-bubble { position: relative; padding: 8px 14px; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 10px }
+.bot-bubble::before { content: ''; position: absolute; left: 14px; top: -7px; width: 12px; height: 12px; background: inherit; border-left: inherit; border-top: inherit; transform: rotate(45deg) }
+@media (min-width: 640px) { .bot-bubble::before { left: -7px; top: calc(50% - 6px); transform: rotate(-45deg) } }
 .moon-controls button:active { transform: scale(0.96) }
 /* The heat map layer, on. */
 .moon-controls .moon-layer[data-on="true"] { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
