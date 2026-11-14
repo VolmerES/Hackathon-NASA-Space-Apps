@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import * as THREE from 'three'
 
 // The real Moon, behind the whole app. Colour: LRO LROC mosaic; relief: LRO LOLA elevation turned
-// into a normal map (NASA's Scientific Visualization Studio, CGI Moon Kit). One scene does three jobs:
+// into a normal map (NASA's Scientific Visualization Studio, CGI Moon Kit). Sunlight comes from the
+// real sub-solar point of the chosen hour, and the LOLA relief casts its shadows on the south polar cap.
+// One scene does three jobs:
 //  - intro: seen from afar, the limb low on the screen under the splash, turning slowly;
 //  - transition: the camera closes in on the south pole;
 //  - app: the south pole sits in the free area of the layout, turning slowly; every chosen site is
@@ -28,6 +30,9 @@ type Props = {
   controls?: { zoomIn: string; zoomOut: string; recenter: string }
   /** Street view: dive down onto the focused site until the camera skims its ground. */
   dive?: boolean
+  /** Sub-solar point (deg) at the chosen date and hour, from JPL Horizons. In app mode the sunlight
+   *  comes from there, so day, night and the terminator on the Moon are the real ones. */
+  sunAt?: { lat: number; lon: number }
 }
 
 const DEG = Math.PI / 180
@@ -89,14 +94,14 @@ function polarCap() {
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
-export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false }: Props) {
+export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, sunAt }: Props) {
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const labelsRef = useRef<HTMLDivElement>(null)
-  const state = useRef({ mode, sites, focusId, onPick, showLabels })
-  state.current = { mode, sites, focusId, onPick, showLabels }
+  const state = useRef({ mode, sites, focusId, onPick, showLabels, sunAt })
+  state.current = { mode, sites, focusId, onPick, showLabels, sunAt }
   const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void } | null>(null)
 
   useEffect(() => {
@@ -214,6 +219,100 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Sunlight grazing the south pole, plus a faint earthshine so the night side is not pure black.
     const sun = new THREE.DirectionalLight(0xfff4e6, 3.2)
     scene.add(sun)
+    const Y_AXIS = new THREE.Vector3(0, 1, 0)
+    const sunGoal = new THREE.Vector3()
+    const sunLocal = new THREE.Vector3() // current sunlight direction, Moon-fixed
+
+    // Cast shadows on the south polar cap. The LOLA height map (scripts/moon_polar_height.py) is
+    // ray-marched towards the Sun into a sunlight-visibility map on the cap grid: 1 lit, 0 in
+    // shadow, in between where the terrain hides part of the solar disc. Real scale, no vertical
+    // exaggeration. Redrawn only when the Sun moves on the Moon (a new hour), not when the globe turns.
+    const SHADOW_N = small ? 512 : 1024
+    const shadowRT = new THREE.WebGLRenderTarget(SHADOW_N, SHADOW_N, { depthBuffer: false, generateMipmaps: false })
+    const shadowUniforms = { heightMap: { value: null as THREE.DataTexture | null }, sunDir: { value: new THREE.Vector3(0, -1, 0) } }
+    const shadowMat = new THREE.ShaderMaterial({
+      uniforms: shadowUniforms,
+      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+      fragmentShader: `
+        precision highp float;
+        uniform sampler2D heightMap; // km over the 1737.4 km sphere, cap grid
+        uniform vec3 sunDir;         // unit, Moon-fixed (the frame of the cap geometry)
+        varying vec2 vUv;
+        const float CAP = ${CAP_DEG.toFixed(1)};
+        const float R = 1737.4;
+        const float D = 0.017453292519943295;
+        const float SUN_R = 0.2665 * D; // angular radius of the Sun
+        const int STEPS = ${small ? 64 : 96};
+        const float TMAX = 260.0; // km: beyond it the curvature lifts the ray over any relief
+        float heightAt(vec3 q) {
+          float c = acos(clamp(-q.y, -1.0, 1.0)) / D;
+          if (c > CAP - 0.3) return -1e4; // left the cap
+          float s = length(q.xz);
+          vec2 dir = s > 1e-7 ? vec2(-q.z, q.x) / s : vec2(0.0);
+          return texture2D(heightMap, 0.5 + c / (2.0 * CAP) * dir).r;
+        }
+        void main() {
+          vec2 xy = (vUv - 0.5) * 2.0 * CAP;
+          float c = length(xy) * D;
+          float L = atan(xy.x, xy.y);
+          vec3 p = vec3(cos(L) * sin(c), -cos(c), -sin(L) * sin(c));
+          vec3 P = p * (R + texture2D(heightMap, vUv).r + 0.02);
+          // Interleaved-gradient jitter of the steps: no banding, the filtering smooths the grain.
+          float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+          float minAng = 1.0; // lowest clearance of the ray over the terrain, as an angle (rad)
+          for (int i = 0; i < STEPS; i++) {
+            float f = (float(i) + jitter) / float(STEPS);
+            float t = 0.3 + TMAX * f * f; // fine steps near the point, coarser far away
+            vec3 Q = P + sunDir * t;
+            float r = length(Q);
+            float th = heightAt(Q / r);
+            if (th < -1e3) break;
+            minAng = min(minAng, (r - R - th) / t);
+          }
+          float vis = smoothstep(-SUN_R, SUN_R, minAng);
+          gl_FragColor = vec4(vis, vis, vis, 1.0);
+        }`,
+    })
+    const shadowScene = new THREE.Scene()
+    const shadowQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), shadowMat)
+    shadowQuad.frustumCulled = false
+    shadowScene.add(shadowQuad)
+    const shadowCam = new THREE.OrthographicCamera()
+    const shadowFor = new THREE.Vector3() // Sun direction the visibility map was last drawn for
+    const capShadow = { map: { value: shadowRT.texture as THREE.Texture }, on: { value: 0 } }
+    capMat.onBeforeCompile = (sh) => {
+      sh.uniforms.capShadow = capShadow.map
+      sh.uniforms.capShadowOn = capShadow.on
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform sampler2D capShadow;\nuniform float capShadowOn;')
+        // Only the direct sunlight is shadowed; the faint earthshine fill still reaches the ground.
+        .replace(
+          'getDirectionalLightInfo( directionalLight, directLight );',
+          'getDirectionalLightInfo( directionalLight, directLight );\n\t\tdirectLight.color *= mix( 1.0, texture2D( capShadow, vMapUv ).r, capShadowOn );',
+        )
+    }
+    // Without the height map the Moon still shows, only without cast shadows.
+    fetch('moon/polar_height.bin')
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('polar_height.bin'))))
+      .then((buf) => {
+        const n = Math.round(Math.sqrt(buf.byteLength / 2))
+        const tex = new THREE.DataTexture(new Uint16Array(buf), n, n, THREE.RedFormat, THREE.HalfFloatType)
+        tex.minFilter = THREE.LinearFilter
+        tex.magFilter = THREE.LinearFilter
+        tex.needsUpdate = true
+        shadowUniforms.heightMap.value = tex
+      })
+      .catch(() => {})
+    const drawShadows = () => {
+      if (!shadowUniforms.heightMap.value || sunLocal.lengthSq() === 0) return
+      if (capShadow.on.value && shadowFor.angleTo(sunLocal) < 2e-4) return
+      shadowUniforms.sunDir.value.copy(sunLocal)
+      renderer.setRenderTarget(shadowRT)
+      renderer.render(shadowScene, shadowCam)
+      renderer.setRenderTarget(null)
+      shadowFor.copy(sunLocal)
+      capShadow.on.value = 1
+    }
     scene.add(new THREE.AmbientLight(0x9fb4d8, 0.05))
 
     // Site markers: a ring flat on the surface; the label is HTML so it is readable and tappable.
@@ -513,9 +612,21 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       moon.rotation.y = spin
       canvas.dataset.spin = spin.toFixed(4) // read by the automated checks
 
-      // The Sun walks slowly around the horizon of the pole; grazing, a few degrees high.
-      const az = (150 + (reduce ? 0 : (now - t0) / 1000) * 1.2) * DEG
-      sun.position.set(Math.cos(az), -0.13, Math.sin(az)).normalize().multiplyScalar(10)
+      // Sunlight. App mode, with data: from the real sub-solar point of the chosen hour, fixed to the
+      // Moon (it turns with the globe), so lit and dark ground are the real ones for that date.
+      // Intro, or before the data arrive: a decorative Sun walking low around the pole.
+      const real = state.current.mode === 'app' ? state.current.sunAt : undefined
+      // Worked out in the Moon's own frame, so the light turns with the globe however fast it spins.
+      if (real) {
+        sunGoal.copy(surface(real.lat, real.lon)).normalize()
+      } else {
+        const az = (150 + (reduce ? 0 : (now - t0) / 1000) * 1.2) * DEG
+        sunGoal.set(Math.cos(az), -0.13, Math.sin(az)).normalize().applyAxisAngle(Y_AXIS, -spin)
+      }
+      // Glide to a new direction (a new date should not flash the whole globe).
+      if (sunLocal.lengthSq() === 0 || reduce) sunLocal.copy(sunGoal)
+      else sunLocal.lerp(sunGoal, 1 - Math.exp(-dt * 4)).normalize()
+      sun.position.copy(sunLocal).applyAxisAngle(Y_AXIS, spin).multiplyScalar(10)
 
       // Camera framing. Intro: whole Moon from afar, its disc low so the limb sits under the title.
       // App: close over the south pole, placed in the centre of the free frame of the layout.
@@ -660,6 +771,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
 
       const rise = shownAt ? Math.min(1, (now - shownAt) / (reduce ? 1 : 1400)) : 0
       renderer.toneMappingExposure = 1.15 * ease(rise)
+      drawShadows()
       renderer.render(scene, camera)
     }
     raf = requestAnimationFrame(frame)
@@ -677,6 +789,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       canvas.removeEventListener('wheel', wheel)
       for (const m of markers) m.el.remove()
       api.current = null
+      shadowRT.dispose()
+      shadowMat.dispose()
+      shadowUniforms.heightMap.value?.dispose()
       renderer.dispose()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

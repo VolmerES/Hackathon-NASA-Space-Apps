@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA, MADRID_DSN, SITES, clampToData, customSite, loadData, metrics, overview, simulate, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { DATA, MADRID_DSN, SITES, clampToData, customSite, loadData, metrics, overview, simulate, subsolarAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
@@ -322,6 +322,9 @@ export default function App() {
     return () => window.clearInterval(id)
   }, [playing, focused])
   const cursor = focused && playIdx !== null ? focused.samples[Math.min(playIdx, focused.samples.length - 1)] : undefined
+  // The hour the Moon is lit for: the one being played or scrubbed, else the chosen landing hour.
+  const litAt = cursor?.t ?? start
+  const sunAt = useMemo(() => (ready ? subsolarAt(litAt) : undefined), [ready, litAt.getTime()]) // eslint-disable-line react-hooks/exhaustive-deps
   const togglePlay = () => {
     if (!focused) return
     if (!playing && (playIdx === null || playIdx >= focused.samples.length - 1)) setPlayIdx(0)
@@ -418,7 +421,7 @@ export default function App() {
   return (
     <LangContext.Provider value={t}>
       {moonOk ? (
-        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
+        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />

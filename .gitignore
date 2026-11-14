@@ -15,3 +15,6 @@ Thumbs.db
 # spaceappschallenge.org y sí van en el repo.
 docs/organizacion/judging-and-awards.pdf
 docs/organizacion/project-submission-guide.pdf
+
+# Descargas de la NASA (kernels, relieve, texturas): se regeneran desde su fuente.
+raw/

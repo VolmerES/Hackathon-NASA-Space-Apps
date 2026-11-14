@@ -218,6 +218,12 @@ function row(t: number) {
   }
 }
 
+/** Sub-solar point on the Moon (deg, Moon-fixed, east longitude) at time t, from the Horizons rows. */
+export function subsolarAt(t: Date): { lat: number; lon: number } {
+  const r = row(t.getTime())
+  return { lat: r.sLat, lon: r.sLon }
+}
+
 function sampleAt(site: Site, t: number, minAntennaElevDeg: number): Sample {
   const r = row(t)
   const sun = local(site.lat, site.lon, unit(r.sLat, r.sLon))
