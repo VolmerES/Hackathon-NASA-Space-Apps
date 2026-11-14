@@ -469,7 +469,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       dropTimer = window.setTimeout(() => {
         dropTimer = 0
         if (!overCallout && !sticky) setHoverId(null)
-      }, 600)
+      }, 900)
     }
     const ringGeo = new THREE.RingGeometry(0.010, 0.0135, 48)
     const dotGeo = new THREE.CircleGeometry(0.0045, 24)
@@ -1276,9 +1276,11 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         <div ref={calloutRef} className="moon-callout" style={{ visibility: 'hidden' }} aria-hidden={!hover}>
           {hover && (
             <div key={hover} className="moon-callout-in">
-              <svg className="moon-callout-lead" width="64" height="64" viewBox="-4 -60 68 64" aria-hidden="true">
+              {/* Invisible bridge from the dot to the card: on the way there the callout counts as hovered. */}
+              <div className="moon-callout-bridge" aria-hidden="true" />
+              <svg className="moon-callout-lead" width="46" height="42" viewBox="-12 -30 46 42" aria-hidden="true">
                 <circle cx="0" cy="0" r="9" fill="none" stroke="#f2b705" strokeWidth="1.5" />
-                <path d="M6.5 -6.5 L44 -44 L64 -44" fill="none" stroke="#f2b705" strokeWidth="1.5" pathLength="1" />
+                <path d="M6.5 -6.5 L22 -22 L32 -22" fill="none" stroke="#f2b705" strokeWidth="1.5" pathLength="1" />
               </svg>
               <div className="moon-callout-card" role="group">
                 {info(hover)}

@@ -149,21 +149,25 @@ body {
 }
 .moon-callout-lead {
   position: absolute;
-  left: -4px;
-  top: -60px;
-  width: 68px;
-  height: 64px;
+  left: -12px;
+  top: -30px;
+  width: 46px;
+  height: 42px;
   overflow: visible;
-  transform-origin: 4px 60px;
+  transform-origin: 12px 30px;
 }
+/* The way from the dot to the card, hoverable but invisible (it follows the side and drop of the card). */
+.moon-callout-bridge { position: absolute; left: 8px; top: -38px; width: 32px; height: 30px; pointer-events: auto }
+.moon-callout[data-side="left"] .moon-callout-bridge { left: auto; right: 8px }
+.moon-callout[data-drop="down"] .moon-callout-bridge { top: 8px }
 .moon-callout[data-side="left"] .moon-callout-lead { transform: scaleX(-1) }
 .moon-callout[data-drop="down"] .moon-callout-lead { transform: scaleY(-1) }
 .moon-callout[data-side="left"][data-drop="down"] .moon-callout-lead { transform: scale(-1, -1) }
 .moon-callout-lead path { stroke-dasharray: 1; stroke-dashoffset: 0; animation: callout-draw 0.38s cubic-bezier(0.22, 1, 0.36, 1) both }
 .moon-callout-card {
   position: absolute;
-  left: 64px;
-  top: -44px;
+  left: 32px;
+  top: -20px;
   transform: translateY(-100%);
   width: 248px;
   padding: 12px 14px 11px;
@@ -173,8 +177,8 @@ body {
   backdrop-filter: blur(10px);
   animation: callout-open 0.4s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.moon-callout[data-side="left"] .moon-callout-card { left: auto; right: 64px }
-.moon-callout[data-drop="down"] .moon-callout-card { transform: none; top: 44px }
+.moon-callout[data-side="left"] .moon-callout-card { left: auto; right: 32px }
+.moon-callout[data-drop="down"] .moon-callout-card { transform: none; top: 20px }
 /* Corner brackets in Sun yellow. */
 .moon-callout-card::before,
 .moon-callout-card::after {
