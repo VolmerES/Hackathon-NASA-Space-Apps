@@ -39,13 +39,13 @@ p { margin: 0 0 2.5mm; text-align: justify; hyphens: auto }
 a { color: var(--accent); word-break: break-all }
 .toolbar { position: sticky; top: 0; z-index: 2; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px; background: #14171c; color: #cfd5dc; font-size: 13px }
 .toolbar button { font: 600 14px "Helvetica Neue", Arial, sans-serif; padding: 8px 16px; border: 0; border-radius: 6px; background: var(--sun); color: #14171c; cursor: pointer }
-.cover { min-height: 250mm; display: flex; flex-direction: column; padding-top: 30mm !important }
-.repno { margin: 0 0 22mm; font: 11pt Georgia, "Times New Roman", serif; text-align: left }
-.cover h1 { font: 700 20pt/1.25 Georgia, "Times New Roman", serif; margin: 0 0 16mm; text-align: left }
-.authors { font: 12pt/1.5 Georgia, "Times New Roman", serif; text-align: left; margin-bottom: 0 }
-.authors span { font-size: 10.5pt; font-style: italic }
-.date { margin-top: auto; font: 11pt Georgia, "Times New Roman", serif; text-align: left }
-.notnasa { font: 8.5pt/1.4 Georgia, "Times New Roman", serif; color: var(--muted); text-align: left; border-top: 1px solid var(--ink); padding-top: 3mm; margin-top: 4mm }
+.cover { min-height: 250mm; display: flex; flex-direction: column; padding-top: 18mm !important }
+.repno { margin: 0 0 10mm; font: 10pt Georgia, "Times New Roman", serif; text-align: left; color: var(--muted) }
+.cover h1 { font: 700 22pt/1.25 Georgia, "Times New Roman", serif; margin: 0 0 6mm; text-align: left }
+.mission { font: 12pt Georgia, "Times New Roman", serif; text-align: left }
+.cover-foot { margin-top: auto; border-top: 1px solid var(--rule); padding-top: 3mm }
+.authors { font: 8.5pt/1.45 Georgia, "Times New Roman", serif; text-align: left; color: var(--ink); margin: 0 0 2mm }
+.notnasa { font: 7.5pt/1.4 Georgia, "Times New Roman", serif; color: var(--muted); text-align: left; margin: 0 }
 .recs li { margin-bottom: 1.5mm; text-align: justify }
 .method li { margin-bottom: 1.5mm }
 table { border-collapse: collapse; width: 100%; font-size: 9pt; margin: 2mm 0 4mm }
@@ -301,9 +301,11 @@ export function technicalReportHtml(r: TechReportInput): string | null {
 <section class="cover">
   <p class="repno">Fly Me to the Moon ${L('Technical Report', 'Informe técnico')} ${esc(repNo)}</p>
   <h1>${L(`Landing Site Assessment for a ${mi.durationDays}-Day Stay at ${esc(r.siteName)}: Illumination, Earth Visibility and Energy Storage`, `Evaluación del sitio de alunizaje para una estancia de ${mi.durationDays} días en ${esc(r.siteName)}: iluminación, visibilidad de la Tierra y almacenamiento de energía`)}</h1>
-  <p class="authors">${L('Mission', 'Misión')}: ${esc(mi.name)}<br>Juan Beltrán, Juan Bautista, Ángela ${L('and', 'y')} Luna<br><span>${L('Fly Me to the Moon team, NASA Space Apps Challenge 2026, Madrid, Spain', 'Equipo Fly Me to the Moon, NASA Space Apps Challenge 2026, Madrid, España')}</span></p>
-  <p class="date">${esc(generated.toLocaleDateString(loc, { month: 'long', year: 'numeric' }))}</p>
-  <p class="notnasa">${L('This report is not a NASA publication. It was produced by the team with the Fly Me to the Moon tool from NASA data (LRO LOLA topography, JPL Horizons ephemerides). Its layout follows NASA Technical Memoranda on lunar polar illumination [1]. Results are suggestions from the data, not mission decisions.', 'Este informe no es una publicación de la NASA. Lo ha generado el equipo con la herramienta Fly Me to the Moon a partir de datos de la NASA (topografía LOLA del LRO, efemérides de JPL Horizons). Su estructura sigue los Technical Memoranda de la NASA sobre iluminación polar lunar [1]. Los resultados son sugerencias a partir de los datos, no decisiones de misión.')}</p>
+  <p class="mission">${L('Mission', 'Misión')}: ${esc(mi.name)}</p>
+  <div class="cover-foot">
+    <p class="authors">Luna Bernal, Juan Bautista, Juan Beltrán ${L('and', 'y')} Ángela Barrio<br>${L('Fly Me to the Moon team · NASA Space Apps Challenge 2026, Madrid, Spain', 'Equipo Fly Me to the Moon · NASA Space Apps Challenge 2026, Madrid, España')}<br>${esc(generated.toLocaleDateString(loc, { month: 'long', year: 'numeric' }))}</p>
+    <p class="notnasa">${L('Not a NASA publication. Produced by the team with the Fly Me to the Moon tool from NASA data (LRO LOLA topography, JPL Horizons ephemerides). Layout after NASA Technical Memoranda on lunar polar illumination [1]. Results are suggestions from the data, not mission decisions.', 'No es una publicación de la NASA. Generado por el equipo con la herramienta Fly Me to the Moon a partir de datos de la NASA (topografía LOLA del LRO, efemérides de JPL Horizons). Estructura según los Technical Memoranda de la NASA sobre iluminación polar lunar [1]. Los resultados son sugerencias a partir de los datos, no decisiones de misión.')}</p>
+  </div>
 </section>
 
 <section class="summary">
