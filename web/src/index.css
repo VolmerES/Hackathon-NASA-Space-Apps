@@ -261,6 +261,18 @@ input[type="range"] {
   color: transparent;
   animation: sp-track 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both, sp-sheen 1.6s ease-in-out 1.3s both;
 }
+/* Winged Moon in the splash: the disc settles, the wings open feather by feather, then sunlight
+   reaches the south limb. Eased, no overshoot. */
+@keyframes mk-body { from { opacity: 0; transform: scale(0.85) } to { opacity: 1; transform: none } }
+@keyframes mk-wing { from { opacity: 0; transform: rotate(24deg) scale(0.55) } to { opacity: 1; transform: none } }
+@keyframes mk-lit { from { transform: translateY(2.2px) } to { transform: none } }
+.mk-body, .mk-feather { transform-box: view-box; transform-origin: 32px 32px }
+.mk-body { animation: mk-body 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both }
+.mk-feather { animation: mk-wing 0.9s cubic-bezier(0.16, 1, 0.3, 1) both }
+.mk-f0 { animation-delay: 0.3s }
+.mk-f1 { animation-delay: 0.38s }
+.mk-f2 { animation-delay: 0.46s }
+.mk-lit { animation: mk-lit 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.85s both }
 @keyframes sp-earth { from { cy: 96px } to { cy: 58px } }
 .sp-earth { animation: sp-earth 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.55s both }
 @keyframes sp-step1 { 0%, 30% { color: #fff } 36%, 100% { color: transparent } }
@@ -288,6 +300,7 @@ input[type="range"] {
 @media (prefers-reduced-motion: reduce) {
   .sp-stars, .sp-moon, .sp-word, .sp-sub, .sp-meta, .sp-ui, .sp-ridge, .sp-lit, .sp-sun, .sp-glow, .sp-twinkle,
   .moon-drift, .skeleton, .toast-in, .pop-in, .sp-earth, .sp-s1, .sp-s2, .sp-leave .sp-moon { animation: none }
+  .mk-body, .mk-feather, .mk-lit { animation: none }
   .sp-sheen { animation: none; background: none; color: #fff }
   .sp-s1, .sp-s2 { color: transparent }
   .sp-s3 { animation: none; color: #fff }

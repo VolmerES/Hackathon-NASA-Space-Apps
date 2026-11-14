@@ -8,9 +8,9 @@ const RIDGE =
 
 type Service = DataPart | 'moon'
 type State = { state: 'pending' | 'done' | 'failed'; detail?: Record<string, number> }
-const ORDER: Service[] = ['ephem', 'sites', 'horizons', 'madrid', 'moon']
+const ORDER: Service[] = ['ephem', 'sites', 'team', 'horizons', 'madrid', 'check', 'moon']
 const FIRST_MS = 1100 // name and Moon first
-const STEP_MS = 850 // each service stays long enough to be read
+const STEP_MS = 620 // each service stays long enough to be read
 const END_MS = 1000 // a beat on "ready" before the tool appears
 const CAP_MS = 30000 // never hold anyone longer, whatever happens (a very slow line)
 const LEAVE_MS = 550
@@ -35,7 +35,7 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
   // Real events: data files and Moon imagery.
   useEffect(() => {
     if (phase === 'gone') return
-    const off = onDataProgress((part, detail) => mark(part, { state: 'done', detail }))
+    const off = onDataProgress((part, detail) => mark(part, detail ? { state: 'done', detail } : { state: 'failed' }))
     return off
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -126,9 +126,13 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
     const d = st.detail ?? {}
     switch (s) {
       case 'ephem':
-        return t.svcEphem(d.hours)
+        return t.svcEphem(d.hours, d.start)
       case 'sites':
         return t.svcSites(d.sites, d.regions)
+      case 'team':
+        return t.svcTeam(d.sites)
+      case 'check':
+        return t.svcCheck(d.sites, d.median)
       case 'horizons':
         return t.svcHorizons(d.sites)
       case 'madrid':
@@ -166,7 +170,7 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
       </div>
 
       <div className="absolute inset-x-0 top-[13vh] flex flex-col items-center gap-4 px-6 text-center">
-        <LogoMark size={52} className="sp-sub mb-2 text-white" />
+        <LogoMark size={62} animated className="mb-3 text-white" />
         <h1 className="sp-sheen wordmark text-[clamp(22px,4.4vw,60px)] leading-none" style={{ paddingLeft: '0.28em', letterSpacing: '0.28em' }}>
           FLY ME TO THE MOON
         </h1>
