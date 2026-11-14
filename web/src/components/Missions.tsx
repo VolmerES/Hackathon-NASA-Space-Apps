@@ -1,9 +1,10 @@
 // Written with Claude Code (Claude Opus 5.5); reviewed by <name>
 import { useState } from 'react'
-import type { Metrics } from '../data/model'
+import { DATA, POWER_PRESETS, SITES, SOURCES, type Metrics } from '../data/model'
 import { useT } from '../i18n'
-import { newMission, type MissionDef, type MissionType, type SavedScenario } from '../missions'
+import { newMission, presetFor, type MissionDef, type MissionType, type SavedScenario } from '../missions'
 import { NumberField } from './Ui'
+import { MissionReport } from './MissionReport'
 
 type Verdict = Metrics['verdict']
 export type Evaluated = { site: string; when: string; m: Metrics } | null
@@ -15,7 +16,7 @@ const STATUS_CLS: Record<Status, string> = { draft: 'border-white/30 text-muted'
 
 // The missions of this browser: list, create or edit one, and its scenarios side by side. Every figure
 // is recomputed from the current data each time (evaluate), with the mission's own requirements.
-export function Missions({ onReport, startNew = false, missions, activeId, openScenarioId, evaluate, num, onSave, onDelete, onOpen, onDeleteScenario, onRenameScenario }: {
+export function Missions({ onUseSpot, onReport, startNew = false, missions, activeId, openScenarioId, evaluate, num, onSave, onDelete, onOpen, onDeleteScenario, onRenameScenario }: {
   missions: MissionDef[]
   activeId: string | null
   evaluate: (m: MissionDef, s: SavedScenario) => Evaluated
@@ -31,6 +32,8 @@ export function Missions({ onReport, startNew = false, missions, activeId, openS
   startNew?: boolean
   /** Download the mission's report. */
   onReport: (m: MissionDef) => void
+  /** Open a grid point of the live report ("Use this spot") as a site of its own. */
+  onUseSpot?: (id: string, def: MissionDef) => void
 }) {
   const t = useT()
   const [view, setView] = useState<{ kind: 'list' } | { kind: 'edit'; draft: MissionDef } | { kind: 'detail'; id: string }>(() => (startNew ? { kind: 'edit', draft: newMission() } : { kind: 'list' }))
@@ -42,7 +45,7 @@ export function Missions({ onReport, startNew = false, missions, activeId, openS
     return m.scenarios.every((s) => evaluate(m, s)?.m.verdict === 'viable') ? 'planned' : 'at-risk'
   }
 
-  if (view.kind === 'edit') return <MissionForm draft={view.draft} onCancel={() => setView({ kind: 'list' })} onSave={(m) => { onSave(m); setView({ kind: 'detail', id: m.id }) }} />
+  if (view.kind === 'edit') return <MissionForm draft={view.draft} onUseSpot={onUseSpot} onCancel={() => setView({ kind: 'list' })} onSave={(m) => { onSave(m); setView({ kind: 'detail', id: m.id }) }} />
 
   if (view.kind === 'detail') {
     const m = missions.find((x) => x.id === view.id)
@@ -194,13 +197,16 @@ export function Missions({ onReport, startNew = false, missions, activeId, openS
   )
 }
 
-function MissionForm({ draft, onCancel, onSave }: { draft: MissionDef; onCancel: () => void; onSave: (m: MissionDef) => void }) {
+function MissionForm({ draft, onCancel, onSave, onUseSpot }: { draft: MissionDef; onCancel: () => void; onSave: (m: MissionDef) => void; onUseSpot?: (id: string, def: MissionDef) => void }) {
   const t = useT()
   const [m, setM] = useState(draft)
   const set = <K extends keyof MissionDef>(k: K, v: MissionDef[K]) => setM((x) => ({ ...x, [k]: v }))
   const setReq = (k: keyof MissionDef['req'], v: number) => setM((x) => ({ ...x, req: { ...x.req, [k]: v } }))
   const field = 'mt-1 min-h-11 w-full rounded-sm border border-white/20 bg-black/40 px-3 py-2 text-ink'
   const legend = 'text-xs font-semibold uppercase tracking-wider text-sun'
+  const teamSites = SITES.filter((s) => s.team)
+  const preset = POWER_PRESETS.find((p) => p.id === m.powerPreset) ?? POWER_PRESETS[POWER_PRESETS.length - 1]
+  const iso = (d: Date) => d.toISOString().slice(0, 16)
 
   return (
     <form
@@ -225,20 +231,79 @@ function MissionForm({ draft, onCancel, onSave }: { draft: MissionDef; onCancel:
       </fieldset>
 
       <fieldset className="grid grid-cols-2 gap-3">
+        <legend className={`${legend} col-span-2 mb-3`}>{t.ms.sWhere}</legend>
+        <label className="col-span-2 block">
+          {t.ms.site}
+          <select value={m.site} onChange={(e) => set('site', e.target.value)} className={field}>
+            {teamSites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          {t.ms.landing}
+          <input
+            type="datetime-local"
+            value={m.landing.slice(0, 16)}
+            min={iso(DATA.start)}
+            max={iso(new Date(DATA.end.getTime() - m.durationDays * 86400000))}
+            onChange={(e) => e.target.value && set('landing', `${e.target.value}:00Z`)}
+            className={field}
+          />
+        </label>
+        <label className="block">{t.daysOnSurface}<NumberField min={1} max={60} value={m.durationDays} onValue={(v) => set('durationDays', Math.round(v))} className={field} /></label>
+      </fieldset>
+
+      <fieldset className="grid grid-cols-2 gap-3">
         <legend className={`${legend} col-span-2 mb-3`}>{t.ms.sEnergy}</legend>
-        <label className="block">{t.survivalPower}<NumberField min={0} max={1e6} value={m.survivalPowerW} onValue={(v) => set('survivalPowerW', v)} className={field} /></label>
-        <label className="block">{t.ms.battery}<NumberField min={0} max={1e7} step={100} value={m.batteryWh} onValue={(v) => set('batteryWh', v)} className={field} /></label>
-        <p className="col-span-2 text-xs text-muted">{t.ms.energyNote}</p>
+        <label className="col-span-2 block">
+          {t.ms.profile}
+          <select
+            value={m.powerPreset}
+            onChange={(e) => {
+              const p = POWER_PRESETS.find((x) => x.id === e.target.value)!
+              setM((x) => ({ ...x, powerPreset: p.id, survivalPowerW: p.w ?? x.survivalPowerW }))
+            }}
+            className={field}
+          >
+            {POWER_PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {t.ms.profiles[p.id]}{p.w !== null ? ` · ${p.w.toLocaleString(t.locale)} W` : ''}
+              </option>
+            ))}
+          </select>
+          {preset.src !== null && (
+            <span className="mt-1 block text-xs text-muted">
+              {preset.id === 'ltv' && <>{t.ms.ltvNote} </>}
+              <a href={SOURCES[preset.src - 1].url} target="_blank" rel="noreferrer" className="text-nasa-blue underline underline-offset-2">
+                {t.ms.sourceN(preset.src)}
+              </a>
+            </span>
+          )}
+        </label>
+        <label className="block">{t.survivalPower}<NumberField min={0} max={1e6} step={0.5} value={m.survivalPowerW} onValue={(v) => setM((x) => ({ ...x, survivalPowerW: v, powerPreset: presetFor(v) }))} className={field} /></label>
+        <label className="block">{t.ms.battery}<NumberField min={0} max={1e7} step={100} value={m.batteryWh} onValue={(v) => set('batteryWh', v)} className={field} /><span className="mt-1 block text-xs text-muted">{t.ms.batteryAuto}</span></label>
+        <p className="col-span-2 mt-1 text-xs font-semibold text-white/80">{t.ms.margins}</p>
+        <label className="block">{t.ms.dod}<NumberField min={10} max={100} value={Math.round(m.dod * 100)} onValue={(v) => set('dod', v / 100)} className={field} /></label>
+        <label className="block">{t.ms.eta}<NumberField min={10} max={100} value={Math.round(m.eta * 100)} onValue={(v) => set('eta', v / 100)} className={field} /></label>
+        <p className="col-span-2 text-xs text-muted">{t.ms.marginsNote}</p>
+      </fieldset>
+
+      <fieldset className="grid grid-cols-2 gap-3">
+        <legend className={`${legend} col-span-2 mb-3`}>{t.ms.sComms}</legend>
+        <label className="block">{t.ms.maxNoEarth}<NumberField min={0} max={2000} value={m.maxNoEarthH} onValue={(v) => set('maxNoEarthH', v)} className={field} /><span className="mt-1 block text-xs text-muted">{t.ms.maxNoEarthNote}</span></label>
+        <label className="block">{t.antennaAngle}<NumberField min={0} max={30} step={0.5} value={m.minAntennaElevDeg} onValue={(v) => set('minAntennaElevDeg', v)} className={field} /></label>
       </fieldset>
 
       <fieldset className="grid grid-cols-2 gap-3">
         <legend className={`${legend} col-span-2 mb-3`}>{t.ms.sReq}</legend>
-        <label className="block">{t.daysOnSurface}<NumberField min={1} max={60} value={m.durationDays} onValue={(v) => set('durationDays', Math.round(v))} className={field} /></label>
         <label className="block">{t.ms.minSun}<NumberField min={0} max={100} value={m.req.minSunPct} onValue={(v) => setReq('minSunPct', v)} className={field} /></label>
         <label className="block">{t.ms.maxDark}<NumberField min={0} max={2000} value={m.req.maxDarkH} onValue={(v) => setReq('maxDarkH', v)} className={field} /></label>
         <label className="block">{t.ms.minEarth}<NumberField min={0} max={100} value={m.req.minEarthPct} onValue={(v) => setReq('minEarthPct', v)} className={field} /></label>
-        <label className="block">{t.antennaAngle}<NumberField min={0} max={30} step={0.5} value={m.minAntennaElevDeg} onValue={(v) => set('minAntennaElevDeg', v)} className={field} /></label>
         <p className="col-span-2 text-xs text-muted">{t.ms.reqNote}</p>
+      </fieldset>
+
+      <fieldset className="min-w-0">
+        <legend className={`${legend} mb-3`}>{t.ms.report}</legend>
+        <MissionReport def={m} onUseSpot={onUseSpot} />
       </fieldset>
 
       <div className="flex gap-2">

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA, DEFAULT_REQUIREMENTS, MADRID_DSN, SITES, clampToData, customSite, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, subearthAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { DATA, DEFAULT_REQUIREMENTS, MADRID_DSN, SITES, clampToData, customSite, gridReady, gridSiteById, loadGrid, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, subearthAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
@@ -61,9 +61,15 @@ function formatters(t: Strings) {
     const e = m.earthLinkPct
     const earth = e >= 99 ? t.reasonEarthAll : e <= 1 ? t.reasonEarthNone : t.reasonEarthPart(num(e))
     const battery = m.batteryMarginWh !== null && m.batteryMarginWh < 0 ? ` ${t.reasonBattery}` : ''
-    return `${sun}; ${earth}.${battery}`
+    const noEarth = m.noEarthExceeded ? ` ${t.reasonNoEarth}` : ''
+    return `${sun}; ${earth}.${battery}${noEarth}`
   }
-  const siteName = (s: Site) => (s.ideal ? t.customName(s.lat.toFixed(2), s.lon.toFixed(2)) : s.name)
+  // A point of a team site's landing grid reads as "Malapert Massif K2023 · 40 m E, 80 m N".
+  const siteName = (s: Site) => {
+    if (s.ideal) return t.customName(s.lat.toFixed(2), s.lon.toFixed(2))
+    if (s.code === 'grid') return `${SITES.find((x) => x.id === s.id.split('@')[0])?.name ?? ''} · ${s.name}`
+    return s.name
+  }
   return { num, date, dateTime, duration, reason, siteName }
 }
 
@@ -72,6 +78,8 @@ const disagrees = (site: Site) => site.published?.['2027'] !== undefined && site
 const cautious = (site: Site, m: Metrics): Metrics => (disagrees(site) && m.verdict === 'viable' ? { ...m, verdict: 'marginal' } : m)
 
 function resolveSite(id: string): Site | undefined {
+  // A point of a team site's landing grid (mission report, "Use this spot"): its own horizon.
+  if (id.includes('@')) return gridSiteById(id)
   if (id.startsWith('custom:')) {
     const [lat, lon] = id.slice(7).split(',').map(Number)
     return Number.isFinite(lat) && Number.isFinite(lon) ? customSite(lat, lon) : undefined
@@ -265,6 +273,12 @@ export default function App() {
     return () => window.removeEventListener('keydown', esc)
   }, [panel, streetOpen])
 
+  // Grid points ("Use this spot", or a shared link to one) need the landing grid: load it on demand.
+  const [gridTick, setGridTick] = useState(0)
+  useEffect(() => {
+    if (chosen.some((id) => id.includes('@')) && !gridReady()) loadGrid().then(() => setGridTick((n) => n + 1))
+  }, [chosen])
+
   // Choosing a site: it becomes the one shown, and joins the comparison list.
   const pick = useCallback((id: string) => {
     setChosen((c) => (c.includes(id) ? c : [id, ...c].slice(0, MAX_SITES)))
@@ -304,7 +318,7 @@ export default function App() {
   const results = useMemo(
     () => (ready ? chosen.flatMap((id) => (resolveSite(id) ? [evaluate(resolveSite(id)!)] : [])) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [chosen, evaluate, ready],
+    [chosen, evaluate, ready, gridTick],
   )
   const focused = results.find((r) => r.site.id === focus) ?? results[0]
   // The sites of the team, evaluated for the current dates and listed best first: verdict, then
@@ -452,7 +466,7 @@ export default function App() {
   // published study disagree (same caution as the verdicts).
   const plan = useMemo(() => {
     if (!ready || !focused) return undefined
-    const p = landingCalendar(focused.site, mission.durationDays, mission.minAntennaElevDeg, mission.req, mission.survivalPowerW, mission.batteryWh)
+    const p = landingCalendar(focused.site, mission.durationDays, mission.minAntennaElevDeg, mission.req, mission.survivalPowerW, mission.batteryWh, mission.dod, mission.eta)
     return disagrees(focused.site) ? p.map((d) => ({ ...d, hours: d.hours.map((v) => (v === 'viable' ? 'marginal' : v)) })) : p
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, focused?.site.id, mission.durationDays, mission.minAntennaElevDeg, mission.req, mission.survivalPowerW, mission.batteryWh])
@@ -570,7 +584,7 @@ export default function App() {
       return { sc, site, siteName: siteName(site), params, samples, m: cautious(site, metrics(samples, params)) }
     })
     const baseRow = rows.find((x) => x.site && x.sc.kind === 'baseline') ?? rows.find((x) => x.site)
-    const plan = baseRow?.site ? landingCalendar(baseRow.site, m.durationDays, m.minAntennaElevDeg, m.req, m.survivalPowerW, m.batteryWh || undefined) : undefined
+    const plan = baseRow?.site ? landingCalendar(baseRow.site, m.durationDays, m.minAntennaElevDeg, m.req, m.survivalPowerW, m.batteryWh || undefined, m.dod, m.eta) : undefined
     const status = !m.scenarios.length ? 'draft' : rows.every((x) => x.m?.verdict === 'viable') ? 'planned' : 'at-risk'
     const html = missionReportHtml({
       mission: m,
@@ -998,7 +1012,7 @@ export default function App() {
                       ...(focused.m.batteryMarginWh !== null && mission.batteryWh
                         ? [
                             {
-                              sub: t.ms.batteryNeed(num(mission.survivalPowerW * focused.m.longestNightH)),
+                              sub: t.ms.batteryNeed(num(focused.m.requiredBatteryWh)),
                               label: t.ms.batteryLeft,
                               value: `${num(focused.m.batteryMarginWh)} Wh`,
                               fill: Math.max(0, focused.m.batteryMarginWh) / mission.batteryWh,
@@ -1482,7 +1496,7 @@ export default function App() {
       )}
 
       <Overlay open={missionsOpen} title={t.ms.title} onClose={() => { setMissionsOpen(false); pendingScenario.current = null }}>
-        <Missions key={missionsStartNew} startNew={missionsStartNew > 0 && pendingScenario.current !== null} missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} onReport={downloadReport} openScenarioId={scenarioId} />
+        <Missions key={missionsStartNew} startNew={missionsStartNew > 0 && pendingScenario.current !== null} missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} onReport={downloadReport} openScenarioId={scenarioId} onUseSpot={(id, def) => { loadGrid().then(() => { setGridTick((n) => n + 1); setMission((cur) => ({ ...cur, landing: new Date(def.landing), slipDays: 0, durationDays: def.durationDays, survivalPowerW: def.survivalPowerW })); pick(id); setMissionsOpen(false) }) }} />
       </Overlay>
       <Overlay open={sourcesOpen} title={t.dataSources} onClose={() => setSourcesOpen(false)}>
         <p className="text-muted">{t.sourcesIntro}</p>

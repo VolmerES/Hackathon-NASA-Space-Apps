@@ -61,6 +61,12 @@ export interface Mission {
   batteryWh?: number
   /** The mission's own thresholds; DEFAULT_REQUIREMENTS when absent. */
   req?: Requirements
+  /** Usable fraction of the battery (depth of discharge); DEFAULT_DOD when absent. */
+  dod?: number
+  /** Efficiency of storing and delivering the energy; DEFAULT_ETA when absent. */
+  eta?: number
+  /** Longest time without Earth the mission accepts (h); 0 or absent: not checked. */
+  maxNoEarthH?: number
 }
 
 export interface Sample {
@@ -91,9 +97,21 @@ export interface Metrics {
   madridPct: number
   hoursToSunset: number | null
   hoursToEarthset: number | null
-  /** Battery left after the longest night (Wh): capacity minus survival power × hours. Null: no battery set. */
+  /** Battery left after the longest night (Wh): capacity minus the battery that night needs. Null: no battery set. */
   batteryMarginWh: number | null
   verdict: 'viable' | 'marginal' | 'not-viable'
+  /** The longest night of the stay: when it starts and ends (null: no night). */
+  longestNightStart: Date | null
+  longestNightEnd: Date | null
+  /** The longest run without Earth in view (h) and when it starts. */
+  longestNoEarthH: number
+  longestNoEarthStart: Date | null
+  /** Energy (Wh) the battery must deliver through the longest night, no margins (nightEnergyWh). */
+  nightEnergyWh: number
+  /** Nominal capacity (Wh) for that night with the mission's margins (requiredBatteryWh). */
+  requiredBatteryWh: number
+  /** The mission's limit on hours without Earth is exceeded (the verdict is then at most marginal). */
+  noEarthExceeded: boolean
 }
 
 export const MADRID_DSN = { name: 'Robledo de Chavela', lat: 40.431, lon: -4.248, minElevDeg: 10 }
@@ -339,8 +357,50 @@ export function verdictOf(sunlightPct: number, longestNightH: number, earthLinkP
   return 'not-viable'
 }
 
+// Battery margins are the user's: none by default (usable fraction and efficiency 1). Every default
+// below comes from a NASA source (SOURCES, numbered as in the team's package v2, section 7).
+export const DEFAULT_DOD = 1 // usable fraction of the battery (depth of discharge)
+export const DEFAULT_ETA = 1 // efficiency of storing and delivering the energy
+
+/** Energy (Wh) the battery must DELIVER to get through a night of nightH hours at powerW. No margins: the physical minimum. */
+export const nightEnergyWh = (powerW: number, nightH: number) => powerW * nightH
+
+/** Nominal capacity (Wh) with the user's margins (1 = no margin). */
+export const requiredBatteryWh = (powerW: number, nightH: number, dod = DEFAULT_DOD, eta = DEFAULT_ETA) => nightEnergyWh(powerW, nightH) / (dod * eta)
+
+/** Specific energy of today's space batteries at module level (source 5). */
+export const SPACE_BATTERY_WH_PER_KG: [number, number] = [125, 150]
+/** Battery mass (kg) for wh, lightest and heaviest with today's space batteries. */
+export const batteryMassKg = (wh: number): [number, number] => [wh / SPACE_BATTERY_WH_PER_KG[1], wh / SPACE_BATTERY_WH_PER_KG[0]]
+
+/** A real reference: the battery of NASA's VIPER rover (source 4). */
+export const VIPER_BATTERY_WH = 5420
+
+/** Official Artemis III criteria (source 1): land within 100 m, under 10 deg of slope over 100 m. */
+export const ARTEMIS3 = { landingAccuracyM: 100, maxLandingSlopeDeg: 10, slopeBaselineM: 100 }
+
+/** Night survival power profiles. LTV's 65 W is our average: 9.7 kWh ÷ 150 h (NASA gives the energy, not the power). */
+export const POWER_PRESETS = [
+  { id: 'lemsHeater', w: 2.5, src: 3 },
+  { id: 'smallLander', w: 40, src: 2 },
+  { id: 'ltv', w: 65, src: 6 },
+  { id: 'custom', w: null, src: null },
+] as const
+export type PowerPreset = (typeof POWER_PRESETS)[number]['id']
+
+/** The NASA sources behind every default, numbered as in the team's package (v2, section 7). */
+export const SOURCES = [
+  { n: 1, title: 'NASA, Artemis Human Landing System Overview, 2025 International Space Apps Challenge (L. Ortiz, A. Dwyer Cianciolo)', url: 'https://ntrs.nasa.gov/api/citations/20250009323/downloads/ArtemisOverview2025IntSPAPPSChallenge.pdf' },
+  { n: 2, title: 'NASA GRC Compass, Overnight Power and Thermal Solutions for Small Landers (2022)', url: 'https://ntrs.nasa.gov/api/citations/20220018215/downloads/Overnight%20Power%20and%20Thermal%20Solutions%20for%20Small%20Landers%20final2.pdf' },
+  { n: 3, title: 'NASA, Simulating the Lunar Thermal Environment for the Surface-Deployed LEMS Artemis III TVAC Test (2026)', url: 'https://ntrs.nasa.gov/citations/20260001865' },
+  { n: 4, title: 'NASA, VIPER Rover Overview (LSIC 2024)', url: 'https://ntrs.nasa.gov/api/citations/20240013903/downloads/LSIC_2024-Tech%20Infusion_Panel-VIPER_Mob-HW.pdf' },
+  { n: 5, title: 'E. Brandon (JPL/Caltech), Space Power Workshop, April 2026', url: 'https://spw.aerospace.org/files/2026/05/2_ES1_E.-Brandon_Presentation.pdf' },
+  { n: 6, title: 'NASA, Wheel Module Motor Trade Study for LTV TCS (2024)', url: 'https://ntrs.nasa.gov/api/citations/20240004621/downloads/Wheel%20Module%20Motor%20Trade%20Study%20for%20LTV%20TCS.pdf' },
+] as const
+
 /** Does a battery of batteryWh carry survivalPowerW through a night of nightH hours? (No battery set: yes.) */
-export const batteryCarries = (nightH: number, survivalPowerW: number, batteryWh?: number) => !batteryWh || survivalPowerW * nightH <= batteryWh
+export const batteryCarries = (nightH: number, survivalPowerW: number, batteryWh?: number, dod = DEFAULT_DOD, eta = DEFAULT_ETA) =>
+  !batteryWh || requiredBatteryWh(survivalPowerW, nightH, dod, eta) <= batteryWh
 
 /** One calendar day: the verdict of landing at each UTC hour (null: the stay runs past the data). */
 export interface DayPlan {
@@ -352,7 +412,7 @@ export interface DayPlan {
 // stay that starts then (same thresholds as metrics()), and only if that hour is a landing window,
 // with the Sun and Earth both in view (power and direct contact during the descent). Otherwise that
 // hour is 'not-viable'. Sliding sums over one hourly pass: about 10,000 samples per site.
-export function landingCalendar(site: Site, durationDays: number, minAntennaElevDeg: number, req: Requirements = DEFAULT_REQUIREMENTS, survivalPowerW = 0, batteryWh?: number): DayPlan[] {
+export function landingCalendar(site: Site, durationDays: number, minAntennaElevDeg: number, req: Requirements = DEFAULT_REQUIREMENTS, survivalPowerW = 0, batteryWh?: number, dod = DEFAULT_DOD, eta = DEFAULT_ETA): DayPlan[] {
   if (!DATA.ready) return []
   const n = hours
   const lit = new Uint8Array(n)
@@ -381,7 +441,7 @@ export function landingCalendar(site: Site, durationDays: number, minAntennaElev
       run = lit[k] ? 0 : run + 1
       if (run > longest) longest = run
     }
-    return verdictOf(sunPct, longest, (100 * (pe[i + w + 1] - pe[i])) / cnt, req, batteryCarries(longest, survivalPowerW, batteryWh))
+    return verdictOf(sunPct, longest, (100 * (pe[i + w + 1] - pe[i])) / cnt, req, batteryCarries(longest, survivalPowerW, batteryWh, dod, eta))
   }
   const out: DayPlan[] = []
   for (let d = 0; d * 24 < n; d++) {
@@ -398,12 +458,27 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
   const earth = samples.filter((s) => s.earthVisible).length
   const ops = samples.filter((s) => s.sunVisible > 0.5 && s.earthVisible).length
 
+  // Longest runs of dark hours and of hours without Earth, with the index where each one starts.
   let longest = 0
+  let longestAt = -1
   let run = 0
-  for (const s of samples) {
+  let noEarth = 0
+  let noEarthAt = -1
+  let runE = 0
+  samples.forEach((s, i) => {
     run = s.sunVisible > 0.5 ? 0 : run + 1
-    longest = Math.max(longest, run)
-  }
+    if (run > longest) {
+      longest = run
+      longestAt = i - run + 1
+    }
+    runE = s.earthVisible ? 0 : runE + 1
+    if (runE > noEarth) {
+      noEarth = runE
+      noEarthAt = i - runE + 1
+    }
+  })
+  const longestNightStart = longestAt >= 0 ? samples[longestAt].t : null
+  const longestNightEnd = longestNightStart ? new Date(longestNightStart.getTime() + longest * HOUR) : null
   const firstIndex = (pred: (s: Sample) => boolean) => {
     const i = samples.findIndex(pred)
     return i < 0 ? null : i
@@ -418,8 +493,83 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
   // Thresholds, stated in the app: a crewed or robotic stay needs (almost) continuous sunlight for
   // power and regular direct contact with Earth (Wueller et al. 2026 ask for continuous sunlight
   // over the whole Artemis III stay, with margin).
-  const verdict = verdictOf(sunlightPct, longest, earthLinkPct, mission.req, batteryCarries(longest, mission.survivalPowerW, mission.batteryWh))
-  const batteryMarginWh = mission.batteryWh ? mission.batteryWh - mission.survivalPowerW * longest : null
+  const dod = mission.dod ?? DEFAULT_DOD
+  const eta = mission.eta ?? DEFAULT_ETA
+  const needWh = requiredBatteryWh(mission.survivalPowerW, longest, dod, eta)
+  let verdict = verdictOf(sunlightPct, longest, earthLinkPct, mission.req, batteryCarries(longest, mission.survivalPowerW, mission.batteryWh, dod, eta))
+  // Too long without Earth for this mission: at most marginal.
+  const noEarthExceeded = !!mission.maxNoEarthH && mission.maxNoEarthH > 0 && noEarth > mission.maxNoEarthH
+  if (noEarthExceeded && verdict === 'viable') verdict = 'marginal'
+  const batteryMarginWh = mission.batteryWh ? mission.batteryWh - needWh : null
 
-  return { sunlightPct, longestNightH: longest, batteryKWh, earthLinkPct, opsPct: (100 * ops) / n, madridPct: (100 * samples.filter((s) => s.madridLink).length) / n, hoursToSunset, hoursToEarthset, batteryMarginWh, verdict }
+  return {
+    sunlightPct,
+    longestNightH: longest,
+    batteryKWh,
+    earthLinkPct,
+    opsPct: (100 * ops) / n,
+    madridPct: (100 * samples.filter((s) => s.madridLink).length) / n,
+    hoursToSunset,
+    hoursToEarthset,
+    batteryMarginWh,
+    verdict,
+    longestNightStart,
+    longestNightEnd,
+    longestNoEarthH: noEarth,
+    longestNoEarthStart: noEarthAt >= 0 ? samples[noEarthAt].t : null,
+    nightEnergyWh: nightEnergyWh(mission.survivalPowerW, longest),
+    requiredBatteryWh: needWh,
+    noEarthExceeded,
+  }
+}
+
+// Landing-error grid around each team site (elipse.json, scripts/elipse_export.py): 81 points every
+// 40 m out to 200 m, each with its own terrain horizon (hundredths of a degree) and its slope over
+// 100 m (the Artemis III criterion) and over 10 m. Loaded only when a mission report needs it.
+type GridPoint = { e: number; n: number; lat: number; lon: number; slope100: number; slope10: number; h: number[] }
+let grid: Record<string, { stepM: number; radiusM: number; points: GridPoint[] }> | null = null
+let gridLoading: Promise<typeof grid> | null = null
+export function loadGrid(base = 'data/') {
+  gridLoading ??= fetch(base + 'elipse.json')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((g) => (grid = g))
+    .catch(() => null)
+  return gridLoading
+}
+export const gridReady = () => grid !== null
+
+/** slope: over 100 m (Artemis III criterion); slope10: over 10 m, finer and noisier. */
+export type GridSite = Site & { e: number; n: number; distM: number; slope: number; slope10: number; parent: string }
+const gridSite = (siteId: string, p: GridPoint): GridSite => ({
+  id: `${siteId}@${p.e},${p.n}`,
+  code: 'grid',
+  name: `${p.e} m E, ${p.n} m N`,
+  lat: p.lat,
+  lon: p.lon,
+  horizon: p.h.map((v) => v / 100),
+  e: p.e,
+  n: p.n,
+  distM: Math.hypot(p.e, p.n),
+  slope: p.slope100,
+  slope10: p.slope10,
+  parent: siteId,
+})
+/** The grid points of a team site as ordinary sites (for simulate/metrics). Empty until loadGrid(). */
+export function gridSites(siteId: string): GridSite[] {
+  return grid?.[siteId]?.points.map((p) => gridSite(siteId, p)) ?? []
+}
+/** A grid point from its id ("mma-k2023@40,80"), once the grid is loaded. */
+export function gridSiteById(id: string): GridSite | undefined {
+  const [siteId, off] = id.split('@')
+  const [e, n] = (off ?? '').split(',').map(Number)
+  const p = grid?.[siteId]?.points.find((q) => q.e === e && q.n === n)
+  return p ? gridSite(siteId, p) : undefined
+}
+
+/** Great-circle distance between two points of the Moon (km), haversine on a 1737.4 km sphere. */
+export function moonDistanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const dLat = (b.lat - a.lat) * DEG
+  const dLon = (b.lon - a.lon) * DEG
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * DEG) * Math.cos(b.lat * DEG) * Math.sin(dLon / 2) ** 2
+  return 2 * R_MOON_KM * Math.asin(Math.min(1, Math.sqrt(h)))
 }
