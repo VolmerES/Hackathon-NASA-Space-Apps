@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { horizonAt, ridgeKmAt, type Sample, type Site } from '../data/model'
 import { useT } from '../i18n'
+import { groundHeight, incidenceDeg, loadGround, type Ground } from '../data/ground'
 
 // First-person view from the landing site: look around, see the terrain, the Sun and Earth.
 // - Terrain: the real horizon of the site (ray-traced on LOLA), wearing the real colour and relief
@@ -17,11 +18,38 @@ const SKY = 3000
 const DEG = Math.PI / 180
 const CAP = 25 // degrees of colatitude covered by the polar textures
 const M_PER_DEG = (2 * Math.PI * 1737400) / 360
-// Landing simulation: a NASA lunar module comes down in front of the camera. Illustrative: the
-// figures are a plausible final descent, not a computed trajectory.
+// Landing: a NASA lunar module comes down in front of the camera, following the real height and
+// descent rate of Apollo 11 over its last 750 feet (20 July 1969), as Buzz Aldrin read them out.
+// Source: NASA Apollo Lunar Surface Journal, apollojournals.org/alsj/a11/a11.landing.html, from
+// 102:43:01 to "Contact light" at 102:45:40. Played faster (A11_SPEEDUP). Only the vertical profile:
+// the forward drift of Apollo 11 (up to 58 ft/s) is left out, so the lander stays in view.
 const LAND_DIST = 27 // metres from the camera to the touchdown point
-const LAND_FROM = 80 // metres above the ground when the final descent starts
-const LAND_SECONDS = 11
+const FT = 0.3048
+// [seconds after 102:43:01, height (ft), descent rate (ft/s) or null when not called out]
+const A11: [number, number, number | null][] = [
+  [0, 750, 23], [6, 700, 21], [10, 600, 19], [15, 540, 15], [25, 400, 9], [32, 350, 4], [34, 330, 3.5],
+  [45, 300, 3.5], [51, 270, 1.5], [66, 250, 2.5], [75, 220, 3.5], [83, 200, 4.5], [90, 160, 6.5],
+  [99, 120, null], [104, 100, 3.5], [113, 75, 0.5], [127, 60, 2.5], [136, 40, 2.5], [140, 30, 2.5],
+  [144, 20, 0.5], [159, 0, 0],
+]
+const A11_SPEEDUP = 8
+const A11_END = A11[A11.length - 1][0]
+function a11At(s: number) {
+  let i = 1
+  while (i < A11.length - 1 && A11[i][0] < s) i++
+  const [t0, h0] = A11[i - 1]
+  const [t1, h1] = A11[i]
+  const f = Math.min(1, Math.max(0, (s - t0) / (t1 - t0)))
+  // The rate: between the two nearest callouts that give one.
+  let a = i - 1
+  while (a > 0 && A11[a][2] === null) a--
+  let b = i
+  while (b < A11.length - 1 && A11[b][2] === null) b++
+  const ra = A11[a][2] ?? 0
+  const rb = A11[b][2] ?? 0
+  const fr = Math.min(1, Math.max(0, (s - A11[a][0]) / Math.max(1e-6, A11[b][0] - A11[a][0])))
+  return { alt: (h0 + (h1 - h0) * f) * FT, rate: (ra + (rb - ra) * fr) * FT }
+}
 
 // The lander: Apollo Lunar Module from NASA 3D Resources (github.com/nasa/NASA-3D-Resources),
 // free and without copyright. Loaded once, only when a landing is simulated.
@@ -48,7 +76,11 @@ function direction(azDeg: number, elDeg: number) {
   return new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el))
 }
 
-function buildTerrain(site: Site) {
+// Near the site, out to NEAR_M, the ground is the real one: LOLA heights every 5 m (PGDA 78).
+// Beyond, it is shaped from the site's horizon, as before. The two are blended over BLEND_M.
+const NEAR_M = 330
+const BLEND_M = 110
+function buildTerrain(site: Site, real: Ground | null = null) {
   const rings = 64
   const spokes = 360
   const pos: number[] = []
@@ -81,7 +113,13 @@ function buildTerrain(site: Site) {
       const h = i === rings ? RIDGE * Math.tan(angle) - 80 : r * Math.tan(angle) * (rise + (1 - rise) * down) - 0.6 * down
       const x = Math.sin(az * DEG) * r
       const z = -Math.cos(az * DEG) * r
-      pos.push(x, h, z)
+      let y = h
+      const hr = real && i < rings ? groundHeight(real, x, -z) : null
+      if (hr !== null) {
+        const w = 1 - THREE.MathUtils.smoothstep(r, NEAR_M, NEAR_M + BLEND_M)
+        y = hr * w + h * (1 - w)
+      }
+      pos.push(x, y, z)
       const dn = (-z * UNIT_M) / M_PER_DEG
       const de = (x * UNIT_M) / M_PER_DEG
       const px = colat * N[0] + dn * N[0] + de * E[0]
@@ -210,9 +248,11 @@ function earthTexture() {
 
 export default function Surface3D({ site, sample, height = 420, landing = 0 }: { site: Site; sample: Sample; height?: number; /** Changes to a new number to play a landing. */ landing?: number }) {
   const t = useT()
+  const [real, setReal] = useState<Ground | null>(null)
+  const [skyOpen, setSkyOpen] = useState(() => typeof window === 'undefined' || window.innerWidth >= 768)
   const mount = useRef<HTMLDivElement>(null)
-  const api = useRef<{ setSite: (s: Site) => void; setSample: (s: Sample) => void; lookAt: (az: number) => void; land: () => void } | null>(null)
-  const [hud, setHud] = useState<{ alt: number; speed: number; phase: 'load' | 'descent' | 'down' | 'failed' } | null>(null)
+  const api = useRef<{ setSite: (s: Site, g: Ground | null) => void; setSample: (s: Sample) => void; lookAt: (az: number) => void; land: () => void } | null>(null)
+  const [hud, setHud] = useState<{ alt: number; speed: number; clock: number; phase: 'load' | 'descent' | 'down' | 'failed' } | null>(null)
   const [heading, setHeading] = useState(0)
   const [failed, setFailed] = useState(false)
 
@@ -393,10 +433,9 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       last = now
       if (land) {
         land.t += dt
-        const p = Math.min(1, land.t / LAND_SECONDS)
-        // Fast at first, then slower and slower: the last metres take the longest.
-        const alt = LAND_FROM * Math.pow(1 - p, 2.4)
-        const speed = (LAND_FROM * 2.4 * Math.pow(1 - p, 1.4)) / LAND_SECONDS
+        const clock = Math.min(A11_END, land.t * A11_SPEEDUP) // seconds of the real descent
+        const p = clock / A11_END
+        const { alt, rate: speed } = a11At(clock)
         lander.position.y = land.ground + alt
         landYaw += dt * 0.12 * (1 - p)
         const settle = THREE.MathUtils.smoothstep(1 - alt / 1.4, 0, 1)
@@ -410,10 +449,10 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         dust.scale.setScalar(3 + near * 16 + (now % 700) / 70)
         ;(dust.material as THREE.MeshBasicMaterial).opacity = 0.22 * near * (1 - ((now % 700) / 700) * 0.6)
         // Keep the lander in the frame: look up at it, then down with it.
-        pitchGoal = Math.min(58, Math.max(2, (Math.atan2(alt + 2.6 - 1.7, LAND_DIST) / DEG) * 0.92))
+        pitchGoal = Math.min(76, Math.max(2, (Math.atan2(alt + 2.6 - 1.7, LAND_DIST) / DEG) * 0.92))
         if (now - land.lastHud > 90 || p >= 1) {
           land.lastHud = now
-          setHud({ alt, speed, phase: p >= 1 ? 'down' : 'descent' })
+          setHud({ alt, speed, clock, phase: p >= 1 ? 'down' : 'descent' })
         }
         if (p >= 1) {
           land = null
@@ -540,9 +579,9 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     cvs.addEventListener('wheel', wheel, { passive: false })
 
     api.current = {
-      setSite: (s) => {
+      setSite: (s, g) => {
         ground.geometry.dispose()
-        ground.geometry = buildTerrain(s)
+        ground.geometry = buildTerrain(s, g)
         invalidate()
       },
       setSample: (s) => {
@@ -564,7 +603,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         invalidate()
       },
       land: () => {
-        setHud({ alt: LAND_FROM, speed: 0, phase: 'load' })
+        setHud({ alt: A11[0][1] * FT, speed: 0, clock: 0, phase: 'load' })
         loadLander()
           .then((model) => {
             if (!api.current) return
@@ -577,8 +616,9 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
             lander.visible = true
             landed = false
             dust.position.set(x, groundAt(x, z) + 0.05, z)
-            // Slope under the footpads (about 4 m apart either way), at most 25 degrees.
-            const d = 2.2
+            // Slope under the footpads (4.5 m from the centre, as on the Apollo lunar module), on the
+            // real ground of the site where there is one. At most 25 degrees.
+            const d = 4.5
             const n = new THREE.Vector3(groundAt(x - d, z) - groundAt(x + d, z), 2 * d, groundAt(x, z - d) - groundAt(x, z + d)).normalize()
             slopeQ.setFromUnitVectors(UP, n)
             const lean = 2 * Math.acos(Math.min(1, Math.abs(slopeQ.w)))
@@ -591,7 +631,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
             fovGoal = 60
             invalidate()
           })
-          .catch(() => setHud({ alt: 0, speed: 0, phase: 'failed' }))
+          .catch(() => setHud({ alt: 0, speed: 0, clock: 0, phase: 'failed' }))
       },
     }
 
@@ -614,7 +654,17 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
   }, [])
 
   useEffect(() => {
-    api.current?.setSite(site)
+    let alive = true
+    setReal(null)
+    api.current?.setSite(site, null)
+    loadGround(site.id).then((g) => {
+      if (!alive || !g) return
+      setReal(g)
+      api.current?.setSite(site, g)
+    })
+    return () => {
+      alive = false
+    }
   }, [site])
   useEffect(() => {
     api.current?.setSample(sample)
@@ -644,8 +694,9 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         {ridgeKmAt(site, heading) !== null && <span className="block text-xs text-white/65">{t.reliefSeen(ridgeKmAt(site, heading)!)}</span>}
       </p>
       {/* Landing simulation: height above the ground, descent speed and what is happening. */}
+      <div className="pointer-events-none absolute right-3 top-2 flex max-h-[calc(100%-76px)] w-[min(260px,calc(100%-24px))] flex-col gap-2 overflow-y-auto">
       {hud && (
-        <div className="ui-in glass pointer-events-none absolute right-3 top-2 w-[min(250px,calc(100%-24px))] px-3 py-2 text-sm" role="status">
+        <div className="ui-in glass px-3 py-2 text-sm" role="status">
           <p className={`font-semibold ${hud.phase === 'down' ? 'text-ok' : hud.phase === 'failed' ? 'text-warn' : 'text-sun'}`}>
             {hud.phase === 'load' ? t.simLoading : hud.phase === 'descent' ? t.simDescent : hud.phase === 'down' ? t.simDown : t.simFailed}
           </p>
@@ -661,9 +712,35 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
               </div>
             </dl>
           )}
+          {(hud.phase === 'descent' || hud.phase === 'down') && (
+            <p className="mt-1 text-xs tabular-nums text-white/80">{t.simClock(`102:${String(43 + Math.floor((1 + Math.round(hud.clock)) / 60)).padStart(2, '0')}:${String((1 + Math.round(hud.clock)) % 60).padStart(2, '0')}`, A11_SPEEDUP)}</p>
+          )}
           <p className="mt-1 text-[11px] leading-snug text-muted">{t.simNote}</p>
         </div>
       )}
+      {/* What the sky and the ground are like at this hour, from the data of the tool. */}
+      <details open={skyOpen} onToggle={(e) => setSkyOpen((e.target as HTMLDetailsElement).open)} className="glass pointer-events-auto px-3 py-2 text-sm">
+        <summary className="cursor-pointer font-semibold">{t.skyPanel}</summary>
+        <dl className="mt-1.5 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 tabular-nums">
+          <dt className="col-span-2 mt-1 flex items-center gap-1.5 font-semibold text-sun"><i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />{t.sunWord}</dt>
+          <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.sunAz.toFixed(1)}°</dd>
+          <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.sunEl.toFixed(1)}°</dd>
+          <dt className="text-white/75">{t.litSite}</dt><dd className="text-right">{sample.sunVisible > 0.5 ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
+          <dt className="col-span-2 mt-1.5 flex items-center gap-1.5 font-semibold text-earth"><i className="inline-block size-2.5 rounded-full bg-earth" aria-hidden="true" />{t.earthWord}</dt>
+          <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.earthAz.toFixed(1)}°</dd>
+          <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.earthEl.toFixed(1)}°</dd>
+          <dt className="text-white/75">{t.earthAbove}</dt><dd className="text-right">{sample.earthVisible ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
+          {real && (
+            <>
+              <dt className="col-span-2 mt-1.5 font-semibold">{t.groundHere}</dt>
+              <dt className="text-white/75">{t.slope}</dt><dd className="text-right">{real.slopeDeg.toFixed(1)}°</dd>
+              <dt className="text-white/75">{t.incidence}</dt><dd className="text-right">{incidenceDeg(real, sample.sunAz, sample.sunEl).toFixed(1)}°</dd>
+            </>
+          )}
+        </dl>
+        <p className="mt-1.5 text-[11px] leading-snug text-muted">{real ? t.skyNoteGround : t.skyNote}</p>
+      </details>
+      </div>
       <div className="absolute bottom-3 right-3 flex gap-2">
         <button onClick={() => api.current?.lookAt(sample.sunAz)} className="flex min-h-11 items-center gap-2 rounded-sm border border-white/40 bg-black/60 px-3.5 text-sm font-semibold text-white backdrop-blur-md hover:bg-white/15">
           <i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />

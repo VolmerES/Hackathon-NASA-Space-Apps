@@ -67,9 +67,9 @@ function surface(lat: number, lon: number, r = 1) {
 // of the stretching an equirectangular map has there. Its edge fades into the globe.
 const CAP_DEG = 25
 // Real relief on the polar cap: polar_height.png spans this range of LOLA heights (printed by
-// scripts/moon_polar_cap.py), raised RELIEF times (a choice of the team) so craters and massifs read from any angle.
+// scripts/moon_polar_cap.py), times RELIEF (1: the true heights).
 const HEIGHT_RANGE_M = 12578
-const RELIEF = 1.5
+const RELIEF = 1 // true scale (it was 1.5 before, a choice of the team for readability)
 const HEIGHT_SCALE = (HEIGHT_RANGE_M * RELIEF) / 1737400
 const CAP_R = 1.0006
 function polarCap(q: Quality) {
