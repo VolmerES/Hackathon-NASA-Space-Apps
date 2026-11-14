@@ -149,7 +149,7 @@ function buildTerrain(site: Site, real: Ground | null = null) {
       const px = colat * N[0] + dn * N[0] + de * E[0]
       const py = colat * N[1] + dn * N[1] + de * E[1]
       uv.push(0.5 + px / (2 * CAP), 0.5 + py / (2 * CAP))
-      uv1.push(x / 60, z / 60)
+      uv1.push(x / 34 + 0.37, z / 34 + 0.41) // a tile every 34 units, the camera away from any tile edge
     }
   }
   for (let i = 0; i < rings; i++) {
@@ -405,11 +405,23 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       groundMat.needsUpdate = true
       loaded()
     })
-    // Large relief from the polar map, fine relief from the global one tiled (channel 1).
-    loader.load('moon/moon_normal_2k.jpg', (tex) => {
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+    // Large relief from the polar map, fine relief from the global one tiled (channel 1). Only a square
+    // from the middle of the global map is tiled: its top and bottom rows are the poles, stretched
+    // into straight bands, and tiled whole they drew a bright "road" on the ground through the
+    // camera. Mirrored tiles, so no edge shows.
+    let fineMap: THREE.Texture | null = null
+    loader.load('moon/moon_normal_2k.jpg', (src) => {
+      const img = src.image as HTMLImageElement
+      const side = Math.floor(img.height / 2)
+      const c = document.createElement('canvas')
+      c.width = c.height = side
+      c.getContext('2d')!.drawImage(img, Math.floor(img.width * 0.3), Math.floor(img.height / 4), side, side, 0, 0, side, side)
+      src.dispose()
+      const tex = new THREE.CanvasTexture(c)
+      tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping
       tex.channel = 1
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
+      fineMap = tex
       groundMat.normalMap = tex
       groundMat.normalScale = new THREE.Vector2(0.9, 0.9)
       groundMat.needsUpdate = true
@@ -838,6 +850,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     cvs.addEventListener('pointercancel', up)
     cvs.addEventListener('wheel', wheel, { passive: false })
 
+    if (/sfxdebug/.test(window.location.hash) || (window as unknown as { __dbg?: boolean }).__dbg) (window as unknown as { __s3d?: unknown }).__s3d = { sunLight, ground, groundMat, renderer, scene, camera, invalidate: () => invalidate() }
     api.current = {
       setSite: (s, g) => {
         ground.geometry.dispose()
@@ -919,7 +932,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       cvs.removeEventListener('wheel', wheel)
       ground.geometry.dispose()
       groundMat.map?.dispose()
-      groundMat.normalMap?.dispose()
+      fineMap?.dispose()
       glow.dispose()
       plumeMap.dispose()
       dustMap.dispose()

@@ -169,7 +169,7 @@ body {
   cursor: pointer;
   transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
-.mode-btn:hover:not(:disabled) { border-color: var(--color-sun); transform: translateY(-3px); box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(242, 183, 5, 0.35) }
+.mode-btn:hover:not(:disabled) { border-color: var(--color-sun); transform: translateY(-3px); box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5) }
 .mode-btn:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 3px }
 /* The stage on top of each card: the same height in both, a faint glow behind what stands on it. */
 .mode-stage {
@@ -178,7 +178,7 @@ body {
   gap: 4px;
   width: 100%;
   height: 178px;
-  background: radial-gradient(120% 100% at 30% 100%, rgba(242, 183, 5, 0.1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  background: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .mode-body { display: flex; flex: 1; flex-direction: column; width: 100%; padding: 14px 18px 14px }
@@ -477,7 +477,7 @@ body.is-diving .moon-controls { opacity: 0 !important; pointer-events: none; tra
 .cine-bar.bottom { bottom: 0; transform: translateY(101%) }
 .cine-on .cine-bar { transform: none }
 .touchdown { position: absolute; left: 0; right: 0; top: 22%; text-align: center; pointer-events: none; animation: touchdown 3.4s cubic-bezier(0.22, 1, 0.36, 1) both }
-.touchdown b { display: block; font: 700 clamp(28px, 6vw, 68px) / 1 var(--font-sans); letter-spacing: 0.3em; margin-right: -0.3em; text-transform: uppercase; color: #fff; text-shadow: 0 0 40px rgba(242, 183, 5, 0.55), 0 2px 20px #000 }
+.touchdown b { display: block; font: 300 clamp(26px, 5vw, 56px) / 1 var(--font-sans); letter-spacing: 0.3em; margin-right: -0.3em; text-transform: uppercase; color: #fff; text-shadow: 0 2px 18px #000 }
 .touchdown i { display: block; width: min(320px, 50%); height: 1px; margin: 14px auto 0; background: linear-gradient(90deg, transparent, var(--color-sun), transparent) }
 @keyframes touchdown { 0% { opacity: 0; letter-spacing: 0.2em; transform: scale(1.12) } 14% { opacity: 1; transform: scale(1) } 72% { opacity: 1 } 100% { opacity: 0; transform: translateY(-10px) } }
 @media (min-width: 640px) { .touchdown { right: 284px } }
