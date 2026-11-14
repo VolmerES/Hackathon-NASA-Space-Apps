@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import * as THREE from 'three'
 import { measureQuality, qualityAt, type Quality } from './quality'
+import type { CesiumMoon } from './cesiumMoon'
 
 // The real Moon, behind the whole app. Colour: LRO LROC mosaic; relief: LRO LOLA elevation turned
 // into a normal map (NASA's Scientific Visualization Studio, CGI Moon Kit). Sunlight comes from the
@@ -207,7 +208,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let shownAt = 0
     // Optional high-detail Moon from Cesium ion, turned on by the viewer (the HD button). Its
     // picture has the light baked in, so our own Moon (real sunlight of the date) is the default.
-    let cesium: { update: () => void; dispose: () => void; setVisible: (v: boolean) => void } | null = null
+    let cesium: CesiumMoon | null = null
     let hdOn = false
     let hdTiles = false // at least one tile has arrived
     const showHd = () => {
@@ -237,33 +238,66 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             },
           })
           cesium.setVisible(false)
+          cesium.setHeat(heatTex, CAP_DEG)
         })
         .catch(() => {
           hdOn = false
           setHdState(0)
         })
     }
+    // The Moon is "ready" only once it is drawn: maps in, the 4k ones too on the strongest computers
+    // (so nothing swaps in front of the viewer), shaders compiled and two frames on screen. The
+    // splash screen waits for this.
     const ready = () => {
       if (++loaded < 5) return
+      if (q.maps4k) load4k(show)
+      else show()
+    }
+    let showing = false
+    const show = () => {
+      if (showing) return
+      showing = true
       globe.visible = true
       cap.visible = true
-      shownAt = performance.now()
-      onReady?.()
-      // Sharper maps for big screens, once the light ones are on screen.
-      if (q.maps4k) {
+      try {
+        renderer.compile(scene, camera)
+      } catch {
+        /* compiled on the first frame instead */
+      }
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          shownAt = performance.now()
+          onReady?.()
+        }),
+      )
+    }
+    // The 4k maps of the whole globe: at once on the strongest computers; on middle ones, the first
+    // time the camera backs off far enough to see the whole Moon.
+    let got4k = false
+    const load4k = (then?: () => void) => {
+      if (got4k) return
+      got4k = true
+      let left = 2
+      const one = () => {
+        if (--left === 0) then?.()
+      }
+      if (then) window.setTimeout(then, 6000) // a slow line does not hold the splash for the 4k maps
+      {
         loader.load('moon/moon_color_4k.jpg', (tex) => {
           tex.colorSpace = THREE.SRGBColorSpace
           tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
           mat.map?.dispose()
           mat.map = tex
           mat.needsUpdate = true
-        })
+          one()
+        }, undefined, one)
         loader.load('moon/moon_normal_4k.jpg', (tex) => {
           tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
           mat.normalMap?.dispose()
           mat.normalMap = tex
           mat.needsUpdate = true
-        })
+          one()
+        }, undefined, one)
       }
     }
     loader.load('moon/polar_color.jpg', (tex) => {
@@ -398,6 +432,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Other views: the Moon as seen from the Earth, and the Earth over the Moon's south pole.
     let viewGoal: 0 | 1 | 2 = 0
     let vk = 0
+    let altKind: 0 | 1 | 2 = 0 // the view being entered or left, for the roll
+    const slerpQ = new THREE.Quaternion()
     const altDir = new THREE.Vector3(1, 0, 0)
     let altDist = 30
     const altTarget = new THREE.Vector3()
@@ -483,6 +519,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Spin about the polar axis: idle drift, drag, and turning a picked site to face the camera.
     let spin = -0.6
     let spinTarget: number | null = null
+    // A turn to a newly picked site: eased in and out, longer the bigger it is, with the camera
+    // backing off a little half way, like a hop between places on a map.
+    let turn: { from: number; to: number; t0: number; dur: number; hop: number } | null = null
+    let hop = 0
     let holdUntil = 0
     const focus = (id?: string) => {
       const m = markers.find((x) => x.id === id)
@@ -490,7 +530,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       const a = Math.atan2(-m.local.x, m.local.z)
       let d = a - spin
       d = Math.atan2(Math.sin(d), Math.cos(d))
-      spinTarget = spin + d
+      spinTarget = null
+      turn = Math.abs(d) < 0.02 ? null : { from: spin, to: spin + d, t0: performance.now(), dur: reduce ? 1 : 1100 + (Math.abs(d) / (Math.PI / 2)) * 1300, hop: Math.min(1, Math.abs(d) / (60 * DEG)) * 0.45 }
       holdUntil = performance.now() + HOLD_MS
     }
     // Free view: zoom (wheel, pinch, buttons) and tilt (vertical drag) on top of the spin.
@@ -553,9 +594,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           heatTex.colorSpace = THREE.SRGBColorSpace
         }
       }
-      if (h && hdOn) setHd(false) // the heat map is drawn on our own Moon
       const had = !!capMat.emissiveMap
       capMat.emissiveMap = heatTex
+      cesium?.setHeat(heatTex, CAP_DEG)
       capMat.emissive.set(heatTex ? 0xffffff : 0x000000)
       capMat.emissiveIntensity = heatTex ? 1 : 0
       if (had !== !!heatTex) capMat.needsUpdate = true
@@ -580,6 +621,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       canvas.setPointerCapture(e.pointerId)
       spinTarget = null
+      turn = null
       setHoverId(null)
       if (pointers.size >= 2) {
         pinch = { d: spread(), zoom: zoomGoal }
@@ -721,13 +763,24 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let slowSum = 0
     let slowN = 0
     const adapt = (dt: number) => {
-      if (!shownAt) return
+      // A long gap is not a slow frame: the tab was hidden or the page paused. Counting it used to
+      // drop the quality one level for good every time someone came back to the tab. The same
+      // while the HD Moon is streaming its tiles.
+      if (!shownAt || dt > 0.25 || (hdOn && !hdTiles)) return
       slowSum += dt
       slowN++
       if (slowN < 45) return
       const avg = slowSum / slowN
       slowSum = 0
       slowN = 0
+      // Fast again: win back the resolution lost earlier, step by step.
+      const maxRatio = Math.min(q.pixelRatio, window.devicePixelRatio || 1)
+      if (avg < 0.018 && ratio < maxRatio) {
+        ratio = Math.min(maxRatio, ratio / 0.8)
+        renderer.setPixelRatio(ratio)
+        resize()
+        return
+      }
       if (avg <= 0.03) return
       if (q.level > 0) {
         // Slow: one level down. Fewer triangles, smaller or no shadows, lower resolution.
@@ -790,13 +843,20 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         if (Math.abs(spinVel) < 0.004) spinVel = 0
         if (Math.abs(tiltVel) < 0.004) tiltVel = 0
         holdUntil = now + HOLD_MS
+      } else if (turn) {
+        const p = Math.min(1, (now - turn.t0) / turn.dur)
+        spin = turn.from + (turn.to - turn.from) * ease(p)
+        hop = turn.hop * Math.sin(Math.PI * p)
+        if (p >= 1) {
+          turn = null
+          hop = 0
+        }
       } else if (spinTarget !== null) {
         spin += (spinTarget - spin) * (1 - Math.exp(-dt * 1.6))
         if (Math.abs(spinTarget - spin) < 0.001) spinTarget = null
-      } else if (!drag && !reduce && now > holdUntil && now > hoverHold) {
-        // Slower while choosing, so labels are easy to tap.
-        const choosing = !state.current.focusId
-        spin += SPIN * dt * (k < 0.5 ? 1.6 : choosing ? 0.35 : 1)
+      } else if (!drag && !reduce && now > holdUntil && now > hoverHold && (k < 0.5 || !state.current.focusId)) {
+        // Slower while choosing, so labels are easy to tap. With a site picked, the Moon holds still.
+        spin += SPIN * dt * (k < 0.5 ? 1.6 : 0.35)
       }
       moon.rotation.y = spin
       canvas.dataset.spin = spin.toFixed(4) // read by the automated checks
@@ -837,7 +897,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       // Diving into street view, a slower, longer push-in: it is still going while the view fades in.
       zoom += (zoomGoal - zoom) * (1 - Math.exp(-dt * (pinch ? 14 : standGoal ? 1.7 : 4.5)))
       tiltCur += (tiltGoal - tiltCur) * (1 - Math.exp(-dt * (drag ? 12 : 3.5)))
-      const viewDist = appDist * zoom
+      if (!turn) hop = 0
+      const viewDist = appDist * zoom * (1 + hop)
+      if (!got4k && shownAt && !small && q.level >= 1 && viewDist > 1.6) load4k()
       // Far out, orbit the whole Moon instead of a point on its surface.
       const far = THREE.MathUtils.smoothstep(viewDist, 1.1, 3.2)
       const tilt = THREE.MathUtils.lerp(92 * DEG, tiltCur, k)
@@ -866,8 +928,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       }
       earthWorld.copy(earthDir).applyAxisAngle(Y_AXIS, spin)
       // The other views, blended in from wherever the camera is.
-      vk += ((viewGoal ? 1 : 0) - vk) * (1 - Math.exp(-dt * (reduce ? 60 : 2.4)))
-      if (vk < 0.001 && !viewGoal) vk = 0
+      // A timed glide (1.6 s), eased at both ends: no lurch at the start or at the end.
+      if (viewGoal) altKind = viewGoal
+      vk = reduce ? (viewGoal ? 1 : 0) : Math.min(1, Math.max(0, vk + (viewGoal ? dt : -dt) / 1.6))
+      if (vk === 0) altKind = 0
       if (viewGoal) {
         holdUntil = Math.max(holdUntil, now + 1500)
         const fr = frameRef.current?.getBoundingClientRect()
@@ -904,7 +968,11 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       if (vk > 0) {
         const e = ease(vk)
         const d0 = camera.position.length()
-        curDir.copy(camera.position).divideScalar(d0).lerp(altDir, e).normalize()
+        // Along an arc round the Moon, not a straight line through it: a straight line between two
+        // almost opposite directions passes near the centre and the view flips there.
+        curDir.copy(camera.position).divideScalar(d0)
+        slerpQ.setFromUnitVectors(curDir, altDir)
+        curDir.applyQuaternion(new THREE.Quaternion().slerp(slerpQ, e))
         camera.position.copy(curDir).multiplyScalar(Math.exp(THREE.MathUtils.lerp(Math.log(d0), Math.log(altDist), e)))
         lookTarget.lerp(altTarget, e)
         fov = THREE.MathUtils.lerp(30, altFov, e)
@@ -915,7 +983,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       camera.lookAt(lookTarget)
       // Street view dive: roll on the view axis, slowly, as the camera goes down to the ground.
       // The same when looking at the Earth, so the Moon's horizon lies at the bottom.
-      roll += (Math.max(standGoal * THREE.MathUtils.smoothstep(k, 0.85, 1), viewGoal === 2 ? 1 : 0) - roll) * (1 - Math.exp(-dt * (reduce ? 60 : 1.8)))
+      roll += (standGoal * THREE.MathUtils.smoothstep(k, 0.85, 1) - roll) * (1 - Math.exp(-dt * (reduce ? 60 : 1.8)))
+      // Looking at the Earth, the camera turns on its axis in step with the glide itself.
+      if (altKind === 2) roll = Math.max(roll, ease(vk))
       if (roll < 0.001) roll = 0
       if (roll > 0) camera.rotateZ(Math.PI * roll)
 
