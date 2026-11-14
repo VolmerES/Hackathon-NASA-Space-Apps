@@ -369,7 +369,8 @@ export default function App() {
   }, [])
   // The stay in hours (one sample per hour), so every percentage can also be read as hours.
   const stayH = Math.max(1, focused?.samples.length ?? 1)
-  const hrs = (pct: number) => t.hoursOf(num((pct * stayH) / 100), num(stayH))
+  // Hours of the stay in the short form of the tiles: "217/241 h".
+  const hrsShort = (pct: number) => `${num((pct * stayH) / 100)}/${num(stayH)} h`
   const start = new Date(mission.landing.getTime() + mission.slipDays * 86400000)
   // Sunlight heat map over the pole, for the stay on screen. Computed when the layer is turned on.
   const [lightOn, setLightOn] = useState(false)
@@ -922,26 +923,25 @@ export default function App() {
                     </>
                   )}
                 </div>
-                <CloseButton label={t.changeSite} onClick={() => setPicking(true)} kind="back" withText className="mt-3" />
-                <h1 className="mt-3 text-2xl font-bold">{siteName(focused.site)}</h1>
-                <p className="text-xs text-muted">
-                  {focused.site.lat.toFixed(2)}°, {focused.site.lon.toFixed(2)}°
-                </p>
-
-                <div className={`mt-4 flex items-center gap-3 ${VERDICT_CLS[focused.m.verdict]}`}>
-                  <VerdictIcon v={focused.m.verdict} size={34} />
-                  <p className="text-2xl font-bold leading-tight">{t.verdictLong[focused.m.verdict]}</p>
+                {/* Compact card: everything that answers the question and the two main actions fit
+                    without scrolling; the rest is folded under "More detail". */}
+                <div className="mt-3 flex items-center gap-2.5">
+                  <CloseButton label={t.changeSite} onClick={() => setPicking(true)} kind="back" />
+                  <div className="min-w-0">
+                    <h1 className="truncate text-xl font-bold leading-tight">{siteName(focused.site)}</h1>
+                    <p className="truncate text-xs text-muted">
+                      {focused.site.lat.toFixed(2)}°, {focused.site.lon.toFixed(2)}° · {fmtDate(start)} – {fmtDate(end)}
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-2 text-ink">{reason(focused.m)}</p>
+
+                <div className={`mt-3 flex items-center gap-2 ${VERDICT_CLS[focused.m.verdict]}`}>
+                  <VerdictIcon v={focused.m.verdict} size={24} />
+                  <p className="text-lg font-bold leading-tight">{t.verdictLong[focused.m.verdict]}</p>
+                </div>
+                <p className="mt-1 text-sm text-ink">{reason(focused.m)}</p>
                 {active && <p className="mt-1 text-xs text-muted">{t.ms.judgedBy(active.name)}</p>}
-                {focused.site.ideal && <p className="mt-1 text-sm text-warn">{t.noTerrain}</p>}
-                <p className="mt-1 text-sm text-muted">{t.forDates(fmtDate(start), fmtDate(end))}</p>
-                {focused.site.published && focused.site.published['2027'] !== undefined && (
-                  <p className="mt-2 border-l-2 border-white/25 pl-3 text-sm text-muted">{t.publishedRef(focused.site.published['2027'])}</p>
-                )}
-                {focused.site.team && (
-                  <p className="mt-2 border-l-2 border-sun/60 pl-3 text-sm text-muted">{focused.site.team.hypothesis[lang]}</p>
-                )}
+                {focused.site.ideal && <p className="mt-1 text-xs text-warn">{t.noTerrain}</p>}
                 {disagrees(focused.site) && focused.site.oursSunDays2027 !== undefined && focused.site.published?.['2027'] !== undefined && (
                   <p className="mt-2 flex gap-2 border border-warn/40 bg-warn/10 p-2.5 text-sm text-warn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="mt-0.5 shrink-0" aria-hidden="true">
@@ -952,12 +952,12 @@ export default function App() {
                   </p>
                 )}
 
-                <dl className="mt-4 grid grid-cols-2 gap-2">
+                <dl className="mt-3 grid grid-cols-4 gap-1.5">
                   {(
                     [
                       {
-                        sub: hrs(focused.m.sunlightPct),
-                        label: t.sunlight,
+                        sub: hrsShort(focused.m.sunlightPct),
+                        label: t.tileSun,
                         value: `${num(focused.m.sunlightPct)} %`,
                         fill: focused.m.sunlightPct / 100,
                         bar: 'bg-sun',
@@ -966,8 +966,8 @@ export default function App() {
                         was: slipped && Math.round(focused.m.sunlightPct) !== Math.round(focused.base.sunlightPct) ? t.was(`${num(focused.base.sunlightPct)} %`) : '',
                       },
                       {
-                        sub: hrs(focused.m.earthLinkPct),
-                        label: t.earthContact,
+                        sub: hrsShort(focused.m.earthLinkPct),
+                        label: t.tileEarth,
                         value: `${num(focused.m.earthLinkPct)} %`,
                         fill: focused.m.earthLinkPct / 100,
                         bar: 'bg-earth',
@@ -976,8 +976,8 @@ export default function App() {
                         was: slipped && Math.round(focused.m.earthLinkPct) !== Math.round(focused.base.earthLinkPct) ? t.was(`${num(focused.base.earthLinkPct)} %`) : '',
                       },
                       {
-                        sub: hrs(focused.m.opsPct),
-                        label: t.both,
+                        sub: hrsShort(focused.m.opsPct),
+                        label: t.tileBoth,
                         value: `${num(focused.m.opsPct)} %`,
                         fill: focused.m.opsPct / 100,
                         bar: 'bg-[rgb(120,190,255)]',
@@ -987,7 +987,7 @@ export default function App() {
                       },
                       {
                         sub: t.ofStay(num((100 * focused.m.longestNightH) / stayH)),
-                        label: t.longestDarkness,
+                        label: t.tileDark,
                         value: fmtDuration(focused.m.longestNightH),
                         fill: Math.min(focused.m.longestNightH / (req.maxDarkH * 4 || 96), 1),
                         bar: focused.m.longestNightH <= req.maxDarkH ? 'bg-ok' : focused.m.longestNightH <= req.maxDarkH * 3 ? 'bg-warn' : 'bg-bad',
@@ -1011,14 +1011,14 @@ export default function App() {
                         : []),
                     ] as const
                   ).map(({ label, value, sub, fill, bar, tone, ticks, was }) => (
-                    <div key={label} className="border border-white/10 bg-black/30 p-2.5">
-                      <dt className="flex items-center justify-between gap-2 text-xs text-muted">
-                        <span>{label}</span>
+                    <div key={label} className="min-w-0 border border-white/10 bg-black/30 px-2 py-1.5">
+                      <dt className="flex items-start justify-between gap-1 text-[11px] leading-tight text-muted">
+                        <span className="min-w-0">{label}</span>
                         {tone && <i aria-hidden="true" className={`inline-block size-2 rounded-full ${tone === 'ok' ? 'bg-ok' : tone === 'warn' ? 'bg-warn' : 'bg-bad'}`} />}
                       </dt>
-                      <dd className="mt-1 text-2xl font-bold tabular-nums leading-none">{value}</dd>
-                      <dd className="mt-1 text-xs tabular-nums text-white/80">{sub}</dd>
-                      <div className="relative mt-2 h-1.5 bg-white/10" role="presentation">
+                      <dd className="mt-1 text-xl font-bold tabular-nums leading-none">{value}</dd>
+                      <dd className="mt-0.5 text-[11px] leading-tight tabular-nums text-white/80">{sub}</dd>
+                      <div className="relative mt-1.5 h-1 bg-white/10" role="presentation">
                         <div className={`h-full ${bar} transition-[width] duration-500`} style={{ width: `${Math.max(0, Math.min(1, fill)) * 100}%` }} />
                         {ticks.map((x) => (
                           <span key={x} className="absolute -top-0.5 h-2.5 w-px bg-white/60" style={{ left: `${x * 100}%` }} />
@@ -1028,6 +1028,45 @@ export default function App() {
                     </div>
                   ))}
                 </dl>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  onClick={openStreet}
+                  className="flex min-h-11 items-center justify-center gap-2 rounded-sm bg-sun px-2 text-sm font-semibold text-black hover:brightness-110"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="5" r="2.2" />
+                    <path d="M12 8v6M9 21l3-7 3 7M8.5 11.5h7" />
+                    <path d="M3 18.5c2.2-1 5.4-1.6 9-1.6s6.8.6 9 1.6" />
+                  </svg>
+                  {t.streetShort}
+                </button>
+                <button onClick={simulateLanding} className="flex min-h-11 items-center justify-center gap-2 rounded-sm border border-sun/70 bg-black/30 px-2 text-sm font-semibold text-sun hover:bg-sun/10">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8 4h8l2 6H6l2-6z" />
+                    <path d="M7 10l-3 9M17 10l3 9M12 10v5M9 20h6M2.5 19h3M18.5 19h3" />
+                  </svg>
+                  {t.simShort}
+                </button>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      ['sky', t.seeSky],
+                      ['when', t.bestDates],
+                      ['compare', t.compare],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button key={id} onClick={() => setPanel(panel === id ? null : id)} aria-pressed={panel === id} className={`min-h-10 rounded-sm px-2 text-sm font-semibold ${panel === id ? 'bg-sun text-black' : 'bg-white/10 hover:bg-white/15'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <details className="mt-3 border-t border-white/10 pt-1">
+                  <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 font-semibold">
+                    <span>{t.moreDetail}</span>
+                    <span className="text-xs font-normal text-muted">{t.moreDetailHint}</span>
+                  </summary>
                 <SiteLight site={focused.site} light={lightOn ? lightShown : null} onTurnOn={() => setLightOn(true)} busy={lightBusy} />
                 <div className="mt-3">
                   <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
@@ -1060,39 +1099,14 @@ export default function App() {
                   </button>
                 )}
 
-                <button
-                  onClick={openStreet}
-                  className="mt-5 flex min-h-12 w-full items-center justify-center gap-2.5 rounded-sm bg-sun px-4 font-semibold text-black hover:brightness-110"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="5" r="2.2" />
-                    <path d="M12 8v6M9 21l3-7 3 7M8.5 11.5h7" />
-                    <path d="M3 18.5c2.2-1 5.4-1.6 9-1.6s6.8.6 9 1.6" />
-                  </svg>
-                  {t.streetView}
-                </button>
-                <button onClick={simulateLanding} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2.5 rounded-sm border border-sun/70 bg-black/30 px-4 font-semibold text-sun hover:bg-sun/10">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M8 4h8l2 6H6l2-6z" />
-                    <path d="M7 10l-3 9M17 10l3 9M12 10v5M9 20h6M2.5 19h3M18.5 19h3" />
-                  </svg>
-                  {t.simulate}
-                </button>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  {(
-                    [
-                      ['sky', t.seeSky],
-                      ['when', t.bestDates],
-                      ['compare', t.compare],
-                    ] as const
-                  ).map(([id, label]) => (
-                    <button key={id} onClick={() => setPanel(panel === id ? null : id)} aria-pressed={panel === id} className={`min-h-12 rounded-sm px-2 text-sm font-semibold ${panel === id ? 'bg-sun text-black' : 'bg-white/10 hover:bg-white/15'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                <details className="mt-5 border-t border-white/10 pt-2" open={slipped || undefined}>
+                {focused.site.published && focused.site.published['2027'] !== undefined && (
+                  <p className="mt-2 border-l-2 border-white/25 pl-3 text-sm text-muted">{t.publishedRef(focused.site.published['2027'])}</p>
+                )}
+                {focused.site.team && (
+                  <p className="mt-2 border-l-2 border-sun/60 pl-3 text-sm text-muted">{focused.site.team.hypothesis[lang]}</p>
+                )}
+                </details>
+                <details className="border-t border-white/10 pt-1" open={slipped || undefined}>
                   <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 font-semibold">
                     <span>{t.whenTitle}</span>
                     <span className="text-xs font-normal text-muted">{t.stayDays(mission.durationDays)}, {fmtDate(start)}</span>
