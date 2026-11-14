@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA, MADRID_DSN, SITES, clampToData, customSite, loadData, metrics, overview, simulate, subsolarAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { DATA, MADRID_DSN, SITES, clampToData, customSite, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
@@ -338,6 +338,14 @@ export default function App() {
   const litAt = cursor?.t ?? (focused ? start : new Date(start.getTime() + freeHour * 3600000))
   // The date field of the time bar sets the start of the stay; a slip already set is kept.
   const setStart = (d: Date) => set('landing', new Date(clampToData(d.getTime()) - mission.slipDays * 86400000))
+  // Landing calendar of the chosen site for the stay that is set; never green where our result and the
+  // published study disagree (same caution as the verdicts).
+  const plan = useMemo(() => {
+    if (!ready || !focused) return undefined
+    const p = landingCalendar(focused.site, mission.durationDays, mission.minAntennaElevDeg)
+    return disagrees(focused.site) ? p.map((d) => ({ ...d, hours: d.hours.map((v) => (v === 'viable' ? 'marginal' : v)) })) : p
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, focused?.site.id, mission.durationDays, mission.minAntennaElevDeg])
   const scrub = (i: number) => {
     setPlaying(false)
     if (focused) setPlayIdx(i)
@@ -494,7 +502,7 @@ export default function App() {
           {/* Quick date and hour: the Moon's light and shadows follow it. A second line on phones. */}
           {splashDone && ready && (
             <div className="order-last min-w-0 basis-full lg:order-none lg:ml-auto lg:max-w-2xl lg:flex-1 lg:basis-auto">
-              <TimeBar start={start} min={DATA.start} max={DATA.end} stay={mission.durationDays} index={focused ? (playIdx ?? 0) : freeHour} sunHours={focused?.samples.map((x) => x.sunVisible)} label={fmtDateTime} onStart={setStart} onStay={(n) => set('durationDays', n)} onScrub={scrub} />
+              <TimeBar start={start} min={DATA.start} max={DATA.end} stay={mission.durationDays} index={focused ? (playIdx ?? 0) : freeHour} sunHours={focused?.samples.map((x) => x.sunVisible)} plan={plan} label={fmtDateTime} onStart={setStart} onStay={(n) => set('durationDays', n)} onScrub={scrub} />
             </div>
           )}
         </header>

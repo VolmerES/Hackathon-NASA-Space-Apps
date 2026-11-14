@@ -276,6 +276,63 @@ export function overview(site: Site, from: Date, days: number, minAntennaElevDeg
   return out
 }
 
+/** The verdict thresholds, shared by metrics() and landingCalendar(). */
+export function verdictOf(sunlightPct: number, longestNightH: number, earthLinkPct: number): Metrics['verdict'] {
+  if (sunlightPct >= 90 && longestNightH <= 24 && earthLinkPct >= 50) return 'viable'
+  if (sunlightPct >= 60 && longestNightH <= 72) return 'marginal'
+  return 'not-viable'
+}
+
+/** One calendar day: the verdict of landing at each UTC hour (null: the stay runs past the data). */
+export interface DayPlan {
+  t: Date
+  hours: (Metrics['verdict'] | null)[]
+}
+
+// Landing calendar of a site for a stay of durationDays: for every hour of the data, the verdict of a
+// stay that starts then (same thresholds as metrics()), and only if that hour is a landing window,
+// with the Sun and Earth both in view (power and direct contact during the descent). Otherwise that
+// hour is 'not-viable'. Sliding sums over one hourly pass: about 10,000 samples per site.
+export function landingCalendar(site: Site, durationDays: number, minAntennaElevDeg: number): DayPlan[] {
+  if (!DATA.ready) return []
+  const n = hours
+  const lit = new Uint8Array(n)
+  const earth = new Uint8Array(n)
+  for (let i = 0; i < n; i++) {
+    const s = sampleAt(site, startMs + i * HOUR, minAntennaElevDeg)
+    lit[i] = s.sunVisible > 0.5 ? 1 : 0
+    earth[i] = s.earthVisible ? 1 : 0
+  }
+  const pl = new Uint32Array(n + 1)
+  const pe = new Uint32Array(n + 1)
+  for (let i = 0; i < n; i++) {
+    pl[i + 1] = pl[i] + lit[i]
+    pe[i + 1] = pe[i] + earth[i]
+  }
+  const w = Math.round(durationDays * 24) // a stay covers w + 1 hourly samples, as in simulate()
+  const verdictAt = (i: number): Metrics['verdict'] | null => {
+    if (i + w >= n) return null
+    if (!lit[i] || !earth[i]) return 'not-viable'
+    const cnt = w + 1
+    const sunPct = (100 * (pl[i + w + 1] - pl[i])) / cnt
+    if (sunPct < 60) return 'not-viable'
+    let longest = 0
+    let run = 0
+    for (let k = i; k <= i + w; k++) {
+      run = lit[k] ? 0 : run + 1
+      if (run > longest) longest = run
+    }
+    return verdictOf(sunPct, longest, (100 * (pe[i + w + 1] - pe[i])) / cnt)
+  }
+  const out: DayPlan[] = []
+  for (let d = 0; d * 24 < n; d++) {
+    const hrs: (Metrics['verdict'] | null)[] = []
+    for (let h = 0; h < 24; h++) hrs.push(d * 24 + h < n ? verdictAt(d * 24 + h) : null)
+    out.push({ t: new Date(startMs + d * 24 * HOUR), hours: hrs })
+  }
+  return out
+}
+
 export function metrics(samples: Sample[], mission: Mission): Metrics {
   const n = Math.max(1, samples.length)
   const sunlit = samples.filter((s) => s.sunVisible > 0.5).length
@@ -302,9 +359,7 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
   // Thresholds, stated in the app: a crewed or robotic stay needs (almost) continuous sunlight for
   // power and regular direct contact with Earth (Wueller et al. 2026 ask for continuous sunlight
   // over the whole Artemis III stay, with margin).
-  let verdict: Metrics['verdict'] = 'not-viable'
-  if (sunlightPct >= 90 && longest <= 24 && earthLinkPct >= 50) verdict = 'viable'
-  else if (sunlightPct >= 60 && longest <= 72) verdict = 'marginal'
+  const verdict = verdictOf(sunlightPct, longest, earthLinkPct)
 
   return { sunlightPct, longestNightH: longest, batteryKWh, earthLinkPct, opsPct: (100 * ops) / n, madridPct: (100 * samples.filter((s) => s.madridLink).length) / n, hoursToSunset, hoursToEarthset, verdict }
 }
