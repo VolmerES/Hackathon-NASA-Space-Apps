@@ -178,13 +178,10 @@ export default function App() {
   const [sourcesOpen, setSourcesOpen] = useState(false)
   // Missions of this browser, and the one being planned with (its requirements drive every verdict).
   const [missions, setMissions] = useState<MissionDef[]>(() => loadMissions())
-  const [activeId, setActiveId] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem('ll-active-mission')
-    } catch {
-      return null
-    }
-  })
+  // No mission applies until one is opened: by default the tool explores freely, with its usual thresholds.
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [missionsStartNew, setMissionsStartNew] = useState(0) // bump: the overlay opens on a new mission
+  const pendingScenario = useRef<Omit<SavedScenario, 'id' | 'name' | 'kind'> | null>(null)
   const [missionsOpen, setMissionsOpen] = useState(false)
   // The saved scenario on screen: changes can update it instead of making a new one.
   const [scenarioId, setScenarioId] = useState<string | null>(null)
@@ -206,11 +203,16 @@ export default function App() {
   const [skyRef, skyH] = useBoxHeight<HTMLDivElement>()
   const t = STRINGS[lang]
   const { num, date: fmtDate, dateTime: fmtDateTime, duration: fmtDuration, reason, siteName } = useMemo(() => formatters(t), [t])
-  // No figures for dates without data: once the data arrive, a stay that falls outside them (today,
-  // before December 2026, or an old link) moves to the nearest day that has them, at 06:00 UTC.
+  // Once the data arrive: without a link, the stay starts on their first day at 06:00 UTC. With a
+  // link whose dates have no data, it moves to the nearest day that has, at 06:00, and says so.
   useEffect(() => {
     if (!ready) return
     const DAY = 86400000
+    if (!hasLink) {
+      const first = DATA.start
+      setMission((m) => ({ ...m, slipDays: 0, landing: new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), first.getUTCDate(), 6)) }))
+      return
+    }
     const from = mission.landing.getTime() + mission.slipDays * DAY
     const lo = DATA.start.getTime()
     const hi = DATA.end.getTime() - mission.durationDays * DAY
@@ -431,14 +433,12 @@ export default function App() {
     setMissions(list)
     saveMissions(list)
   }
-  const activate = (id: string | null) => {
-    setActiveId(id)
-    try {
-      if (id) localStorage.setItem('ll-active-mission', id)
-      else localStorage.removeItem('ll-active-mission')
-    } catch {
-      // storage unavailable: the choice lasts for this visit
-    }
+  const activate = (id: string | null) => setActiveId(id)
+  // Back to free exploration: the mission's requirements and battery stop applying.
+  const leaveMission = () => {
+    activate(null)
+    setScenarioId(null)
+    setMission((cur) => ({ ...cur, req: undefined, batteryWh: undefined }))
   }
   const openMission = (m: MissionDef, sc?: SavedScenario) => {
     activate(m.id)
@@ -456,16 +456,17 @@ export default function App() {
     setToast(t.ms.opened(m.name))
   }
   const saveMissionDef = (m: MissionDef) => {
-    storeMissions(missions.some((x) => x.id === m.id) ? missions.map((x) => (x.id === m.id ? m : x)) : [m, ...missions])
-    if (activeId === m.id) setMission((cur) => applyMission(m, cur))
+    // A mission created from "Add to mission" gets the view it was created from as its first scenario.
+    const pend = pendingScenario.current
+    pendingScenario.current = null
+    const def = pend && !missions.some((x) => x.id === m.id) ? { ...m, scenarios: [{ id: uid(), name: autoName('baseline', pend), kind: 'baseline' as const, ...pend }] } : m
+    storeMissions(missions.some((x) => x.id === def.id) ? missions.map((x) => (x.id === def.id ? def : x)) : [def, ...missions])
+    if (activeId === def.id) setMission((cur) => applyMission(def, cur))
+    if (pend) setToast(t.ms.addedTo(def.name))
   }
   const deleteMission = (id: string) => {
     storeMissions(missions.filter((x) => x.id !== id))
-    if (activeId === id) {
-      activate(null)
-      setScenarioId(null)
-      setMission((cur) => ({ ...cur, req: undefined, batteryWh: undefined }))
-    }
+    if (activeId === id) leaveMission()
   }
   const deleteScenario = (mid: string, sid: string) => {
     storeMissions(missions.map((x) => (x.id === mid ? { ...x, scenarios: x.scenarios.filter((sc) => sc.id !== sid) } : x)))
@@ -485,6 +486,19 @@ export default function App() {
     storeMissions(missions.map((x) => (x.id === active.id ? { ...x, scenarios: [...x.scenarios, sc], updated: new Date().toISOString() } : x)))
     setScenarioId(sc.id)
     setToast(t.ms.saved(sc.name))
+  }
+  // Free exploration: put what is on screen into any mission, without switching to it.
+  const addToMission = (m: MissionDef) => {
+    if (!current) return
+    const kind = kindOf(current, m.scenarios[0])
+    const sc: SavedScenario = { id: uid(), name: autoName(kind, current), kind, ...current }
+    storeMissions(missions.map((x) => (x.id === m.id ? { ...x, scenarios: [...x.scenarios, sc], updated: new Date().toISOString() } : x)))
+    setToast(t.ms.addedTo(m.name))
+  }
+  const addToNewMission = () => {
+    pendingScenario.current = current
+    setMissionsStartNew((k) => k + 1)
+    setMissionsOpen(true)
   }
   const updateScenario = () => {
     if (!active || !current || !openScenario) return
@@ -754,6 +768,7 @@ export default function App() {
                   {active ? (
                     <>
                       <span className="text-muted">{t.ms.missionLabel}</span>
+                      <button type="button" onClick={leaveMission} aria-label={t.ms.leave} title={t.ms.leave} className="-mx-1 px-1 text-muted hover:text-ink">×</button>
                       <button type="button" onClick={() => setMissionsOpen(true)} className="min-w-0 truncate text-sm font-semibold text-ink underline-offset-4 hover:underline">{active.name}</button>
                       {openScenario ? (
                         <>
@@ -776,7 +791,25 @@ export default function App() {
                   ) : (
                     <>
                       <span className="text-muted">{t.ms.noActive}</span>
-                      <button type="button" onClick={() => setMissionsOpen(true)} className="ml-auto min-h-9 rounded-sm border border-white/30 px-2.5 hover:bg-white/10">{t.ms.newOrOpen}</button>
+                      <details className="relative ml-auto">
+                        <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1 rounded-sm border border-sun/70 px-2.5 font-semibold text-sun hover:bg-sun/10">
+                          {t.ms.addTo}
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                        </summary>
+                        <div className="absolute right-0 z-30 mt-1 w-56 border border-white/15 bg-black/90 py-1 shadow-xl backdrop-blur-md">
+                          {missions.map((m) => (
+                            <button key={m.id} type="button" onClick={(e) => { addToMission(m); e.currentTarget.closest('details')?.removeAttribute('open') }} className="block min-h-10 w-full truncate px-3 text-left hover:bg-white/10">
+                              {m.name}
+                            </button>
+                          ))}
+                          <button type="button" onClick={(e) => { addToNewMission(); e.currentTarget.closest('details')?.removeAttribute('open') }} className="block min-h-10 w-full border-t border-white/10 px-3 text-left text-sun hover:bg-white/10">
+                            + {t.ms.new}…
+                          </button>
+                          <button type="button" onClick={(e) => { setMissionsOpen(true); e.currentTarget.closest('details')?.removeAttribute('open') }} className="block min-h-10 w-full px-3 text-left text-muted hover:bg-white/10">
+                            {t.ms.manage}
+                          </button>
+                        </div>
+                      </details>
                     </>
                   )}
                 </div>
@@ -1318,8 +1351,8 @@ export default function App() {
         </div>
       )}
 
-      <Overlay open={missionsOpen} title={t.ms.title} onClose={() => setMissionsOpen(false)}>
-        <Missions missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} openScenarioId={scenarioId} />
+      <Overlay open={missionsOpen} title={t.ms.title} onClose={() => { setMissionsOpen(false); pendingScenario.current = null }}>
+        <Missions key={missionsStartNew} startNew={missionsStartNew > 0 && pendingScenario.current !== null} missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} openScenarioId={scenarioId} />
       </Overlay>
       <Overlay open={sourcesOpen} title={t.dataSources} onClose={() => setSourcesOpen(false)}>
         <p className="text-muted">{t.sourcesIntro}</p>

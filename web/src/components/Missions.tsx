@@ -14,7 +14,7 @@ const STATUS_CLS: Record<Status, string> = { draft: 'border-white/30 text-muted'
 
 // The missions of this browser: list, create or edit one, and its scenarios side by side. Every figure
 // is recomputed from the current data each time (evaluate), with the mission's own requirements.
-export function Missions({ missions, activeId, openScenarioId, evaluate, num, onSave, onDelete, onOpen, onDeleteScenario, onRenameScenario }: {
+export function Missions({ startNew = false, missions, activeId, openScenarioId, evaluate, num, onSave, onDelete, onOpen, onDeleteScenario, onRenameScenario }: {
   missions: MissionDef[]
   activeId: string | null
   evaluate: (m: MissionDef, s: SavedScenario) => Evaluated
@@ -26,9 +26,11 @@ export function Missions({ missions, activeId, openScenarioId, evaluate, num, on
   onRenameScenario: (missionId: string, scenarioId: string, name: string) => void
   /** The saved scenario on screen right now. */
   openScenarioId: string | null
+  /** Open straight on the form for a new mission ("Add to mission" → "New mission"). */
+  startNew?: boolean
 }) {
   const t = useT()
-  const [view, setView] = useState<{ kind: 'list' } | { kind: 'edit'; draft: MissionDef } | { kind: 'detail'; id: string }>({ kind: 'list' })
+  const [view, setView] = useState<{ kind: 'list' } | { kind: 'edit'; draft: MissionDef } | { kind: 'detail'; id: string }>(() => (startNew ? { kind: 'edit', draft: newMission() } : { kind: 'list' }))
   const [confirm, setConfirm] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
 

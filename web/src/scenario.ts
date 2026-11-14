@@ -8,19 +8,14 @@ export interface Scenario {
   mode: 'planner' | 'explore'
 }
 
-function todayAt6() {
-  const d = new Date()
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6, 0))
-}
-
 export const DEFAULT_SCENARIO: Scenario = {
   chosen: ['shackleton-rim', 'connecting-ridge', 'malapert-massif'],
   focus: 'shackleton-rim',
   mode: 'planner',
   mission: {
-    // Today at 06:00 UTC, for 10 days. If today has no data (they cover Dec 2026 to Feb 2028), the
-    // app moves it to the nearest day that has, at 06:00, and says so (App.tsx, when the data arrive).
-    landing: todayAt6(),
+    // The first day of the data at 06:00 UTC, for 10 days. App.tsx re-anchors it to DATA.start once
+    // the data arrive, so it follows the data if they are regenerated.
+    landing: new Date(Date.UTC(2026, 11, 1, 6, 0)),
     durationDays: 10,
     slipDays: 0,
     survivalPowerW: 120,
