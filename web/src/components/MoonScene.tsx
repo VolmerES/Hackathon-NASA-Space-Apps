@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import * as THREE from 'three'
 import { measureQuality, qualityAt, type Quality } from './quality'
+import type { CesiumMoon } from './cesiumMoon'
 
 // The real Moon, behind the whole app. Colour: LRO LROC mosaic; relief: LRO LOLA elevation turned
 // into a normal map (NASA's Scientific Visualization Studio, CGI Moon Kit). Sunlight comes from the
@@ -204,7 +205,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let shownAt = 0
     // Optional high-detail Moon from Cesium ion, turned on by the viewer (the HD button). Its
     // picture has the light baked in, so our own Moon (real sunlight of the date) is the default.
-    let cesium: { update: () => void; dispose: () => void; setVisible: (v: boolean) => void } | null = null
+    let cesium: CesiumMoon | null = null
     let hdOn = false
     let hdTiles = false // at least one tile has arrived
     const showHd = () => {
@@ -234,6 +235,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             },
           })
           cesium.setVisible(false)
+          cesium.setHeat(heatTex, CAP_DEG)
         })
         .catch(() => {
           hdOn = false
@@ -427,6 +429,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Other views: the Moon as seen from the Earth, and the Earth over the Moon's south pole.
     let viewGoal: 0 | 1 | 2 = 0
     let vk = 0
+    let altKind: 0 | 1 | 2 = 0 // the view being entered or left, for the roll
+    const slerpQ = new THREE.Quaternion()
     const altDir = new THREE.Vector3(1, 0, 0)
     let altDist = 30
     const altTarget = new THREE.Vector3()
@@ -586,9 +590,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           heatTex.colorSpace = THREE.SRGBColorSpace
         }
       }
-      if (h && hdOn) setHd(false) // the heat map is drawn on our own Moon
       const had = !!capMat.emissiveMap
       capMat.emissiveMap = heatTex
+      cesium?.setHeat(heatTex, CAP_DEG)
       capMat.emissive.set(heatTex ? 0xffffff : 0x000000)
       capMat.emissiveIntensity = heatTex ? 1 : 0
       if (had !== !!heatTex) capMat.needsUpdate = true
@@ -920,8 +924,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       }
       earthWorld.copy(earthDir).applyAxisAngle(Y_AXIS, spin)
       // The other views, blended in from wherever the camera is.
-      vk += ((viewGoal ? 1 : 0) - vk) * (1 - Math.exp(-dt * (reduce ? 60 : 2.4)))
-      if (vk < 0.001 && !viewGoal) vk = 0
+      // A timed glide (1.6 s), eased at both ends: no lurch at the start or at the end.
+      if (viewGoal) altKind = viewGoal
+      vk = reduce ? (viewGoal ? 1 : 0) : Math.min(1, Math.max(0, vk + (viewGoal ? dt : -dt) / 1.6))
+      if (vk === 0) altKind = 0
       if (viewGoal) {
         holdUntil = Math.max(holdUntil, now + 1500)
         const fr = frameRef.current?.getBoundingClientRect()
@@ -958,7 +964,11 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       if (vk > 0) {
         const e = ease(vk)
         const d0 = camera.position.length()
-        curDir.copy(camera.position).divideScalar(d0).lerp(altDir, e).normalize()
+        // Along an arc round the Moon, not a straight line through it: a straight line between two
+        // almost opposite directions passes near the centre and the view flips there.
+        curDir.copy(camera.position).divideScalar(d0)
+        slerpQ.setFromUnitVectors(curDir, altDir)
+        curDir.applyQuaternion(new THREE.Quaternion().slerp(slerpQ, e))
         camera.position.copy(curDir).multiplyScalar(Math.exp(THREE.MathUtils.lerp(Math.log(d0), Math.log(altDist), e)))
         lookTarget.lerp(altTarget, e)
         fov = THREE.MathUtils.lerp(30, altFov, e)
@@ -969,7 +979,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       camera.lookAt(lookTarget)
       // Street view dive: roll on the view axis, slowly, as the camera goes down to the ground.
       // The same when looking at the Earth, so the Moon's horizon lies at the bottom.
-      roll += (Math.max(standGoal * THREE.MathUtils.smoothstep(k, 0.85, 1), viewGoal === 2 ? 1 : 0) - roll) * (1 - Math.exp(-dt * (reduce ? 60 : 1.8)))
+      roll += (standGoal * THREE.MathUtils.smoothstep(k, 0.85, 1) - roll) * (1 - Math.exp(-dt * (reduce ? 60 : 1.8)))
+      // Looking at the Earth, the camera turns on its axis in step with the glide itself.
+      if (altKind === 2) roll = Math.max(roll, ease(vk))
       if (roll < 0.001) roll = 0
       if (roll > 0) camera.rotateZ(Math.PI * roll)
 

@@ -9,9 +9,9 @@ import { groundHeight, incidenceDeg, loadGround, type Ground } from '../data/gro
 //   of the south pole (LRO LROC + LOLA, NASA SVS CGI Moon Kit) plus a fine relief layer for the near ground.
 // - Sun and Earth: real directions from JPL Horizons for the chosen hour. Earth shows its real phase.
 // - Shadows: the terrain casts them for that Sun (shadow map).
-// Heights are stretched by STRETCH (terrain, Sun and Earth alike), as in the panorama, so what hides
-// what stays consistent. Sizes of the Sun and Earth are enlarged to be visible. A rendering, not a photo.
-const STRETCH = 4
+// Angles at true scale (STRETCH 1): terrain, Sun and Earth as high as they really stand. The Earth
+// is drawn larger than it is, to be visible. A rendering, not a photo.
+const STRETCH = 1 // true angles (it was 4 before, to make low relief and a low Sun easier to see)
 const RIDGE = 1000 // distance (scene units) at which the terrain reaches its horizon angle
 const UNIT_M = 30 // metres per scene unit for the ground texture: the ridge sits ~30 km away
 const SKY = 3000
