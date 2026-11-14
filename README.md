@@ -37,6 +37,7 @@ docs/
   PROPUESTA-LUNA.md  Documento de Luna: métricas horarias, 14 meses, estación de Madrid
   PLAN.md         Cómo lo resolvemos: método, tecnologías, entregables, reparto y calendario
   HACKATHON.md    Diario: cómo avanzó
+  VIDEO.md        Dos guiones del vídeo de 30 s y cómo grabarlo
   IA.md           Registro de uso de IA, obligatorio en Space Apps
   retos/          Enunciado completo y datos de cada reto (web oficial, 13-nov)
   briefing/       Fotos de las diapositivas de la presentación
