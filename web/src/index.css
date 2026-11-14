@@ -483,3 +483,37 @@ details.soft-moving { overflow: hidden }
 .moon-callout[data-anchor="label"] .moon-callout-bridge,
 .moon-callout[data-anchor="label"][data-drop="down"] .moon-callout-bridge { left: -10px; right: auto; top: 0; width: 12px; height: var(--card-h, 280px) }
 .moon-callout[data-anchor="label"][data-side="left"] .moon-callout-bridge { left: calc(var(--card-w, 248px) - 2px); right: auto }
+
+/* Fold-out rows (<summary>): white text and a chevron that turns when open, Sun yellow on hover. */
+.disclosure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
+  list-style: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-ink);
+  transition: color 0.2s;
+}
+.disclosure::-webkit-details-marker { display: none }
+.disclosure::after {
+  content: '';
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.25rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  opacity: 0.7;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.25s ease;
+}
+details[open] > .disclosure::after { transform: translateY(2px) rotate(-135deg) }
+.disclosure:hover { color: var(--color-sun) }
+.disclosure:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 2px }
+/* Inline links in the app's colours. */
+.link-sun { color: var(--color-sun); text-decoration: underline; text-decoration-color: rgb(242 183 5 / 0.45); text-underline-offset: 4px; transition: text-decoration-color 0.2s }
+.link-sun:hover { text-decoration-color: currentColor }

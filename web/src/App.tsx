@@ -121,7 +121,7 @@ function SkyStrip({ name, height, onExpand, onClose, children }: { name: string;
         <span className="flex items-center gap-1.5 text-xs text-muted">
           <i className="inline-block size-2 bg-regolith" /> {t.terrain}
         </span>
-        <button onClick={onExpand} className="min-h-9 text-xs font-semibold text-nasa-blue underline underline-offset-4">
+        <button onClick={onExpand} className="link-sun min-h-9 text-xs font-semibold">
           {t.expandSky}
         </button>
         {onClose && (
@@ -847,7 +847,7 @@ export default function App() {
                   </ol>
                 </div>
                 <details className="mt-4 text-sm">
-                  <summary className="min-h-11 cursor-pointer py-2 text-nasa-blue underline underline-offset-4">{t.useOwnCoords}</summary>
+                  <summary className="disclosure text-sm">{t.useOwnCoords}</summary>
                   <div className="mt-2 space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <label>
@@ -1099,7 +1099,7 @@ export default function App() {
                   </summary>
                   {/* Date, hour and days on the surface are set in the time bar of the header. */}
                   <details className="mt-1" open={slipped}>
-                    <summary className="min-h-11 cursor-pointer py-2 text-sm text-nasa-blue underline underline-offset-4">{t.slipTitle}</summary>
+                    <summary className="disclosure text-sm">{t.slipTitle}</summary>
                     <div className="flex items-center gap-2">
                       <button aria-label={t.dayEarlier} onClick={() => set('slipDays', Math.max(-30, mission.slipDays - 1))} className="size-11 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">
                         −
@@ -1113,7 +1113,7 @@ export default function App() {
                       {slipped ? (
                         <>
                           <strong>{t.slipBy(mission.slipDays)}</strong> {t.landingMovesTo(fmtDateTime(start))}{' '}
-                          <button onClick={() => set('slipDays', 0)} className="text-nasa-blue underline underline-offset-4">
+                          <button onClick={() => set('slipDays', 0)} className="link-sun">
                             {t.backToPlanned}
                           </button>
                         </>
@@ -1123,7 +1123,7 @@ export default function App() {
                     </p>
                   </details>
                   <details className="mt-1 text-sm">
-                    <summary className="min-h-11 cursor-pointer py-2 text-nasa-blue underline underline-offset-4">{t.options}</summary>
+                    <summary className="disclosure text-sm">{t.options}</summary>
                     <div className="mt-1 grid grid-cols-1 gap-3">
                       <p className={`border-l-2 pl-2 text-xs ${active ? 'border-sun/60 text-white/85' : 'border-white/25 text-muted'}`}>{active ? t.ms.valuesOf(active.name) : t.ms.valuesFree}</p>
                       <label>

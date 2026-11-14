@@ -50,7 +50,7 @@ export function Missions({ onReport, startNew = false, missions, activeId, openS
     const rows = m.scenarios.map((s) => ({ s, e: evaluate(m, s) }))
     return (
       <div>
-        <button type="button" onClick={() => setView({ kind: 'list' })} className="mb-3 text-sm text-nasa-blue underline underline-offset-4">← {t.ms.all}</button>
+        <button type="button" onClick={() => setView({ kind: 'list' })} className="link-sun mb-3 text-sm">← {t.ms.all}</button>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h3 className="text-xl font-bold">{m.name}</h3>
