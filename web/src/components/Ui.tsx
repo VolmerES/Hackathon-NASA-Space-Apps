@@ -115,13 +115,33 @@ export function Overlay({ open, title, onClose, children }: { open: boolean; tit
   useEffect(() => {
     const d = ref.current
     if (!d) return
-    if (open && !d.open) d.showModal()
-    if (!open && d.open) d.close()
+    if (open && !d.open) {
+      d.classList.remove('modal-leaving')
+      d.showModal()
+    }
+    if (!open && d.open) {
+      // Sink out first, then close for real.
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return d.close()
+      d.classList.add('modal-leaving')
+      const id = window.setTimeout(() => {
+        d.classList.remove('modal-leaving')
+        d.close()
+      }, 300)
+      return () => {
+        window.clearTimeout(id)
+        d.classList.remove('modal-leaving')
+      }
+    }
   }, [open])
   return (
     <dialog
       ref={ref}
       onClose={onClose}
+      onCancel={(e) => {
+        // Escape: ask to close, so the dialog can leave softly.
+        e.preventDefault()
+        onClose()
+      }}
       onClick={(e) => e.target === ref.current && onClose()}
       className="modal-soft m-auto w-[min(560px,calc(100%-32px))] border border-rule bg-paper/95 p-0 text-ink shadow-2xl backdrop-blur-md"
     >

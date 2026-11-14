@@ -12,8 +12,8 @@ Proyecto del NASA Space Apps Challenge 2026 (Madrid, 14–15 nov), reto
 - `docs/`: documentación interna en castellano. `README.md` resume cada
   fichero. `docs/STACK.md` y `docs/PLAN.md` son la propuesta de antes de
   programar: donde no coincidan con `web/`, lo que manda es el código.
-- `web/`: la aplicación (Vite + React 19 + TypeScript + Tailwind 4, three.js,
-  Plotly básico). No hay `pipeline/` aparte: los scripts de datos están en
+- `web/`: la aplicación (Vite + React 19 + TypeScript + Tailwind 4, three.js;
+  las gráficas son SVG a mano). No hay `pipeline/` aparte: los scripts de datos están en
   `web/scripts/`.
 
 ## Comandos (`web/`, Node ≥ 20.19)
@@ -57,8 +57,8 @@ Esos ficheros generados sí van en git porque son lo que se sirve.
 
 Interfaz: `web/src/App.tsx` orquesta el flujo guiado (buscar sitio →
 respuesta → paneles opcionales). Las piezas grandes están en
-`web/src/components/` (`MoonScene` y `Surface3D` con three.js, `Panorama`,
-`Plot`). El escenario va en la URL (`scenario.ts`).
+`web/src/components/` (`MoonScene` y `Surface3D` con three.js, `Panorama`).
+El escenario va en la URL (`scenario.ts`).
 
 **Es bilingüe** (`web/src/i18n.tsx`): inglés por defecto, español con `l=es`.
 Cualquier texto nuevo de la interfaz lleva las dos versiones.
