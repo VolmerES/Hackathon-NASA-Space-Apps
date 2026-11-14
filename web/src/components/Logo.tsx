@@ -1,4 +1,4 @@
-// Lunar Landing mark: the Moon's disc, its surface with a ridge, and the Sun just grazing that
+// Fly Me to the Moon mark: the Moon's disc, its surface with a ridge, and the Sun just grazing that
 // ridge: the light that decides where you can land. Solid, simple shapes so it reads at 16 px.
 export const MARK_PATHS = {
   ridge: 'M2 20.6 L6.6 18.9 L9.6 19.7 L13.2 17.3 L16.4 19.1 L19.6 18.3 L23.2 19.9 L30 18.6 L30 31 L2 31 Z',
@@ -24,7 +24,7 @@ export function Logo({ className = '' }: { className?: string }) {
   return (
     <span className={`flex items-center gap-2.5 text-white ${className}`}>
       <LogoMark />
-      <span className="wordmark text-[13px] leading-none min-[400px]:text-[15px] sm:text-base">LUNAR LANDING</span>
+      <span className="wordmark text-[11px] leading-none min-[400px]:text-[13px] sm:text-base">FLY ME TO THE MOON</span>
     </span>
   )
 }

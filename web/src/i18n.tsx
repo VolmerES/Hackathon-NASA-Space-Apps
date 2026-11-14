@@ -6,7 +6,7 @@ export type Lang = 'en' | 'es'
 
 const en = {
   locale: 'en-GB',
-  title: 'Lunar Landing',
+  title: 'Fly Me to the Moon',
   tagline: "Compare landing sites and dates at the Moon's south pole: sunlight for power, and a direct line to Earth.",
   language: 'Language',
   copyLink: 'Copy link to this comparison',
@@ -298,7 +298,7 @@ const en = {
     'not-viable': 'Red: no hour that day gives a viable stay of this length',
   },
   dayOfStay: (n: number, total: number) => `Day ${n}/${total}`,
-  splashLabel: 'Loading Lunar Landing',
+  splashLabel: 'Loading Fly Me to the Moon',
   madeFor: 'Made for the NASA International Space Apps Challenge 2026',
   splashTagline: 'Where and when to land, by sunlight and a line to Earth',
   splashSteps: ['Sun and Earth positions', 'Tracing terrain horizons', 'Comparing sites'],
@@ -354,7 +354,7 @@ export type Strings = typeof en
 
 const es: Strings = {
   locale: 'es-ES',
-  title: 'Lunar Landing',
+  title: 'Fly Me to the Moon',
   tagline: 'Compara sitios y fechas de alunizaje en el polo sur de la Luna: luz solar para tener energía y línea directa con la Tierra.',
   language: 'Idioma',
   copyLink: 'Copiar el enlace a esta comparación',
@@ -646,7 +646,7 @@ const es: Strings = {
     'not-viable': 'Rojo: ninguna hora de ese día da una estancia viable de esta duración',
   },
   dayOfStay: (n: number, total: number) => `Día ${n}/${total}`,
-  splashLabel: 'Cargando Lunar Landing',
+  splashLabel: 'Cargando Fly Me to the Moon',
   madeFor: 'Hecha para el NASA International Space Apps Challenge 2026',
   splashTagline: 'Dónde y cuándo alunizar, según la luz del Sol y la línea con la Tierra',
   splashSteps: ['Posiciones del Sol y la Tierra', 'Trazando los horizontes del relieve', 'Comparando los sitios'],

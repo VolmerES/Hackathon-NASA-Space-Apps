@@ -161,8 +161,8 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
 
       <div className="absolute inset-x-0 top-[13vh] flex flex-col items-center gap-4 px-6 text-center">
         <LogoMark size={52} className="sp-sub mb-2 text-white" />
-        <h1 className="sp-sheen wordmark text-[clamp(28px,5vw,64px)] leading-none" style={{ paddingLeft: '0.28em', letterSpacing: '0.28em' }}>
-          LUNAR LANDING
+        <h1 className="sp-sheen wordmark text-[clamp(22px,4.4vw,60px)] leading-none" style={{ paddingLeft: '0.28em', letterSpacing: '0.28em' }}>
+          FLY ME TO THE MOON
         </h1>
         <p className="sp-sub max-w-xl text-balance text-base font-light text-white/80 sm:text-lg">{t.splashTagline}</p>
       </div>

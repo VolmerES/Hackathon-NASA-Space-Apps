@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Lunar Landing",
-  "short_name": "Lunar Landing",
+  "name": "Fly Me to the Moon",
+  "short_name": "Fly Me to the Moon",
   "description": "Pick a landing site at the Moon's south pole and see, from NASA data, whether it gets sunlight and a direct line to Earth during your stay.",
   "lang": "en",
   "dir": "ltr",
@@ -25,6 +25,6 @@
   ],
   "shortcuts": [
     { "name": "Malapert Massif K2023", "short_name": "Malapert", "description": "Open the answer for Malapert Massif K2023", "url": "/#s=mma-k2023", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
-    { "name": "En español", "short_name": "Español", "description": "Abrir Lunar Landing en español", "url": "/#l=es", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+    { "name": "En español", "short_name": "Español", "description": "Abrir Fly Me to the Moon en español", "url": "/#l=es", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
   ]
 }
