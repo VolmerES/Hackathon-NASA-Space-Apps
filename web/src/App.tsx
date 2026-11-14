@@ -18,6 +18,7 @@ import { applyMission, kindOf, loadMissions, saveMissions, uid, type MissionDef,
 import { Logo } from './components/Logo'
 import { StayHeatmap } from './components/StayHeatmap'
 import { MoonFallback } from './components/MoonFallback'
+import { Assistant, type AssistantTools } from './components/Assistant'
 
 // three.js for the 3D view from the surface is loaded only when that view is opened.
 // three.js lives in its own file: the page and the opening screen do not wait for it.
@@ -635,6 +636,86 @@ export default function App() {
     setPlaying((p) => !p)
   }
 
+  // The assistant's tools: the same calculations the web shows, with every figure taken from them.
+  const [assistantOpen, setAssistantOpen] = useState(false)
+  const VERDICT_WORD = { viable: 'favourable', marginal: 'tight', 'not-viable': 'unfavourable' } as const
+  const teamSites = () => (SITES.some((s) => s.team) ? SITES.filter((s) => s.team) : SITES)
+  const siteOf = (id: unknown) => teamSites().find((s) => s.id === id)
+  const dayOf = (v: unknown) => {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(v)) return null
+    const d = new Date(v.slice(0, 10) + 'T' + (v.length > 10 ? v.slice(11, 16) || '06:00' : '06:00') + ':00Z')
+    return Number.isFinite(d.getTime()) ? d : null
+  }
+  const daysOf = (v: unknown) => (typeof v === 'number' && v >= 1 && v <= 60 ? Math.round(v) : mission.durationDays)
+  const assess = (site: Site, from: Date, days: number) => {
+    const ms: Mission = { ...mission, landing: new Date(clampToData(from.getTime())), slipDays: 0, durationDays: days }
+    const m = cautious(site, metrics(simulate(site, ms), ms))
+    const r1 = (x: number) => Math.round(x * 10) / 10
+    return {
+      site_id: site.id,
+      name: siteName(site),
+      landing: new Date(clampToData(from.getTime())).toISOString().slice(0, 16) + 'Z',
+      days,
+      sunlight_pct: r1(m.sunlightPct),
+      earth_contact_pct: r1(m.earthLinkPct),
+      sun_and_earth_pct: r1(m.opsPct),
+      longest_darkness_h: m.longestNightH,
+      hours_to_first_sunset: m.hoursToSunset,
+      hours_to_first_earthset: m.hoursToEarthset,
+      verdict: VERDICT_WORD[m.verdict],
+    }
+  }
+  const assistantTools: AssistantTools = {
+    get_settings: () => ({
+      landing: start.toISOString().slice(0, 16) + 'Z',
+      days: mission.durationDays,
+      battery_wh: mission.batteryWh ?? null,
+      survival_power_w: mission.survivalPowerW,
+      antenna_min_elevation_deg: mission.minAntennaElevDeg,
+      thresholds: { min_sunlight_pct: req.minSunPct, max_darkness_h: req.maxDarkH, min_earth_contact_pct: req.minEarthPct, note: 'chosen by the team; an indication, not a decision' },
+      data_range: [DATA.start.toISOString().slice(0, 10), DATA.end.toISOString().slice(0, 10)],
+      site_on_screen: focused ? focused.site.id : null,
+    }),
+    list_sites: () => teamSites().map((s) => assess(s, start, mission.durationDays)),
+    assess_site: (a) => {
+      const s = siteOf(a.site_id)
+      if (!s) return { error: 'unknown site_id; call list_sites' }
+      return assess(s, dayOf(a.start) ?? start, daysOf(a.days))
+    },
+    suggest_dates: (a) => {
+      const s = siteOf(a.site_id)
+      if (!s) return { error: 'unknown site_id; call list_sites' }
+      const days = daysOf(a.days)
+      if (disagrees(s)) return { site_id: s.id, days, dates: [], note: 'our result and the published study disagree at this site, so no date is marked favourable' }
+      const plan = landingCalendar(s, days, mission.minAntennaElevDeg, mission.req, mission.survivalPowerW, mission.batteryWh, mission.dod, mission.eta)
+      const dates = plan
+        .map((d) => ({ d, h: d.hours.findIndex((v) => v === 'viable') }))
+        .filter((x) => x.h >= 0)
+        .slice(0, 6)
+        .map((x) => new Date(x.d.t.getTime() + x.h * 3600000).toISOString().slice(0, 16) + 'Z')
+      return { site_id: s.id, days, dates, note: dates.length ? 'landing hours that look favourable for the whole stay, per the data' : 'no date in the data looks favourable for a stay this long' }
+    },
+    show_site: (a) => {
+      const s = siteOf(a.site_id)
+      if (!s) return { error: 'unknown site_id; call list_sites' }
+      const d = dayOf(a.start)
+      if (d) setStart(d)
+      if (typeof a.days === 'number') setMissionValue('durationDays', daysOf(a.days))
+      pick(s.id)
+      setCardOpen(true)
+      return { shown: s.id }
+    },
+    open_street_view: (a) => {
+      const s = siteOf(a.site_id)
+      if (!s) return { error: 'unknown site_id; call list_sites' }
+      pick(s.id)
+      window.setTimeout(openStreet, 300)
+      return { opened: s.id }
+    },
+  }
+  const assistantContext = () =>
+    `${focused ? `site ${focused.site.id} (${siteName(focused.site)}), ` : 'no site chosen, '}landing ${start.toISOString().slice(0, 16)}Z, ${mission.durationDays} days`
+
   const openStreet = () => {
     setPanel(null)
     setDiving(true)
@@ -752,7 +833,11 @@ export default function App() {
             </div>
           )}
           {/* Settings and actions: a gear in the top right corner. */}
-          <div className="ml-auto lg:ml-0">
+          <div className="ml-auto flex items-center gap-2 lg:ml-0">
+              <button type="button" onClick={() => setAssistantOpen((o) => !o)} aria-pressed={assistantOpen} title={t.assistant.open} className={`flex h-11 items-center gap-2 rounded-sm border px-3 text-sm font-semibold ${assistantOpen ? 'border-sun bg-sun text-black' : 'border-white/40 hover:bg-white/10'}`}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /><path d="M8.5 11h.01M12 11h.01M15.5 11h.01" /></svg>
+                <span className="max-sm:hidden">{t.assistant.open}</span>
+              </button>
               <HamburgerMenu label={t.mainMenu}>
                 {(close) => (
                   <>
@@ -792,6 +877,7 @@ export default function App() {
               </HamburgerMenu>
           </div>
         </header>
+        <Assistant open={assistantOpen} onClose={() => setAssistantOpen(false)} lang={lang} text={t.assistant} tools={assistantTools} context={assistantContext} />
 
         <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
           {/* Phones: a dimmed backdrop behind the pop-up; tapping it closes the card. */}
