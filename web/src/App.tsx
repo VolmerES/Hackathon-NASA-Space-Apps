@@ -497,7 +497,16 @@ export default function App() {
     if (activeId === id) leaveMission()
   }
   const deleteScenario = (mid: string, sid: string) => {
-    storeMissions(missions.map((x) => (x.id === mid ? { ...x, scenarios: x.scenarios.filter((sc) => sc.id !== sid) } : x)))
+    storeMissions(
+      missions.map((x) => {
+        if (x.id !== mid) return x
+        const wasBase = x.scenarios[0]?.id === sid
+        let rest = x.scenarios.filter((sc) => sc.id !== sid)
+        // Without its baseline, the next scenario becomes the baseline and the others are typed again against it.
+        if (wasBase && rest.length) rest = rest.map((sc, i) => ({ ...sc, kind: i === 0 ? 'baseline' : kindOf(sc, rest[0]) }))
+        return { ...x, scenarios: rest, updated: new Date().toISOString() }
+      }),
+    )
     if (sid === scenarioId) setScenarioId(null)
   }
   const patchScenario = (mid: string, sid: string, patch: Partial<SavedScenario>) =>

@@ -114,6 +114,7 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 | Sol, Tierra y suelo como tarjetas plegables | Las tres cajas pasan a tarjetas apiladas que se abren y cierran por separado; plegadas muestran la elevación y si se ve; abiertas en pantallas anchas y plegadas en móvil | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | Ocultar las tarjetas de la vista de calle | Botón en el título «Cielo y suelo a esta hora» que oculta y muestra las tres tarjetas a la vez; oculto en móvil al entrar | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | Etiquetas huérfanas arriba a la izquierda | Encontró la causa: al llegar tarde el mapa de alturas, `MoonScene` volvía a crear las etiquetas de los sitios en una escena ya desmontada (pasa siempre con el doble montaje de React en desarrollo), y se quedaban en la esquina sin moverse ni ocultarse. Ahora no se crean si la escena ya no existe, y la etiqueta de la Tierra también se quita al desmontar | **Angela vio las cajas** en una captura | Compila. ⚠️ Sin ver en pantalla |
+| Borrar escenarios | Botones «Abrir» y «Borrar» visibles bajo el nombre de cada escenario (también en móvil), con confirmación; si se borra el base, el siguiente pasa a ser el base y los demás se reclasifican | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 
 ### 15‑nov · domingo
 

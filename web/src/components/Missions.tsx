@@ -76,7 +76,6 @@ export function Missions({ startNew = false, missions, activeId, openScenarioId,
                   <th className="py-1 pr-2 font-normal">{t.earthContact}</th>
                   <th className="py-1 pr-2 font-normal">{t.ms.batteryLeft}</th>
                   <th className="py-1 pr-2 font-normal">{t.ms.verdict}</th>
-                  <th className="py-1 font-normal"><span className="sr-only">{t.ms.actions}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -103,6 +102,22 @@ export function Missions({ startNew = false, missions, activeId, openScenarioId,
                         </span>
                       )}
                       <span className="block text-muted">{t.ms.kinds[s.kind]}{e && <> · {e.site} · {e.when}</>}</span>
+                      {/* Actions under the name, so they are in reach on phones too (the table scrolls sideways). */}
+                      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <button type="button" onClick={() => onOpen(m, s)} className="min-h-8 rounded-sm border border-white/30 px-2.5 hover:bg-white/10">{t.ms.open}</button>
+                        {confirm === `s:${s.id}` ? (
+                          <>
+                            <span className="text-bad">{t.ms.sure}</span>
+                            <button type="button" onClick={() => { onDeleteScenario(m.id, s.id); setConfirm(null) }} className="min-h-8 rounded-sm bg-bad px-2.5 font-semibold text-white">{t.ms.delete}</button>
+                            <button type="button" onClick={() => setConfirm(null)} className="min-h-8 rounded-sm border border-white/30 px-2.5 hover:bg-white/10">{t.ms.cancel}</button>
+                          </>
+                        ) : (
+                          <button type="button" onClick={() => setConfirm(`s:${s.id}`)} aria-label={`${t.ms.delete}: ${s.name}`} className="flex min-h-8 items-center gap-1 rounded-sm border border-bad/50 px-2.5 text-bad hover:bg-bad/15">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
+                            {t.ms.delete}
+                          </button>
+                        )}
+                      </span>
                     </td>
                     {e ? (
                       <>
@@ -117,10 +132,6 @@ export function Missions({ startNew = false, missions, activeId, openScenarioId,
                     ) : (
                       <td colSpan={5} className="py-2 pr-2 text-muted">{t.ms.cannotEvaluate}</td>
                     )}
-                    <td className="py-2 text-right whitespace-nowrap">
-                      <button type="button" onClick={() => onOpen(m, s)} className="rounded-sm border border-white/30 px-2 py-1 hover:bg-white/10">{t.ms.open}</button>
-                      <button type="button" onClick={() => onDeleteScenario(m.id, s.id)} aria-label={`${t.ms.delete}: ${s.name}`} className="ml-1 rounded-sm px-2 py-1 text-muted hover:bg-white/10 hover:text-bad">×</button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
