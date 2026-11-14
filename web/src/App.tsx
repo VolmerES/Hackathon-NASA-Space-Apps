@@ -498,7 +498,7 @@ export default function App() {
     <LangContext.Provider value={t}>
       {moonOk ? (
         <Suspense fallback={null}>
-        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} earth={earthAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} answerLabel={t.seeAnswer} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, earth: t.viewEarth, fromEarth: t.viewFromEarth, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
+        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} earth={earthAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} answerLabel={t.seeAnswer} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, earth: t.viewEarth, fromEarth: t.viewFromEarth, hd: t.viewHd, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />

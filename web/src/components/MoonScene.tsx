@@ -29,7 +29,7 @@ type Props = {
   /** Contents of the callout shown while the mouse rests on a site (desktop only). */
   info?: (id: string) => ReactNode
   /** Texts of the view controls (zoom in, zoom out, back to the south pole). */
-  controls?: { zoomIn: string; zoomOut: string; recenter: string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void; earth?: string; fromEarth?: string }
+  controls?: { zoomIn: string; zoomOut: string; recenter: string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void; earth?: string; fromEarth?: string; hd?: string }
   /** Heat map laid over the polar cap (a square picture out to `deg` of colatitude), or null. */
   heat?: { canvas: HTMLCanvasElement; deg: number } | null
   /** Street view: dive down onto the focused site until the camera skims its ground. */
@@ -117,11 +117,13 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
   const calloutRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
   const [credit, setCredit] = useState(false) // Cesium ion terrain on screen: their attribution is due
+  const [hdState, setHdState] = useState<0 | 1 | 2>(0) // HD Moon: off, loading, on
+  const hdAvailable = !!import.meta.env.VITE_CESIUM_TOKEN
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const labelsRef = useRef<HTMLDivElement>(null)
   const state = useRef({ mode, sites, focusId, onPick, showLabels, sunAt, earth })
   state.current = { mode, sites, focusId, onPick, showLabels, sunAt, earth }
-  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void; setHeat: (h: Props['heat']) => void; setView: (v: 0 | 1 | 2) => void } | null>(null)
+  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void; setHeat: (h: Props['heat']) => void; setView: (v: 0 | 1 | 2) => void; setHd: (on: boolean) => void } | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -200,36 +202,50 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     moon.add(cap)
     let loaded = 0
     let shownAt = 0
-    let cesium: { update: () => void; dispose: () => void } | null = null
+    // Optional high-detail Moon from Cesium ion, turned on by the viewer (the HD button). Its
+    // picture has the light baked in, so our own Moon (real sunlight of the date) is the default.
+    let cesium: { update: () => void; dispose: () => void; setVisible: (v: boolean) => void } | null = null
+    let hdOn = false
+    let hdTiles = false // at least one tile has arrived
+    const showHd = () => {
+      const on = hdOn && hdTiles
+      cesium?.setVisible(on)
+      globe.visible = cap.visible = !on && shownAt > 0
+      setCredit(on)
+    }
+    const setHd = (on: boolean) => {
+      const token = import.meta.env.VITE_CESIUM_TOKEN as string | undefined
+      hdOn = on && !!token
+      setHdState(hdOn ? (hdTiles ? 2 : 1) : 0)
+      showHd()
+      if (!hdOn || cesium || !token) return
+      import('./cesiumMoon')
+        .then(({ attachCesiumMoon }) => {
+          if (!api.current || cesium) return
+          cesium = attachCesiumMoon({
+            token,
+            parent: moon,
+            camera,
+            renderer,
+            onFirstTile: () => {
+              hdTiles = true
+              if (hdOn) setHdState(2)
+              showHd()
+            },
+          })
+          cesium.setVisible(false)
+        })
+        .catch(() => {
+          hdOn = false
+          setHdState(0)
+        })
+    }
     const ready = () => {
       if (++loaded < 5) return
       globe.visible = true
       cap.visible = true
       shownAt = performance.now()
       onReady?.()
-      // Optional high-detail Moon from Cesium ion: only with a token of the team's own account.
-      const token = import.meta.env.VITE_CESIUM_TOKEN as string | undefined
-      if (token && q.level > 0) {
-        import('./cesiumMoon')
-          .then(({ attachCesiumMoon }) => {
-            if (!api.current) return
-            cesium = attachCesiumMoon({
-              token,
-              parent: moon,
-              camera,
-              renderer,
-              onFirstTile: () => {
-                // Their terrain replaces our globe and cap; say whose data it is.
-                globe.visible = false
-                cap.visible = false
-                setCredit(true)
-              },
-            })
-          })
-          .catch(() => {
-            /* the Moon of the app stays */
-          })
-      }
       // Sharper maps for big screens, once the light ones are on screen.
       if (q.maps4k) {
         loader.load('moon/moon_color_4k.jpg', (tex) => {
@@ -533,13 +549,14 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           heatTex.colorSpace = THREE.SRGBColorSpace
         }
       }
+      if (h && hdOn) setHd(false) // the heat map is drawn on our own Moon
       const had = !!capMat.emissiveMap
       capMat.emissiveMap = heatTex
       capMat.emissive.set(heatTex ? 0xffffff : 0x000000)
       capMat.emissiveIntensity = heatTex ? 1 : 0
       if (had !== !!heatTex) capMat.needsUpdate = true
     }
-    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null), setHeat, setView: setViewTo }
+    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null), setHeat, setView: setViewTo, setHd }
     syncSites()
 
     const pointers = new Map<number, { x: number; y: number }>()
@@ -1100,6 +1117,14 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
               <span>{controls.layer}</span>
             </button>
           )}
+          {hdAvailable && controls.hd && (
+            <button type="button" className="moon-layer" data-on={hdState ? 'true' : 'false'} aria-pressed={!!hdState} aria-busy={hdState === 1} onClick={() => api.current?.setHd(!hdState)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 7v10M3 12h5M8 7v10M13 7h3a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4h-3z" />
+              </svg>
+              <span>{controls.hd}</span>
+            </button>
+          )}
           {earth && controls.fromEarth && (
             <button type="button" className="moon-layer" data-on={view === 1 ? 'true' : 'false'} aria-pressed={view === 1} onClick={() => api.current?.setView(view === 1 ? 0 : 1)}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -1130,7 +1155,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       )}
       {credit && (
         <a href="https://cesium.com/platform/cesium-ion/" target="_blank" rel="noreferrer" className="fixed bottom-1 left-2 z-[6] bg-black/60 px-2 py-0.5 text-[11px] text-white/85">
-          Moon terrain: Cesium ion (NASA LRO data)
+          <img src="https://assets.ion.cesium.com/ion-credit.png" alt="Cesium ion" className="mr-1.5 inline h-4 align-middle" />
+          NASA and the USGS Astrogeology Science Center
         </a>
       )}
       {info && (
