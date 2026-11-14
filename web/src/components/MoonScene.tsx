@@ -447,7 +447,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const sideUp = new THREE.Vector3()
 
     // Site markers: a ring flat on the surface; the label is HTML so it is readable and tappable.
-    type Marker = { id: string; ring: THREE.Mesh; dot: THREE.Mesh; local: THREE.Vector3; el: HTMLButtonElement; color: THREE.Color; sx: number; sy: number; vis: boolean }
+    type Marker = { id: string; ring: THREE.Mesh; dot: THREE.Mesh; local: THREE.Vector3; el: HTMLButtonElement; lead: HTMLDivElement; spot: number; color: THREE.Color; sx: number; sy: number; vis: boolean }
     let markers: Marker[] = []
     let hoverHold = 0
     // Site under the mouse: shows the callout and holds the Moon still.
@@ -480,6 +480,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         ;(m.ring.material as THREE.Material).dispose()
         ;(m.dot.material as THREE.Material).dispose()
         m.el.remove()
+        m.lead.remove()
       }
       markers = state.current.sites.map((s) => {
         const local = surface(s.lat, s.lon, 1.0015 + heightAt(s.lat, s.lon))
@@ -514,7 +515,12 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           state.current.onPick(s.id)
         })
         labels.appendChild(el)
-        return { id: s.id, ring, dot, local, el, color: new THREE.Color(s.color ?? '#ffffff'), sx: 0, sy: 0, vis: false }
+        // A thin leader line from the dot to its label, shown when the label had to move away from it.
+        const lead = document.createElement('div')
+        lead.className = 'moon-lead'
+        lead.style.opacity = '0'
+        labels.insertBefore(lead, labels.firstChild)
+        return { id: s.id, ring, dot, local, el, lead, spot: 0, color: new THREE.Color(s.color ?? '#ffffff'), sx: 0, sy: 0, vis: false }
       })
     }
 
@@ -1022,10 +1028,11 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       camera.updateProjectionMatrix()
 
       const frameBox = frameEl ? frameEl.getBoundingClientRect() : null
-      // Markers and their labels. Labels that would overlap are nudged down, in screen order.
+      // Markers and their labels. Each label takes a free spot around its dot (the picked site first).
       const pulse = 1 + 0.25 * Math.sin(now / 260)
-      const placed: { x: number; y: number; w: number }[] = []
-      for (const m of markers) {
+      const placed: { x: number; y: number; w: number; h: number }[] = []
+      const order = state.current.focusId ? [...markers].sort((a, b) => Number(b.id === state.current.focusId) - Number(a.id === state.current.focusId)) : markers
+      for (const m of order) {
         const on = m.id === state.current.focusId
         const ringMat = m.ring.material as THREE.MeshBasicMaterial
         const dotMat = m.dot.material as THREE.MeshBasicMaterial
@@ -1053,27 +1060,52 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         m.sx = x
         m.sy = y
         m.vis = k > 0.85 && facing > 0.08
-        let ly = y
+        // Label placement: try spots around the dot (right, left, then above and below on each side,
+        // then further down) and take the first that is free and inside the clear area. (lx, ly) is the
+        // label's top-left corner.
         const lw = m.el.offsetWidth || 120
-        // Near the right edge (and the view buttons), the label goes to the left of its dot instead.
-        // The label is drawn 14 px right of (lx, ly) and 14 px up (see .moon-label).
-        const right = Math.min(w - (small ? 76 : 22), frameBox ? frameBox.right - 8 : w)
+        const lh = m.el.offsetHeight || 26
+        const G = 10 // gap between the dot and its label
+        const right = Math.min(w - (small ? 64 : 16), frameBox ? frameBox.right - 8 : w)
         const left = frameBox ? frameBox.left + 8 : 8
-        let lx = x
-        if (x + 14 + lw > right) {
-          if (x - lw - 14 >= left) lx = x - lw - 28
-          else {
-            // No room either side (a narrow free area): centred under the dot, kept inside.
-            lx = Math.min(right - lw, Math.max(left, x - lw / 2)) - 14
-            ly = y + 30
-          }
+        const top = frameBox ? frameBox.top + 4 : 4
+        const bottom = frameBox ? frameBox.bottom - 8 : h
+        const spots: [number, number][] = [
+          [x + G, y - lh / 2],
+          [x - G - lw, y - lh / 2],
+          [x + G, y - lh - 8],
+          [x + G, y + 8],
+          [x - G - lw, y - lh - 8],
+          [x - G - lw, y + 8],
+        ]
+        for (let k = 1; k <= 4; k++) spots.push([x + G, y + 8 + k * (lh + 6)], [x - G - lw, y + 8 + k * (lh + 6)], [x + G, y - lh - 8 - k * (lh + 6)])
+        const free = (bx: number, by: number) =>
+          bx >= left && bx + lw <= right && by >= top && by + lh <= bottom && !placed.some((p) => bx < p.x + p.w + 6 && p.x < bx + lw + 6 && by < p.y + p.h + 4 && p.y < by + lh + 4)
+        // Keep the spot it had while it stays free, so labels do not hop around as the Moon turns.
+        let pick = free(...spots[m.spot] ?? spots[0]) ? m.spot : spots.findIndex(([bx, by]) => free(bx, by))
+        if (pick >= 0) m.spot = pick
+        else pick = 0
+        let [lx, ly] = spots[pick]
+        if (!free(lx, ly)) {
+          // Nowhere free: next to the dot, kept inside the clear area.
+          lx = Math.min(right - lw, Math.max(left, lx))
+          ly = Math.min(bottom - lh, Math.max(top, ly))
         }
-        for (let guard = 0; guard < 8; guard++) {
-          const hit = placed.find((p) => Math.abs(p.y - ly) < 30 && lx < p.x + p.w + 6 && p.x < lx + lw + 6)
-          if (!hit) break
-          ly = hit.y + 32
+        if (show) placed.push({ x: lx, y: ly, w: lw, h: lh })
+        // Leader line from the dot to the nearest point of the label, when the label sits away from it.
+        const ax = Math.min(lx + lw, Math.max(lx, x))
+        const ay = Math.min(ly + lh, Math.max(ly, y))
+        const dx = ax - x
+        const dy = ay - y
+        const len = Math.hypot(dx, dy)
+        const leadOn = show && len > G + 6
+        if (leadOn) {
+          const start = 6 // leave the dot itself clear
+          m.lead.style.width = `${Math.max(0, len - start)}px`
+          m.lead.style.transform = `translate(${(x + (dx / len) * start).toFixed(1)}px, ${(y + (dy / len) * start).toFixed(1)}px) rotate(${Math.atan2(dy, dx).toFixed(4)}rad)`
         }
-        if (show) placed.push({ x: lx, y: ly, w: lw })
+        m.lead.style.opacity = leadOn ? (on ? '0.9' : '0.55') : '0'
+        m.lead.dataset.on = on ? 'true' : 'false'
         // Move labels by whole pixels only, so a label under the finger stays put.
         const nx = Math.round(lx)
         const ny = Math.round(ly)
@@ -1150,7 +1182,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       calloutRef.current?.removeEventListener('pointerleave', calloutLeave)
       window.clearTimeout(dropTimer)
       canvas.removeEventListener('wheel', wheel)
-      for (const m of markers) m.el.remove()
+      for (const m of markers) {
+        m.el.remove()
+        m.lead.remove()
+      }
       earthEl.remove()
       api.current = null
       heatTex?.dispose()

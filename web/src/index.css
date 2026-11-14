@@ -57,22 +57,37 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-  margin: -14px 0 0 14px;
-  padding: 6px 10px;
-  min-height: 32px;
-  font: 600 13px/1 var(--font-sans);
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  font: 600 12px/1.2 var(--font-sans);
+  letter-spacing: 0.01em;
   color: #fff;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 2px;
+  background: rgba(8, 10, 14, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
   cursor: pointer;
   transition: opacity 0.45s ease, background 0.25s, color 0.25s;
   backdrop-filter: blur(6px);
 }
-.moon-label:hover { background: rgba(255, 255, 255, 0.15) }
-.moon-label[data-on="true"] { color: #000; background: #f2b705; border-color: #f2b705 }
-@media (pointer: coarse) { .moon-label { min-height: 40px; padding: 10px 12px } }
+.moon-label:hover { background: rgba(40, 44, 52, 0.85); border-color: rgba(255, 255, 255, 0.35) }
+.moon-label[data-on="true"] { color: #000; background: #f2b705; border-color: #f2b705; box-shadow: 0 0 14px rgba(242, 183, 5, 0.45) }
+@media (pointer: coarse) { .moon-label { min-height: 32px; padding: 6px 12px } }
+/* Thin leader from a site's dot to its label, when the label had to move away. */
+.moon-lead {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.9);
+  transform-origin: 0 50%;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.moon-lead[data-on="true"] { background: #f2b705 }
 
 /* View controls over the Moon: zoom in, zoom out, back to the south pole. Anchored bottom-right of the free frame. */
 .moon-controls {
