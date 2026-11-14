@@ -8,16 +8,20 @@ export interface Scenario {
   mode: 'planner' | 'explore'
 }
 
+function todayAt6() {
+  const d = new Date()
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6, 0))
+}
+
 export const DEFAULT_SCENARIO: Scenario = {
   chosen: ['shackleton-rim', 'connecting-ridge', 'malapert-massif'],
   focus: 'shackleton-rim',
   mode: 'planner',
   mission: {
-    // Inside the southern midsummer of 2027 (sub-solar latitude <= -1.5 deg, 14 Oct to 14 Nov,
-    // from JPL Horizons): the season the south pole is best lit.
-    // Stay centred on the peak (7 Nov 2027).
-    landing: new Date(Date.UTC(2027, 9, 31, 6, 0)),
-    durationDays: 14,
+    // Today at 06:00 UTC, for 10 days. If today has no data (they cover Dec 2026 to Feb 2028), the
+    // app moves it to the nearest day that has, at 06:00, and says so (App.tsx, when the data arrive).
+    landing: todayAt6(),
+    durationDays: 10,
     slipDays: 0,
     survivalPowerW: 120,
     // Earth counts as in view when it clears the terrain, as in Wueller et al. (2026); raise it in More options.

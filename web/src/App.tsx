@@ -144,7 +144,8 @@ export default function App() {
   const [focus, setFocus] = useState(hasLink ? initial.focus : '')
   const [mission, setMission] = useState<Mission>(initial.mission)
   const [picking, setPicking] = useState(!hasLink)
-  const [cardOpen, setCardOpen] = useState(true)
+  // The card starts folded on every load: the Moon first; the pill at the top left opens it.
+  const [cardOpen, setCardOpen] = useState(false)
   // Street view: the 3D Moon dives onto the site, then the ground view opens full screen.
   const [diving, setDiving] = useState(false)
   const [streetOpen, setStreetOpen] = useState(false)
@@ -205,6 +206,23 @@ export default function App() {
   const [skyRef, skyH] = useBoxHeight<HTMLDivElement>()
   const t = STRINGS[lang]
   const { num, date: fmtDate, dateTime: fmtDateTime, duration: fmtDuration, reason, siteName } = useMemo(() => formatters(t), [t])
+  // No figures for dates without data: once the data arrive, a stay that falls outside them (today,
+  // before December 2026, or an old link) moves to the nearest day that has them, at 06:00 UTC.
+  useEffect(() => {
+    if (!ready) return
+    const DAY = 86400000
+    const from = mission.landing.getTime() + mission.slipDays * DAY
+    const lo = DATA.start.getTime()
+    const hi = DATA.end.getTime() - mission.durationDays * DAY
+    if (from >= lo && from <= hi) return
+    const near = new Date(from < lo ? lo : Math.max(lo, hi))
+    let day = Date.UTC(near.getUTCFullYear(), near.getUTCMonth(), near.getUTCDate(), 6)
+    if (day < lo) day += DAY
+    if (day > hi && day - DAY >= lo) day -= DAY
+    setMission((m) => ({ ...m, landing: new Date(day - m.slipDays * DAY) }))
+    setToast(t.toastNoData(fmtDateTime(new Date(day))))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
 
   useEffect(() => {
     document.documentElement.lang = lang
