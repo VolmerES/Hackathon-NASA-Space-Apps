@@ -10,5 +10,8 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Guías para local leads («LOCAL LEADS ONLY»): no se publican
-docs/organizacion/*.pdf
+# Guías marcadas «LOCAL LEAD(S) ONLY» en su título: no se publican.
+# Las demás de docs/organizacion/ son impresiones de páginas públicas de
+# spaceappschallenge.org y sí van en el repo.
+docs/organizacion/judging-and-awards.pdf
+docs/organizacion/project-submission-guide.pdf
