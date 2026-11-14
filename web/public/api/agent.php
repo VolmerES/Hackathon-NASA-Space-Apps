@@ -20,13 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail(405, 'POST only');
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if ($origin !== '' && !preg_match('#^https://nasaspaceapps\.volmer\.es$#', $origin)) fail(403, 'origin');
 
-// Rate limit: 20 requests per 5 minutes per address (a file per address in the temp folder).
+// Rate limit: 60 model calls per 5 minutes per address (one question takes several) (a file per address in the temp folder).
 $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'x';
 $ip = explode(',', $ip)[0];
 $bucket = sys_get_temp_dir() . '/fmttm_' . md5($ip);
 $now = time();
 $hits = array_filter(array_map('intval', @file($bucket, FILE_IGNORE_NEW_LINES) ?: []), fn ($t) => $t > $now - 300);
-if (count($hits) >= 20) fail(429, 'rate');
+if (count($hits) >= 60) fail(429, 'rate');
 $hits[] = $now;
 @file_put_contents($bucket, implode("\n", $hits));
 
@@ -57,7 +57,7 @@ Rules:
 - Word results as suggestions from the data, never as facts or orders. Say \"looks favourable, per the data\", \"seems tight\", \"the data suggest\". Never say \"you can land here\", \"it is safe\" or \"guaranteed\".
 - The verdict thresholds (sunlight, longest darkness, contact with Earth) are a choice of the team: an indication, not a decision. This is a hackathon prototype, not for mission decisions.
 - For every site you suggest, say the verdict the tool gives it, with its exact words, even when it is the best of the five; if none is favourable, say so plainly.
-- Name the buttons as the person sees them: 'Street view', 'Simulate landing', 'Suggested dates'. Never show tool names.
+- Name things as the person sees them on screen: 'Choose a site' (top left), the date bar (top), 'Street view', 'Simulate landing', 'Suggested dates', 'More detail', 'When?' and its options. Never write tool names, ids or parameter names (no get_screen, set_values, sites, battery_wh...).
 - Keep answers short: at most about 120 words, plain language, no jargon without a one-line explanation.
 - If the person has not said how many days they stay or roughly when, ask one short question, or use the current settings from get_settings and say so.
 - After a suggestion, offer to show it in the tool (show_site) or to stand on the site (open_street_view). Only change the view when the person agrees or asks.
@@ -74,7 +74,7 @@ Reglas:
 - Expresa los resultados como sugerencias a partir de los datos, nunca como hechos u órdenes. Di «parece favorable, según los datos», «parece justo», «los datos sugieren». Nunca digas «puedes alunizar aquí», «es seguro» ni «garantizado».
 - Los umbrales del veredicto (luz solar, oscuridad más larga, contacto con la Tierra) son una elección del equipo: una orientación, no una decisión. Es un prototipo de hackathon, no sirve para decidir una misión.
 - Para cada sitio que sugieras, di el veredicto que le da la herramienta, con sus mismas palabras, aunque sea el mejor de los cinco; si ninguno es favorable, dilo claramente.
-- Nombra los botones como los ve la persona: «Street view», «Simular alunizaje», «Fechas sugeridas». Nunca muestres nombres de herramientas.
+- Nombra las cosas como las ve la persona en pantalla: «Elegir un sitio» (arriba a la izquierda), la barra de fecha (arriba), «Street view», «Simular alunizaje», «Fechas sugeridas», «Más detalle», «¿Cuándo?» y sus opciones. Nunca escribas nombres de herramientas, identificadores ni parámetros (nada de get_screen, set_values, sites, battery_wh…).
 - Respuestas cortas: unas 120 palabras como mucho, lenguaje llano, sin tecnicismos sin explicar en una línea.
 - Si la persona no ha dicho cuántos días se queda o más o menos cuándo, haz una pregunta corta, o usa la configuración actual de get_settings y dilo.
 - Después de una sugerencia, ofrece enseñarla en la herramienta (show_site) o ponerse en el sitio (open_street_view). Cambia la vista solo si la persona acepta o lo pide.
@@ -131,6 +131,6 @@ $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 if ($res === false) fail(502, 'upstream');
 $out = json_decode($res, true);
-if ($code !== 200 || !isset($out['choices'][0]['message'])) fail($code === 429 ? 429 : 502, $code === 429 ? 'rate' : 'upstream');
+if ($code !== 200 || !isset($out['choices'][0]['message'])) fail($code === 429 ? 503 : 502, $code === 429 ? 'busy' : 'upstream');
 $msg = $out['choices'][0]['message'];
 echo json_encode(['message' => ['role' => 'assistant', 'content' => (string)($msg['content'] ?? ''), 'tool_calls' => $msg['tool_calls'] ?? []]]);

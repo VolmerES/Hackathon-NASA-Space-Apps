@@ -21,6 +21,7 @@ export type AssistantText = {
   close: string
   thinking: string
   errRate: string
+  errBusy: string
   errOffline: string
   errOther: string
   hello: string
@@ -80,6 +81,7 @@ export function Assistant({ open, onClose, lang, text, tools, confirm, context, 
           body: JSON.stringify({ lang, context: context(), messages: convo }),
         })
         if (r.status === 429) throw new Error('rate')
+        if (r.status === 503) throw new Error('busy')
         if (!r.ok) throw new Error('other')
         const { message } = (await r.json()) as { message: Msg }
         const calls = (message.tool_calls ?? []).filter((c) => c?.function?.name)
@@ -103,7 +105,7 @@ export function Assistant({ open, onClose, lang, text, tools, confirm, context, 
       }
     } catch (e) {
       const k = e instanceof Error ? e.message : ''
-      setError(k === 'rate' ? text.errRate : k === 'offline' ? text.errOffline : text.errOther)
+      setError(k === 'rate' ? text.errRate : k === 'busy' ? text.errBusy : k === 'offline' ? text.errOffline : text.errOther)
     } finally {
       setBusy(false)
     }
