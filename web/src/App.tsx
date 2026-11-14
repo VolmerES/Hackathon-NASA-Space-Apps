@@ -427,7 +427,7 @@ export default function App() {
   return (
     <LangContext.Provider value={t}>
       {moonOk ? (
-        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
+        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />

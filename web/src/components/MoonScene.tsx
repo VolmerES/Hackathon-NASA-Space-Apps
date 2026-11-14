@@ -29,6 +29,9 @@ type Props = {
   controls?: { zoomIn: string; zoomOut: string; recenter: string }
   /** Street view: dive down onto the focused site until the camera skims its ground. */
   dive?: boolean
+  /** Street view button inside the callout: stand on that site. */
+  onStreet?: (id: string) => void
+  streetLabel?: string
 }
 
 const DEG = Math.PI / 180
@@ -37,9 +40,6 @@ const SPIN = 0.018 // rad/s, idle rotation
 const HOLD_MS = 6000 // after a pick, stay put this long before turning again
 const ZOOM_MIN = 0.45 // closest: almost standing over the site
 const ZOOM_MAX = 9 // farthest: the whole Moon in view
-// Closing in, the camera tips toward the horizon and rolls on its axis so the ground sits at the
-// bottom of the screen and the sky above, as if standing on the Moon.
-const STAND_TILT = 75 * DEG
 const TILT_MIN = 6 * DEG // looking straight down on the pole
 const TILT_MAX = 84 * DEG // grazing, the horizon in view
 
@@ -98,7 +98,7 @@ function polarCap(q: Quality) {
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
-export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false }: Props) {
+export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, onStreet, streetLabel = 'Street view' }: Props) {
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
@@ -280,6 +280,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let hoverHold = 0
     // Site under the mouse: shows the callout and holds the Moon still.
     let hoverId: string | null = null
+    let hoverGrace = 0
     const setHoverId = (id: string | null) => {
       if (id === hoverId) return
       hoverId = id
@@ -347,7 +348,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Free view: zoom (wheel, pinch, buttons) and tilt (vertical drag) on top of the spin.
     let zoom = 1
     let zoomGoal = 1
+    // Diving into street view, the camera rolls on its axis so the ground sits at the bottom of the
+    // screen and the sky above, as if standing on the Moon. Only then: manual zoom keeps the map view.
     let roll = 0 // 0: polar view, north up; 1: standing, ground at the bottom
+    let standGoal = 0
     let tiltCur = TILT
     let tiltGoal = TILT
     const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z))
@@ -363,6 +367,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       if (state.current.focusId) focus(state.current.focusId)
     }
     const diveTo = (on: boolean) => {
+      standGoal = on ? 1 : 0
       if (!on) return recenter()
       if (state.current.focusId) focus(state.current.focusId)
       zoomGoal = 0.22
@@ -417,6 +422,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           const d = Math.hypot(m.sx - e.clientX, m.sy - e.clientY)
           if (d < 22 && (!best || d < best.d)) best = { id: m.id, d }
         }
+        if (best) hoverGrace = performance.now() + 700
+        else if (hoverId && performance.now() < hoverGrace) return // on the way to the callout
         setHoverId(best ? best.id : null)
         canvas.style.cursor = best ? 'pointer' : ''
         return
@@ -471,8 +478,22 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     canvas.addEventListener('pointermove', move)
     canvas.addEventListener('pointerup', up)
     canvas.addEventListener('pointercancel', up)
-    const leave = () => setHoverId(null)
+    // Moving from a site to its figure keeps the site hovered; leaving both drops it.
+    // The callout can be reached with the mouse: over it, the site stays hovered.
+    const inCallout = (n: EventTarget | null) => !!n && !!calloutRef.current?.contains(n as Node)
+    const leave = (e: PointerEvent) => {
+      if (inCallout(e.relatedTarget)) return
+      setHoverId(null)
+    }
     canvas.addEventListener('pointerleave', leave)
+    const calloutLeave = (e: PointerEvent) => {
+      if (e.relatedTarget === canvas) {
+        hoverGrace = performance.now() + 500
+        return
+      }
+      if (!inCallout(e.relatedTarget)) setHoverId(null)
+    }
+    calloutRef.current?.addEventListener('pointerleave', calloutLeave)
     const wheel = (e: WheelEvent) => {
       if (state.current.mode !== 'app') return
       e.preventDefault()
@@ -619,17 +640,16 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       const viewDist = appDist * zoom
       // Far out, orbit the whole Moon instead of a point on its surface.
       const far = THREE.MathUtils.smoothstep(viewDist, 1.1, 3.2)
-      const near = 1 - THREE.MathUtils.smoothstep(zoom, ZOOM_MIN, 1) // 0 at the usual distance, 1 closest
-      const tiltView = THREE.MathUtils.lerp(tiltCur, Math.max(tiltCur, STAND_TILT), near)
-      const tilt = THREE.MathUtils.lerp(92 * DEG, tiltView, k)
+      const tilt = THREE.MathUtils.lerp(92 * DEG, tiltCur, k)
       const dist = THREE.MathUtils.lerp(5.4, viewDist, k)
       target.set(0, 0, 0).lerp(appTarget, k * (1 - far))
       camDir.set(0, -Math.cos(tilt), Math.sin(tilt)).normalize()
       camera.position.copy(target).addScaledVector(camDir, dist)
       camera.up.set(0, 1, 0)
       camera.lookAt(target)
-      // Roll on the view axis as the camera nears the horizon (never in the intro, nor from afar).
-      roll = THREE.MathUtils.smoothstep(tilt, 45 * DEG, 72 * DEG) * THREE.MathUtils.smoothstep(k, 0.85, 1) * (1 - far)
+      // Street view dive: roll on the view axis, slowly, as the camera goes down to the ground.
+      roll += (standGoal * THREE.MathUtils.smoothstep(k, 0.85, 1) - roll) * (1 - Math.exp(-dt * (reduce ? 60 : 1.8)))
+      if (roll < 0.001) roll = 0
       if (roll > 0) camera.rotateZ(Math.PI * roll)
 
       let fx = w / 2
@@ -759,6 +779,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       canvas.removeEventListener('pointerup', up)
       canvas.removeEventListener('pointercancel', up)
       canvas.removeEventListener('pointerleave', leave)
+      calloutRef.current?.removeEventListener('pointerleave', calloutLeave)
       canvas.removeEventListener('wheel', wheel)
       for (const m of markers) m.el.remove()
       api.current = null
@@ -808,8 +829,18 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
                 <circle cx="0" cy="0" r="9" fill="none" stroke="#f2b705" strokeWidth="1.5" />
                 <path d="M6.5 -6.5 L44 -44 L64 -44" fill="none" stroke="#f2b705" strokeWidth="1.5" pathLength="1" />
               </svg>
-              <div className="moon-callout-card" role="tooltip">
+              <div className="moon-callout-card" role="group">
                 {info(hover)}
+                {onStreet && (
+                  <button type="button" className="moon-callout-street" onClick={() => onStreet(hover)}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="5" r="2.2" />
+                      <path d="M12 8v6M9 21l3-7 3 7M8.5 11.5h7" />
+                      <path d="M3 18.5c2.2-1 5.4-1.6 9-1.6s6.8.6 9 1.6" />
+                    </svg>
+                    {streetLabel}
+                  </button>
+                )}
               </div>
             </div>
           )}

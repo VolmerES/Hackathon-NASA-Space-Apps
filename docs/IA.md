@@ -78,6 +78,7 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 | Carga en móvil: medida en la web publicada con 4G simulado (2,3 MB). Quitado Plotly, que ya no usaba ninguna gráfica (−471 KB), y mapas globales de 1K para móviles y equipos débiles (−1 MB sin comprimir) | Medido, programado y probado | Petición de Juan Bautista; Plotly lo había decidido el equipo (`STACK.md` actualizado) | Pantalla de carga y app sin errores en móvil emulado; medición antes y después |
 | Cámara «de pie» en la Luna: al acercarse se inclina hacia el horizonte y gira sobre su eje para dejar el suelo abajo y el cielo arriba; el arrastre se invierte con ella para seguir «agarrando el suelo» | Programado y probado | Petición de Juan Bautista | Capturas a distancia normal, media y mínima |
 | Todo abre y cierra suave: desplegables que crecen y encogen, modal con entrada y salida, y paneles, street view, curvas del cielo, tarjeta y menú que se desvanecen antes de desaparecer (hook `useStay`) | Programado y probado | Petición de Juan Bautista | Medidas de altura y opacidad durante la animación; sin errores |
+| El giro de cámara «de pie» pasa a darse solo al entrar en street view (el zoom a mano mantiene la vista de mapa). Botón «Street view» dentro de la ficha que sale al pasar el ratón por un sitio, que se puede alcanzar sin que la ficha se cierre (primero se probó un muñeco flotante y el equipo lo descartó) | Programado y probado | Petición de Juan Bautista | Capturas del zoom sin giro y del picado; ficha alcanzable con el ratón y botón que abre el street view |
 
 ### 15‑nov · domingo
 
