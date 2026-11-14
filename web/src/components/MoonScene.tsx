@@ -247,7 +247,15 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       shownAt = performance.now()
       onReady?.()
       // Sharper maps for big screens, once the light ones are on screen.
-      if (q.maps4k) {
+      if (q.maps4k) load4k()
+    }
+    // The 4k maps of the whole globe: at once on the strongest computers; on middle ones, the first
+    // time the camera backs off far enough to see the whole Moon.
+    let got4k = false
+    const load4k = () => {
+      if (got4k) return
+      got4k = true
+      {
         loader.load('moon/moon_color_4k.jpg', (tex) => {
           tex.colorSpace = THREE.SRGBColorSpace
           tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
@@ -479,6 +487,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Spin about the polar axis: idle drift, drag, and turning a picked site to face the camera.
     let spin = -0.6
     let spinTarget: number | null = null
+    // A turn to a newly picked site: eased in and out, longer the bigger it is, with the camera
+    // backing off a little half way, like a hop between places on a map.
+    let turn: { from: number; to: number; t0: number; dur: number; hop: number } | null = null
+    let hop = 0
     let holdUntil = 0
     const focus = (id?: string) => {
       const m = markers.find((x) => x.id === id)
@@ -486,7 +498,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       const a = Math.atan2(-m.local.x, m.local.z)
       let d = a - spin
       d = Math.atan2(Math.sin(d), Math.cos(d))
-      spinTarget = spin + d
+      spinTarget = null
+      turn = Math.abs(d) < 0.02 ? null : { from: spin, to: spin + d, t0: performance.now(), dur: reduce ? 1 : 1100 + (Math.abs(d) / (Math.PI / 2)) * 1300, hop: Math.min(1, Math.abs(d) / (60 * DEG)) * 0.45 }
       holdUntil = performance.now() + HOLD_MS
     }
     // Free view: zoom (wheel, pinch, buttons) and tilt (vertical drag) on top of the spin.
@@ -576,6 +589,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       canvas.setPointerCapture(e.pointerId)
       spinTarget = null
+      turn = null
       setHoverId(null)
       if (pointers.size >= 2) {
         pinch = { d: spread(), zoom: zoomGoal }
@@ -717,13 +731,24 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let slowSum = 0
     let slowN = 0
     const adapt = (dt: number) => {
-      if (!shownAt) return
+      // A long gap is not a slow frame: the tab was hidden or the page paused. Counting it used to
+      // drop the quality one level for good every time someone came back to the tab. The same
+      // while the HD Moon is streaming its tiles.
+      if (!shownAt || dt > 0.25 || (hdOn && !hdTiles)) return
       slowSum += dt
       slowN++
       if (slowN < 45) return
       const avg = slowSum / slowN
       slowSum = 0
       slowN = 0
+      // Fast again: win back the resolution lost earlier, step by step.
+      const maxRatio = Math.min(q.pixelRatio, window.devicePixelRatio || 1)
+      if (avg < 0.018 && ratio < maxRatio) {
+        ratio = Math.min(maxRatio, ratio / 0.8)
+        renderer.setPixelRatio(ratio)
+        resize()
+        return
+      }
       if (avg <= 0.03) return
       if (q.level > 0) {
         // Slow: one level down. Fewer triangles, smaller or no shadows, lower resolution.
@@ -786,6 +811,14 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         if (Math.abs(spinVel) < 0.004) spinVel = 0
         if (Math.abs(tiltVel) < 0.004) tiltVel = 0
         holdUntil = now + HOLD_MS
+      } else if (turn) {
+        const p = Math.min(1, (now - turn.t0) / turn.dur)
+        spin = turn.from + (turn.to - turn.from) * ease(p)
+        hop = turn.hop * Math.sin(Math.PI * p)
+        if (p >= 1) {
+          turn = null
+          hop = 0
+        }
       } else if (spinTarget !== null) {
         spin += (spinTarget - spin) * (1 - Math.exp(-dt * 1.6))
         if (Math.abs(spinTarget - spin) < 0.001) spinTarget = null
@@ -832,7 +865,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       // Diving into street view, a slower, longer push-in: it is still going while the view fades in.
       zoom += (zoomGoal - zoom) * (1 - Math.exp(-dt * (pinch ? 14 : standGoal ? 1.7 : 4.5)))
       tiltCur += (tiltGoal - tiltCur) * (1 - Math.exp(-dt * (drag ? 12 : 3.5)))
-      const viewDist = appDist * zoom
+      if (!turn) hop = 0
+      const viewDist = appDist * zoom * (1 + hop)
+      if (!got4k && shownAt && !small && q.level >= 1 && viewDist > 1.6) load4k()
       // Far out, orbit the whole Moon instead of a point on its surface.
       const far = THREE.MathUtils.smoothstep(viewDist, 1.1, 3.2)
       const tilt = THREE.MathUtils.lerp(92 * DEG, tiltCur, k)

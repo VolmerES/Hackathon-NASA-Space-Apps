@@ -28,6 +28,8 @@ export type CesiumMoon = { update: () => void; dispose: () => void; setVisible: 
  */
 export function attachCesiumMoon(o: { token: string; parent: THREE.Object3D; camera: THREE.Camera; renderer: THREE.WebGLRenderer; onFirstTile: () => void }): CesiumMoon {
   const tiles = new TilesRenderer()
+  // Finer than the default (16 px of screen error per tile): sharper ground, more tiles.
+  tiles.errorTarget = 6
   tiles.registerPlugin(new CesiumIonAuthPlugin({ apiToken: o.token, assetId: ASSET_ID, autoRefreshToken: true }))
   tiles.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: new DRACOLoader() }))
   tiles.setCamera(o.camera)
