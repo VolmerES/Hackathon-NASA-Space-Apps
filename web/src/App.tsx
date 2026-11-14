@@ -321,6 +321,7 @@ export default function App() {
   const streetStay = useStay(streetOpen && !!focused, 520)
   const skyStay = useStay(!!focused && !picking && panel !== 'sky' && skyOpen)
   const cardStay = useStay(cardOpen)
+  const swipe = useRef<{ x: number; y: number } | null>(null)
   // The stay in hours (one sample per hour), so every percentage can also be read as hours.
   const stayH = Math.max(1, focused?.samples.length ?? 1)
   const hrs = (pct: number) => t.hoursOf(num((pct * stayH) / 100), num(stayH))
@@ -647,9 +648,23 @@ export default function App() {
         </header>
 
         <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
-          {/* The guided card: find a site, then the answer. A bottom sheet on phones. */}
-          <section className={`ui-in glass pointer-events-auto absolute inset-x-0 bottom-0 max-h-[64dvh] overflow-y-auto rounded-t-xl px-4 pb-6 pt-4 lg:relative lg:max-h-none lg:w-[400px] lg:shrink-0 lg:rounded-none lg:p-5 ${cardOpen ? '' : cardStay.value ? 'sheet-out' : 'hidden'}`}>
-            <CloseButton label={t.hidePanel} onClick={() => setCardOpen(false)} kind="fold" className="float-right -mt-1 ml-2" />
+          {/* The guided card: find a site, then the answer. A drawer on the left at every size: over the
+              Moon on phones, beside it from tablets up. A slim tab on its edge folds it; on phones a swipe
+              to the left does too. */}
+          <div
+            className={`pointer-events-auto absolute inset-y-0 left-0 z-20 w-[min(88vw,380px)] lg:relative lg:z-auto lg:w-[400px] lg:shrink-0 ${cardOpen ? 'drawer-in' : cardStay.value ? 'drawer-out' : 'hidden'}`}
+            onTouchStart={(e) => {
+              const p = e.touches[0]
+              swipe.current = { x: p.clientX, y: p.clientY }
+            }}
+            onTouchEnd={(e) => {
+              const p = e.changedTouches[0]
+              const st = swipe.current
+              swipe.current = null
+              if (st && st.x - p.clientX > 70 && Math.abs(p.clientY - st.y) < 50) setCardOpen(false)
+            }}
+          >
+          <section className="glass h-full overflow-y-auto overscroll-contain rounded-r-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 lg:rounded-none lg:p-5">
             {picking || !focused ? (
               <div>
                 {focused && (
@@ -973,9 +988,19 @@ export default function App() {
               </div>
             )}
           </section>
+          <button
+            type="button"
+            onClick={() => setCardOpen(false)}
+            aria-label={t.hidePanel}
+            title={t.hidePanel}
+            className="glass absolute -right-5 top-1/2 flex h-14 w-5 -translate-y-1/2 items-center justify-center rounded-r-md border-l-0 text-white/70 hover:text-white"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+          </button>
+          </div>
 
           {/* Free area: the 3D Moon frames the south pole here. */}
-          <div className={`pointer-events-none absolute inset-x-0 top-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'bottom-[64dvh]' : 'bottom-20'}`}>
+          <div className={`pointer-events-none absolute inset-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'sm:left-[380px]' : ''}`}>
             <div ref={frameRef} className="relative min-h-0 flex-1" aria-hidden="true">
               {splashDone && moonOk && !panel && !lightOn && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
               {/* Legend of the heat map: what the colours mean, and how far to trust them. */}
@@ -1008,23 +1033,23 @@ export default function App() {
                 </button>
               </div>
             )}
-            {/* The main card, folded: a floating button brings it back (fixed, so its place here does not matter). */}
+            {/* The main card, folded: a small pill at the top left brings it back. */}
           {!cardOpen && !cardStay.value && (
             <button
               onClick={() => setCardOpen(true)}
               aria-label={t.showPanel}
-              className="ui-in glass pointer-events-auto fixed bottom-4 left-1/2 z-20 flex min-h-12 max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-2.5 rounded-full px-5 font-semibold lg:bottom-6 lg:left-6 lg:translate-x-0"
+              className="drawer-in glass pointer-events-auto absolute left-0 top-3 z-20 flex min-h-10 max-w-[min(70vw,320px)] items-center gap-2 rounded-r-full py-1.5 pl-3 pr-3 text-sm font-semibold lg:left-3 lg:rounded-full"
             >
               {focused && !picking ? (
                 <>
                   <i className="inline-block size-2.5 shrink-0 rounded-full" style={{ background: VERDICT_HEX[focused.m.verdict] }} />
                   <span className="truncate">{siteName(focused.site)}</span>
-                  <span className={`shrink-0 text-sm ${VERDICT_CLS[focused.m.verdict]}`}>{t.verdictLong[focused.m.verdict]}</span>
+                  <span className={`hidden shrink-0 text-xs sm:inline ${VERDICT_CLS[focused.m.verdict]}`}>{t.verdictLong[focused.m.verdict]}</span>
                 </>
               ) : (
                 <span>{t.chooseSiteShort}</span>
               )}
-              <span className="rotate-180 text-muted"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg></span>
+              <span className="shrink-0 text-muted"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg></span>
             </button>
           )}
           </div>

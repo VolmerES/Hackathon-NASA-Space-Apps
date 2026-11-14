@@ -382,3 +382,10 @@ details.soft-moving { overflow: hidden }
 .moon-callout[data-side="center"] .moon-callout-lead path { display: none }
 @media (max-width: 1023px) { .moon-callout { z-index: 20 } }
 .moon-callout-street:focus-visible { outline: 2px solid #fff; outline-offset: 2px }
+
+/* The card drawer slides in from the left and back out to it. */
+.drawer-in { animation: drawer-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both }
+@keyframes drawer-in { from { opacity: 0; transform: translateX(-28px) } }
+.drawer-out { animation: drawer-out 0.38s cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none }
+@keyframes drawer-out { to { opacity: 0; transform: translateX(-28px) } }
+@media (prefers-reduced-motion: reduce) { .drawer-in, .drawer-out { animation: none } }
