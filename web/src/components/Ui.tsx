@@ -168,3 +168,56 @@ export function FloatPanel({ title, children, className = '', defaultOpen = true
     </details>
   )
 }
+
+/**
+ * A number field you can type into freely: it may be empty or half-typed while you write (so "1" can
+ * be cleared to type "30"); each valid value inside [min, max] applies at once, and on leaving the
+ * field anything else is put back inside the range.
+ */
+export function NumberField({ value, min, max, step = 1, onValue, className = '', ...rest }: {
+  value: number
+  min: number
+  max: number
+  step?: number
+  onValue: (n: number) => void
+  className?: string
+  'aria-label'?: string
+  title?: string
+  required?: boolean
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const clamp = (n: number) => Math.min(max, Math.max(min, n))
+  const commit = () => {
+    if (draft === null) return
+    const n = Number(draft.replace(',', '.'))
+    onValue(draft.trim() === '' || !Number.isFinite(n) ? clamp(value) : clamp(n))
+    setDraft(null)
+  }
+  return (
+    <input
+      type="text"
+      inputMode={step < 1 ? 'decimal' : 'numeric'}
+      value={draft ?? String(value)}
+      onChange={(e) => {
+        const text = e.target.value
+        if (!/^-?\d*([.,]\d*)?$/.test(text)) return
+        setDraft(text)
+        const n = Number(text.replace(',', '.'))
+        if (text.trim() !== '' && Number.isFinite(n) && n >= min && n <= max) onValue(n)
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault()
+          const base = draft !== null && Number.isFinite(Number(draft.replace(',', '.'))) && draft.trim() !== '' ? Number(draft.replace(',', '.')) : value
+          const n = clamp(Math.round((base + (e.key === 'ArrowUp' ? step : -step)) * 1000) / 1000)
+          setDraft(null)
+          onValue(n)
+        }
+      }}
+      className={className}
+      {...rest}
+    />
+  )
+}

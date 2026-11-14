@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { Metrics } from '../data/model'
 import { useT } from '../i18n'
 import { newMission, type MissionDef, type MissionType, type SavedScenario } from '../missions'
+import { NumberField } from './Ui'
 
 type Verdict = Metrics['verdict']
 export type Evaluated = { site: string; when: string; m: Metrics } | null
@@ -189,7 +190,6 @@ function MissionForm({ draft, onCancel, onSave }: { draft: MissionDef; onCancel:
   const set = <K extends keyof MissionDef>(k: K, v: MissionDef[K]) => setM((x) => ({ ...x, [k]: v }))
   const setReq = (k: keyof MissionDef['req'], v: number) => setM((x) => ({ ...x, req: { ...x.req, [k]: v } }))
   const field = 'mt-1 min-h-11 w-full rounded-sm border border-white/20 bg-black/40 px-3 py-2 text-ink'
-  const n = (v: string, lo: number, hi: number) => Math.min(hi, Math.max(lo, Number(v) || 0))
   const legend = 'text-xs font-semibold uppercase tracking-wider text-sun'
 
   return (
@@ -216,18 +216,18 @@ function MissionForm({ draft, onCancel, onSave }: { draft: MissionDef; onCancel:
 
       <fieldset className="grid grid-cols-2 gap-3">
         <legend className={`${legend} col-span-2 mb-3`}>{t.ms.sEnergy}</legend>
-        <label className="block">{t.survivalPower}<input type="number" min={0} value={m.survivalPowerW} onChange={(e) => set('survivalPowerW', n(e.target.value, 0, 1e6))} className={field} /></label>
-        <label className="block">{t.ms.battery}<input type="number" min={0} step={100} value={m.batteryWh} onChange={(e) => set('batteryWh', n(e.target.value, 0, 1e7))} className={field} /></label>
+        <label className="block">{t.survivalPower}<NumberField min={0} max={1e6} value={m.survivalPowerW} onValue={(v) => set('survivalPowerW', v)} className={field} /></label>
+        <label className="block">{t.ms.battery}<NumberField min={0} max={1e7} step={100} value={m.batteryWh} onValue={(v) => set('batteryWh', v)} className={field} /></label>
         <p className="col-span-2 text-xs text-muted">{t.ms.energyNote}</p>
       </fieldset>
 
       <fieldset className="grid grid-cols-2 gap-3">
         <legend className={`${legend} col-span-2 mb-3`}>{t.ms.sReq}</legend>
-        <label className="block">{t.daysOnSurface}<input type="number" min={1} max={60} value={m.durationDays} onChange={(e) => set('durationDays', n(e.target.value, 1, 60))} className={field} /></label>
-        <label className="block">{t.ms.minSun}<input type="number" min={0} max={100} value={m.req.minSunPct} onChange={(e) => setReq('minSunPct', n(e.target.value, 0, 100))} className={field} /></label>
-        <label className="block">{t.ms.maxDark}<input type="number" min={0} value={m.req.maxDarkH} onChange={(e) => setReq('maxDarkH', n(e.target.value, 0, 2000))} className={field} /></label>
-        <label className="block">{t.ms.minEarth}<input type="number" min={0} max={100} value={m.req.minEarthPct} onChange={(e) => setReq('minEarthPct', n(e.target.value, 0, 100))} className={field} /></label>
-        <label className="block">{t.antennaAngle}<input type="number" min={0} max={30} step={0.5} value={m.minAntennaElevDeg} onChange={(e) => set('minAntennaElevDeg', n(e.target.value, 0, 30))} className={field} /></label>
+        <label className="block">{t.daysOnSurface}<NumberField min={1} max={60} value={m.durationDays} onValue={(v) => set('durationDays', Math.round(v))} className={field} /></label>
+        <label className="block">{t.ms.minSun}<NumberField min={0} max={100} value={m.req.minSunPct} onValue={(v) => setReq('minSunPct', v)} className={field} /></label>
+        <label className="block">{t.ms.maxDark}<NumberField min={0} max={2000} value={m.req.maxDarkH} onValue={(v) => setReq('maxDarkH', v)} className={field} /></label>
+        <label className="block">{t.ms.minEarth}<NumberField min={0} max={100} value={m.req.minEarthPct} onValue={(v) => setReq('minEarthPct', v)} className={field} /></label>
+        <label className="block">{t.antennaAngle}<NumberField min={0} max={30} step={0.5} value={m.minAntennaElevDeg} onValue={(v) => set('minAntennaElevDeg', v)} className={field} /></label>
         <p className="col-span-2 text-xs text-muted">{t.ms.reqNote}</p>
       </fieldset>
 

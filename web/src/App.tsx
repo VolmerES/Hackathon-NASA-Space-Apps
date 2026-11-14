@@ -9,7 +9,7 @@ import { LIGHT_CAP_DEG, LIGHT_GRADIENT, lightMap, lightUpTo, type LightMap } fro
 import { SiteLight } from './components/SiteLight'
 import { LangContext, STRINGS, readLang, useT, type Lang, type Strings } from './i18n'
 import { useBoxHeight, useMedia, useStay } from './hooks'
-import { CloseButton, FloatPanel, HamburgerMenu, Overlay, Snackbar } from './components/Ui'
+import { CloseButton, FloatPanel, HamburgerMenu, NumberField, Overlay, Snackbar } from './components/Ui'
 import { Splash, SKIP as SKIP_SPLASH } from './components/Splash'
 import { TimeBar } from './components/TimeBar'
 import { Missions, type Evaluated } from './components/Missions'
@@ -1082,15 +1082,15 @@ export default function App() {
                       <p className={`border-l-2 pl-2 text-xs ${active ? 'border-sun/60 text-white/85' : 'border-white/25 text-muted'}`}>{active ? t.ms.valuesOf(active.name) : t.ms.valuesFree}</p>
                       <label>
                         {t.ms.battery}
-                        <input type="number" min={0} step={100} value={mission.batteryWh ?? 0} onChange={(e) => setMissionValue('batteryWh', Math.max(0, Number(e.target.value) || 0))} className={`mt-1 ${field}`} />
+                        <NumberField min={0} max={1e7} step={100} value={mission.batteryWh ?? 0} onValue={(v) => setMissionValue('batteryWh', v)} className={`mt-1 ${field}`} />
                       </label>
                       <label>
                         {t.survivalPower}
-                        <input type="number" min={0} value={mission.survivalPowerW} onChange={(e) => setMissionValue('survivalPowerW', Math.max(0, Number(e.target.value) || 0))} className={`mt-1 ${field}`} />
+                        <NumberField min={0} max={1e6} value={mission.survivalPowerW} onValue={(v) => setMissionValue('survivalPowerW', v)} className={`mt-1 ${field}`} />
                       </label>
                       <label>
                         {t.antennaAngle}
-                        <input type="number" step={0.5} min={0} value={mission.minAntennaElevDeg} onChange={(e) => setMissionValue('minAntennaElevDeg', Math.max(0, Number(e.target.value) || 0))} className={`mt-1 ${field}`} />
+                        <NumberField min={0} max={30} step={0.5} value={mission.minAntennaElevDeg} onValue={(v) => setMissionValue('minAntennaElevDeg', v)} className={`mt-1 ${field}`} />
                       </label>
                       <label className="flex cursor-pointer items-start gap-3">
                         <input type="checkbox" checked={madrid} onChange={(e) => setMadrid(e.target.checked)} className="mt-1 size-5 shrink-0 accent-sun" />

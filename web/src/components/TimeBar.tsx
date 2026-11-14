@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { DayPlan } from '../data/model'
 import { useT } from '../i18n'
 import { LandingCalendar } from './LandingCalendar'
+import { NumberField } from './Ui'
 
 const HOUR = 3600000
 
@@ -74,15 +75,7 @@ export function TimeBar({ start, min, max, stay, index, sunHours, plan, label, o
       />
       <span className="hidden text-[11px] text-muted sm:inline">UTC</span>
       <label className="flex shrink-0 items-center gap-1 text-[11px] text-muted" title={t.daysOnSurface}>
-        <input
-          type="number"
-          aria-label={t.daysOnSurface}
-          min={1}
-          max={60}
-          value={stay}
-          onChange={(e) => onStay(Math.min(60, Math.max(1, Math.round(Number(e.target.value)) || 1)))}
-          className="h-8 w-12 rounded-sm border border-white/20 bg-black/40 px-1.5 text-xs text-ink"
-        />
+        <NumberField aria-label={t.daysOnSurface} min={1} max={60} value={stay} onValue={(n) => onStay(Math.round(n))} className="h-8 w-12 rounded-sm border border-white/20 bg-black/40 px-1.5 text-center text-xs text-ink" />
         {t.daysShort}
       </label>
       <output className="ml-auto shrink-0 rounded-sm bg-sun/15 px-2 py-1 text-xs tabular-nums text-ink sm:order-last sm:ml-0">
