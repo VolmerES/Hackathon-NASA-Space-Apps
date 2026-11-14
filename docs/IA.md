@@ -27,8 +27,6 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 
 ### 13‑nov (noche, antes del hackathon): base de conocimiento
 
-Todo esto es contexto, no proyecto: no hay código del producto.
-
 | Qué | La IA (Claude Code) | El equipo | Comprobado |
 |---|---|---|---|
 | Diapositivas del evento (`docs/briefing/`) | Leyó las fotos y transcribió agenda, criterios, premios y entregables a `CONTEXTO.md`. Marcó una contradicción (pitch de 2 o 3 min) | Juan Bautista hizo las fotos en la presentación | ⚠️ Transcripción sin revisar contra las fotos por una persona |
