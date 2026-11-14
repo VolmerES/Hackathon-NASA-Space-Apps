@@ -16,9 +16,8 @@ después del [alcance](ALCANCE.md). Las versiones exactas se fijan al instalar.
   el móvil**, no solo consultar. Se diseña para 360–430 px y se amplía a
   escritorio (paneles lado a lado desde ~1024 px).
 - **Probado en un iPhone (Safari) y un Android (Chrome) de verdad.**
-- **PWA, la primera de «si da tiempo»:** instalable en la pantalla de inicio y
-  con los datos en caché, como una app pero sin tienda. Si falla el wifi en el
-  pitch, funciona igual.
+- **PWA en el MVP:** instalable en la pantalla de inicio y con los datos en
+  caché, como una app pero sin tienda. Funciona sin conexión (ver la sección 4).
 - Navegadores: Chrome, Edge, Firefox y Safari recientes.
 
 ## 2. Las piezas
@@ -65,7 +64,7 @@ después del [alcance](ALCANCE.md). Las versiones exactas se fijan al instalar.
 | Mapa del polo sur | MVP: **imagen del relieve + marcadores SVG**. Si da tiempo: **OpenLayers** con teselas WMTS de Moon Trek | OpenLayers maneja bien proyecciones polares; Leaflet necesita más apaños |
 | 3D (si da tiempo) | **three.js + React Three Fiber + drei** | Ver [`INTERFAZ.md`](INTERFAZ.md) |
 | Estado | Estado de React + **escenario en la URL** | Sin librerías extra |
-| PWA (la primera si da tiempo) | `vite-plugin-pwa` | Instalable y sin conexión |
+| PWA (MVP) | `vite-plugin-pwa` | Instalable y sin conexión |
 | Textos | Inglés | Lo que ve el jurado |
 
 ### IA
@@ -84,7 +83,28 @@ después del [alcance](ALCANCE.md). Las versiones exactas se fijan al instalar.
 | Servidor opcional | **Contabo** (VPS de whoshuman y telegrupos), contenedor propio |
 | Filtros del jurado | Clasificación en **FortiGuard** del subdominio |
 
-## 4. Estructura del repo
+## 4. Fiabilidad para el usuario (no solo para la demo)
+
+Decidido el 14‑nov: un planificador puede estar usándola **en un momento
+crítico**. La resiliencia es una característica del producto.
+
+**Principio: una cifra equivocada es peor que ninguna.** Si algo falla, la app
+lo dice; nunca enseña datos malos en silencio.
+
+| Capa | Qué | Cuándo |
+|---|---|---|
+| **Sin conexión** | PWA: la app y todos sus datos quedan en el dispositivo. Indicador «Available offline ✓» | 🟢 MVP |
+| **Sin servidor único** | Copias idénticas en Hostinger y GitHub Pages | 🟢 MVP |
+| | La app pide los datos a la otra copia si una falla, sola | 🟡 Si da tiempo |
+| **Servicios externos opcionales** | Horizons, Moon Trek y la IA fuera del camino crítico: mapa → imagen estática, IA → plantilla, Horizons → «no disponible» | 🟢 MVP |
+| **Datos con versión** | Manifiesto con versión, fecha, fuentes; la versión se ve en la interfaz | 🟢 MVP |
+| | Huella (*checksum*) de cada fichero; si llega dañado, se usa la última versión buena | 🟡 Si da tiempo |
+| **Fallar de forma segura** | Fuera de 2026–2028: mensaje, nunca extrapolar. Coordenadas sin relieve: aviso permanente. Una pieza que falla no tumba la app (*error boundaries* de React) | 🟢 MVP |
+| **Copia de la decisión** | Escenario en la URL | 🟡 Si da tiempo |
+| | Exportar a PDF o CSV con cifras, versión de datos y fuentes | 🟡 Si da tiempo |
+| **Regenerable** | Código, scripts y fuentes de la NASA en el repo público: cualquiera regenera y vuelve a publicar | 🟢 MVP |
+
+## 5. Estructura del repo
 
 ```text
 docs/            Esta documentación
@@ -98,7 +118,7 @@ web/             La aplicación
   public/data/   Lo que genera el pipeline (sí va en git: es lo que se sirve)
 ```
 
-## 5. El contrato de datos (lo primero el sábado)
+## 6. El contrato de datos (lo primero el sábado)
 
 La forma exacta de los ficheros entre Python y la web. Con él, Angela trabaja
 desde las 10:30 con datos de prueba. Esbozo, a cerrar el sábado:
@@ -114,7 +134,7 @@ desde las 10:30 con datos de prueba. Esbozo, a cerrar el sábado:
 - Unidades y convenios por escrito: grados, UTC, acimut desde el norte en
   sentido horario, sistema MOON_ME.
 
-## 6. Lo que queda fuera
+## 7. Lo que queda fuera
 
 - App nativa (iOS, Android, Flutter, React Native).
 - Servidor en el MVP.

@@ -47,6 +47,7 @@ Todo esto es contexto, no proyecto: no hay código del producto.
 | Reparto del software (`REPARTO.md`) | Propuso que Juan y Luna programen el módulo de física y listó los errores típicos que deben vigilar | Juan Bautista planteó que se quedaba con todo el software. Juan y Luna manejan algo de Python: hacen las fórmulas cortas y la verificación | — |
 | Stack (`STACK.md`) | Propuso web adaptable frente a app móvil, las tecnologías de cada parte, la estructura del repo y el esbozo del contrato de datos | Juan Bautista pidió definirlo. ⚠️ Pendiente de cerrarlo con el equipo | El peso de las efemérides es una estimación |
 | Móvil primero (`STACK.md`, `INTERFAZ.md`, `ALCANCE.md`) | Tradujo la decisión a cambios: gráficas en SVG con D3 en vez de Plotly, efemérides a 30 min, interacción táctil, PWA prioritaria, prueba en dispositivos reales | **La decisión es de Juan Bautista** | — |
+| Fiabilidad (`STACK.md`) | Diseñó las capas de resiliencia (sin conexión, dos copias, servicios opcionales, datos con versión, fallo seguro, copia de la decisión) | **La exigencia es de Juan Bautista:** que no se caiga a un usuario en un momento crítico | — |
 | Repo en GitHub | Creó el repo, hizo el commit y lo subió | Juan Bautista lo pidió y decidió hacerlo público | — |
 
 ### 14‑nov · sábado

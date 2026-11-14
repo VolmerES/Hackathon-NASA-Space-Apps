@@ -21,6 +21,8 @@ consideraciones del [enunciado](retos/lunar-landing-site-navigator.md).
 5. El % de Sol y de Tierra de cada sitio está comparado con el mapa de PGDA 69,
    y la diferencia, explicada.
 6. Está publicado en `nasaspaceapps.volmer.es` y funciona sin servidor.
+8. **Sigue funcionando sin conexión** una vez abierta, y si falla un servicio
+   externo lo dice sin enseñar cifras falsas.
 7. **Se usa entero en el móvil:** probado en un iPhone (Safari) y un Android
    (Chrome) de verdad.
 
@@ -39,7 +41,7 @@ consideraciones del [enunciado](retos/lunar-landing-site-navigator.md).
 | O9 | **Mapas 2D, 3D** u otras representaciones | 🟢 MVP: mapa 2D · 🟡 Si da tiempo: vista 3D desde el sitio | El 3D no decide nada que no muestre el panorama |
 | O10 | **Animaciones o cronogramas** del día lunar | 🟢 MVP: cronograma · 🟡 Si da tiempo: animación | La animación es para el vídeo |
 | O11 | Servir a **planificadores y a público y profesores** | 🟢 MVP: modo Planner con ⓘ en cada cifra · 🟡 Si da tiempo: modo Explore | |
-| O12 | Formato libre (web, móvil, visualización, juego…) | 🟢 MVP: **web móvil primero, usable entera en el móvil** · 🟡 Si da tiempo (la primera): PWA instalable y sin conexión · ⚪ Fuera: app nativa, juego | |
+| O12 | Formato libre (web, móvil, visualización, juego…) | 🟢 MVP: **web móvil primero, usable entera en el móvil** · 🟢 MVP también: **PWA instalable y sin conexión** (fiabilidad, ver [`STACK.md`](STACK.md#4-fiabilidad-para-el-usuario-no-solo-para-la-demo)) · ⚪ Fuera: app nativa, juego | |
 
 ## Lo que sugiere (consideraciones técnicas)
 
