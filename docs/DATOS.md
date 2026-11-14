@@ -290,6 +290,59 @@ Visualization Studio».
   de la herramienta sale de ellos.
 - Los ficheros originales no van al repo: se bajan de la URL de arriba.
 
+### 2 quinquies. La Tierra de la escena: Blue Marble (NASA)
+
+La Tierra que se ve en el cielo de la Luna usa la imagen **Blue Marble Next
+Generation** de diciembre de 2004 (NASA Earth Observatory, R. Stöckli),
+`world.topo.bathy.200412.3x5400x2700.jpg`, reducida a 1024 × 512 px en
+`web/public/moon/earth_1k.jpg`. Sin nubes; la escena la aclara y le añade un
+velo azul para que no salga oscura. **Solo se usa para dibujar.**
+
+- **Dónde está y cuánto mide**: la dirección es el punto subterrestre de
+  `subpoints.json` (JPL Horizons) y el tamaño aparente sale de la distancia
+  Tierra–Luna de ese mismo fichero. Se dibuja más cerca y más pequeña en
+  proporción, así que el tamaño angular es el real (unos 1,9°).
+- **Qué cara enseña**: se calcula en el navegador con la dirección del Sol
+  que ya tiene la escena y la fecha (eje inclinado 23,44° hacia la longitud
+  eclíptica 90°; el Sol sobre el meridiano del mediodía, con ecuación del
+  tiempo). Se toma el polo de la Luna como polo de la eclíptica (se separan
+  1,5°). **Comprobado**: la elevación de la Luna sobre Madrid que da este
+  cálculo se compara con la de `madrid.json` (JPL Horizons) en las 10.249
+  horas: diferencia media 0,72°, máxima 1,62°. Es una aproximación para
+  dibujar, no un dato de la herramienta.
+- **Vistas**: «Desde la Tierra» pone la cámara en la línea Luna–Tierra con un
+  teleobjetivo (a 30 radios lunares, no a los 221 reales: se ve un 1 % menos
+  de disco que desde aquí). «Mirar a la Tierra» la pone detrás de la Luna, al
+  sur, con la Tierra sobre el limbo polar.
+
+### 2 sexies. Suelo real de los sitios (PGDA 78) y descenso del Apolo 11
+
+- **Suelo de 5 m.** NASA PGDA 78, «High-Resolution LOLA Topography for Lunar
+  South Pole Sites» (Barker et al. 2021, doi:10.1016/j.pss.2020.105119). Mapas
+  LOLA de 5 m/píxel en estereográfica polar, MOON_ME (DE421). Mapa por sitio:
+  Malapert → `Site23`, Haworth → `Haworth`, de Gerlache → `SL2`, Mons Mouton →
+  `Site20v2`, Nobile → `Site06`. `web/scripts/ground_patches.py` lee solo las
+  filas necesarias (peticiones parciales) y guarda un cuadrado de 900 m por
+  sitio, alineado con el este y el norte locales, en
+  `web/public/data/ground.{bin,json}` (320 KB). **Comprobado**: la altura del
+  centro coincide al decímetro con `site_height_m` del paquete del equipo en
+  los 5 sitios.
+- **Para qué se usa**: el suelo del street view hasta 330 m del sitio (más allá
+  se funde con el de antes, hecho a partir del horizonte), la inclinación de la
+  nave al posarse (pendiente bajo las patas, a 4,5 m del centro) y el panel
+  «Cielo y suelo a esta hora»: pendiente del sitio (plano sobre 25 × 25 m) e
+  incidencia del Sol sobre esa pendiente.
+- **Descenso del Apolo 11.** Altura y velocidad de descenso que leyó Buzz
+  Aldrin entre 750 pies (102:43:01) y «Contact light» (102:45:40), copiadas
+  del texto literal del NASA Apollo Lunar Surface Journal
+  (<https://apollojournals.org/alsj/a11/a11.landing.html>). Entre llamadas se
+  interpola en línea recta; se reproduce 8 veces más rápido y solo en vertical
+  (se omite el avance horizontal). Es un descenso real, pero del Apolo 11, no
+  de Artemis ni de estos sitios.
+- **Relieve de la Luna 3D a escala real**: `RELIEF` pasa de 1,5 a 1.
+- **NASA Moon Trek**: se miró para una imagen del polo de más resolución; no
+  hay acceso directo a sus teselas (403/404), así que no se usa.
+
 ### 3. Otros, por si hacen falta
 
 - [PGDA 81](https://pgda.gsfc.nasa.gov/products/81) y [PGDA 90](https://pgda.gsfc.nasa.gov/products/90):

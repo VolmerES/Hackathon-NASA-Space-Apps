@@ -29,7 +29,7 @@ type Props = {
   /** Contents of the callout shown while the mouse rests on a site (desktop only). */
   info?: (id: string) => ReactNode
   /** Texts of the view controls (zoom in, zoom out, back to the south pole). */
-  controls?: { zoomIn: string; zoomOut: string; recenter: string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void }
+  controls?: { zoomIn: string; zoomOut: string; recenter: string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void; earth?: string; fromEarth?: string; hd?: string }
   /** Heat map laid over the polar cap (a square picture out to `deg` of colatitude), or null. */
   heat?: { canvas: HTMLCanvasElement; deg: number } | null
   /** Street view: dive down onto the focused site until the camera skims its ground. */
@@ -37,6 +37,9 @@ type Props = {
   /** Sub-solar point (deg) at the chosen date and hour, from JPL Horizons. In app mode the sunlight
    *  comes from there, so day, night and the terminator on the Moon are the real ones. */
   sunAt?: { lat: number; lon: number }
+  /** The Earth in the Moon's sky at the chosen hour: sub-Earth point (deg) and distance, from JPL
+   *  Horizons; `t` (ms, UTC) sets which side of the Earth faces the Moon. */
+  earth?: { lat: number; lon: number; km: number; t: number; label: string }
   /** Street view button inside the callout: stand on that site. */
   onStreet?: (id: string) => void
   streetLabel?: string
@@ -64,9 +67,9 @@ function surface(lat: number, lon: number, r = 1) {
 // of the stretching an equirectangular map has there. Its edge fades into the globe.
 const CAP_DEG = 25
 // Real relief on the polar cap: polar_height.png spans this range of LOLA heights (printed by
-// scripts/moon_polar_cap.py), raised RELIEF times (a choice of the team) so craters and massifs read from any angle.
+// scripts/moon_polar_cap.py), times RELIEF (1: the true heights).
 const HEIGHT_RANGE_M = 12578
-const RELIEF = 1.5
+const RELIEF = 1 // true scale (it was 1.5 before, a choice of the team for readability)
 const HEIGHT_SCALE = (HEIGHT_RANGE_M * RELIEF) / 1737400
 const CAP_R = 1.0006
 function polarCap(q: Quality) {
@@ -108,16 +111,19 @@ function polarCap(q: Quality) {
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
-export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, sunAt, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer', heat = null }: Props) {
+export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, sunAt, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer', heat = null, earth }: Props) {
+  const [view, setView] = useState<0 | 1 | 2>(0) // 0: the pole; 1: the Moon seen from the Earth; 2: looking at the Earth
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
   const [credit, setCredit] = useState(false) // Cesium ion terrain on screen: their attribution is due
+  const [hdState, setHdState] = useState<0 | 1 | 2>(0) // HD Moon: off, loading, on
+  const hdAvailable = !!import.meta.env.VITE_CESIUM_TOKEN
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const labelsRef = useRef<HTMLDivElement>(null)
-  const state = useRef({ mode, sites, focusId, onPick, showLabels, sunAt })
-  state.current = { mode, sites, focusId, onPick, showLabels, sunAt }
-  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void; setHeat: (h: Props['heat']) => void } | null>(null)
+  const state = useRef({ mode, sites, focusId, onPick, showLabels, sunAt, earth })
+  state.current = { mode, sites, focusId, onPick, showLabels, sunAt, earth }
+  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void; setHeat: (h: Props['heat']) => void; setView: (v: 0 | 1 | 2) => void; setHd: (on: boolean) => void } | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -175,6 +181,18 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     globe.visible = false
     moon.add(globe)
     const capMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0, vertexColors: true, transparent: true, side: THREE.FrontSide })
+    // Heat map: its colours tint the sunlit ground (relief and real shadows stay readable) and glow
+    // faintly where the ground is dark; where the picture is transparent the Moon is untouched.
+    capMat.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <emissivemap_fragment>',
+        `#ifdef USE_EMISSIVEMAP
+          vec4 heatColor = texture2D( emissiveMap, vEmissiveMapUv );
+          diffuseColor.rgb *= mix( vec3( 1.0 ), heatColor.rgb * 1.7 + 0.12, heatColor.a * 0.9 );
+          totalEmissiveRadiance *= heatColor.rgb * heatColor.a * 0.3;
+        #endif`,
+      )
+    }
     const cap = new THREE.Mesh(polarCap(q), capMat)
     // The cap casts shadows on itself: with the Sun a few degrees high, crater floors go dark.
     cap.castShadow = true
@@ -184,36 +202,50 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     moon.add(cap)
     let loaded = 0
     let shownAt = 0
-    let cesium: { update: () => void; dispose: () => void } | null = null
+    // Optional high-detail Moon from Cesium ion, turned on by the viewer (the HD button). Its
+    // picture has the light baked in, so our own Moon (real sunlight of the date) is the default.
+    let cesium: { update: () => void; dispose: () => void; setVisible: (v: boolean) => void } | null = null
+    let hdOn = false
+    let hdTiles = false // at least one tile has arrived
+    const showHd = () => {
+      const on = hdOn && hdTiles
+      cesium?.setVisible(on)
+      globe.visible = cap.visible = !on && shownAt > 0
+      setCredit(on)
+    }
+    const setHd = (on: boolean) => {
+      const token = import.meta.env.VITE_CESIUM_TOKEN as string | undefined
+      hdOn = on && !!token
+      setHdState(hdOn ? (hdTiles ? 2 : 1) : 0)
+      showHd()
+      if (!hdOn || cesium || !token) return
+      import('./cesiumMoon')
+        .then(({ attachCesiumMoon }) => {
+          if (!api.current || cesium) return
+          cesium = attachCesiumMoon({
+            token,
+            parent: moon,
+            camera,
+            renderer,
+            onFirstTile: () => {
+              hdTiles = true
+              if (hdOn) setHdState(2)
+              showHd()
+            },
+          })
+          cesium.setVisible(false)
+        })
+        .catch(() => {
+          hdOn = false
+          setHdState(0)
+        })
+    }
     const ready = () => {
       if (++loaded < 5) return
       globe.visible = true
       cap.visible = true
       shownAt = performance.now()
       onReady?.()
-      // Optional high-detail Moon from Cesium ion: only with a token of the team's own account.
-      const token = import.meta.env.VITE_CESIUM_TOKEN as string | undefined
-      if (token && q.level > 0) {
-        import('./cesiumMoon')
-          .then(({ attachCesiumMoon }) => {
-            if (!api.current) return
-            cesium = attachCesiumMoon({
-              token,
-              parent: moon,
-              camera,
-              renderer,
-              onFirstTile: () => {
-                // Their terrain replaces our globe and cap; say whose data it is.
-                globe.visible = false
-                cap.visible = false
-                setCredit(true)
-              },
-            })
-          })
-          .catch(() => {
-            /* the Moon of the app stays */
-          })
-      }
       // Sharper maps for big screens, once the light ones are on screen.
       if (q.maps4k) {
         loader.load('moon/moon_color_4k.jpg', (tex) => {
@@ -312,6 +344,66 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     sun.target.position.set(0, -1, 0)
     scene.add(sun.target)
     scene.add(new THREE.AmbientLight(0x9fb4d8, 0.05))
+
+    // The Earth, in the Moon's own frame: towards the sub-Earth point, at its true angular size
+    // (drawn nearer and smaller in proportion). Colour: NASA Blue Marble. Lit by the same Sun, so
+    // its phase is the real one.
+    const EARTH_AT = 50
+    const earthMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 1, metalness: 0 }))
+    // The picture has no clouds or air, so the sunlit Earth would come out far too dark: lifted, with a blue haze.
+    earthMesh.material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        diffuseColor.rgb = diffuseColor.rgb * 2.6 + vec3( 0.05, 0.09, 0.16 );`)
+    }
+    earthMesh.visible = false
+    moon.add(earthMesh)
+    let earthLoaded = false
+    loader.load('moon/earth_1k.jpg', (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace
+      ;(earthMesh.material as THREE.MeshStandardMaterial).map = tex
+      ;(earthMesh.material as THREE.MeshStandardMaterial).needsUpdate = true
+      earthLoaded = true
+    })
+    const earthEl = document.createElement('div')
+    earthEl.className = 'moon-earth-label'
+    earthEl.style.opacity = '0'
+    labels.appendChild(earthEl)
+    const earthDir = new THREE.Vector3(1, 0, 0) // Moon-fixed
+    const earthWorld = new THREE.Vector3()
+    let earthKey = ''
+    // Which side of the Earth faces the Moon. Worked out from what the scene already knows (the
+    // Sun's direction in the Moon's frame) plus the date: the Earth's axis leans 23.44 deg towards
+    // ecliptic longitude 90, and the Sun stands over the meridian of local noon. The Moon's pole
+    // is taken as the ecliptic pole (1.5 deg apart). Checked against JPL Horizons: the Moon's
+    // elevation over Madrid this gives is within 1.6 deg over the whole period.
+    const orientEarth = (tMs: number) => {
+      const days = (tMs - Date.UTC(2000, 0, 1, 12)) / 86400000
+      const g = (357.528 + 0.9856003 * days) * DEG
+      const lam = (280.46 + 0.9856474 * days + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * DEG
+      const h = new THREE.Vector3(sunLocal.x, 0, sunLocal.z).normalize().applyAxisAngle(Y_AXIS, Math.PI / 2 - lam)
+      const axis = h.multiplyScalar(Math.cos(66.56 * DEG)).addScaledVector(Y_AXIS, Math.sin(66.56 * DEG)).normalize()
+      const b = ((360 / 365) * ((days % 365.25) - 81)) * DEG
+      const eot = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b) // minutes
+      const utH = (((tMs / 3600000) % 24) + 24) % 24
+      const lonSun = -15 * (utH - 12) - eot / 4
+      const q1 = new THREE.Quaternion().setFromUnitVectors(Y_AXIS, axis)
+      const a0 = surface(0, lonSun).applyQuaternion(q1)
+      const sp = sunLocal.clone().addScaledVector(axis, -sunLocal.dot(axis)).normalize()
+      const ang = Math.atan2(new THREE.Vector3().crossVectors(a0, sp).dot(axis), a0.dot(sp))
+      earthMesh.quaternion.setFromAxisAngle(axis, ang).multiply(q1)
+    }
+    // Other views: the Moon as seen from the Earth, and the Earth over the Moon's south pole.
+    let viewGoal: 0 | 1 | 2 = 0
+    let vk = 0
+    const altDir = new THREE.Vector3(1, 0, 0)
+    let altDist = 30
+    const altTarget = new THREE.Vector3()
+    let altFov = 30
+    const goalPos = new THREE.Vector3()
+    const goalTarget = new THREE.Vector3()
+    const curDir = new THREE.Vector3()
+    const lookTarget = new THREE.Vector3()
+    const sideUp = new THREE.Vector3()
 
     // Site markers: a ring flat on the surface; the label is HTML so it is readable and tappable.
     type Marker = { id: string; ring: THREE.Mesh; dot: THREE.Mesh; local: THREE.Vector3; el: HTMLButtonElement; color: THREE.Color; sx: number; sy: number; vis: boolean }
@@ -412,7 +504,16 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       zoomGoal = clampZoom(zoomGoal * f)
       holdUntil = performance.now() + HOLD_MS
     }
+    const setViewTo = (v: 0 | 1 | 2) => {
+      viewGoal = v
+      setView(v)
+      zoomGoal = 1
+      tiltGoal = TILT
+      spinVel = tiltVel = 0
+    }
     const recenter = () => {
+      viewGoal = 0
+      setView(0)
       zoomGoal = 1
       tiltGoal = TILT
       holdUntil = performance.now() + HOLD_MS
@@ -420,9 +521,11 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     }
     const diveTo = (on: boolean) => {
       standGoal = on ? 1 : 0
+      viewGoal = 0
+      setView(0)
       if (!on) return recenter()
       if (state.current.focusId) focus(state.current.focusId)
-      zoomGoal = 0.22
+      zoomGoal = 0.12
       tiltGoal = TILT_MAX
       spinVel = tiltVel = 0
       holdUntil = performance.now() + 60000
@@ -446,13 +549,14 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           heatTex.colorSpace = THREE.SRGBColorSpace
         }
       }
+      if (h && hdOn) setHd(false) // the heat map is drawn on our own Moon
+      const had = !!capMat.emissiveMap
       capMat.emissiveMap = heatTex
       capMat.emissive.set(heatTex ? 0xffffff : 0x000000)
-      capMat.emissiveIntensity = heatTex ? 0.9 : 0
-      capMat.color.setScalar(heatTex ? 0.32 : 1)
-      capMat.needsUpdate = true
+      capMat.emissiveIntensity = heatTex ? 1 : 0
+      if (had !== !!heatTex) capMat.needsUpdate = true
     }
-    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null), setHeat }
+    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null), setHeat, setView: setViewTo, setHd }
     syncSites()
 
     const pointers = new Map<number, { x: number; y: number }>()
@@ -726,20 +830,88 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         appDist += ((small ? 0.62 : 0.48) - appDist) * (1 - Math.exp(-dt * 1.3))
       }
       // Frame-rate independent easing: the same feel at 30 or 120 frames per second.
-      zoom += (zoomGoal - zoom) * (1 - Math.exp(-dt * (pinch ? 14 : 4.5)))
+      // Diving into street view, a slower, longer push-in: it is still going while the view fades in.
+      zoom += (zoomGoal - zoom) * (1 - Math.exp(-dt * (pinch ? 14 : standGoal ? 1.7 : 4.5)))
       tiltCur += (tiltGoal - tiltCur) * (1 - Math.exp(-dt * (drag ? 12 : 3.5)))
       const viewDist = appDist * zoom
       // Far out, orbit the whole Moon instead of a point on its surface.
       const far = THREE.MathUtils.smoothstep(viewDist, 1.1, 3.2)
       const tilt = THREE.MathUtils.lerp(92 * DEG, tiltCur, k)
-      const dist = THREE.MathUtils.lerp(5.4, viewDist, k)
+      let dist = THREE.MathUtils.lerp(5.4, viewDist, k)
       target.set(0, 0, 0).lerp(appTarget, k * (1 - far))
       camDir.set(0, -Math.cos(tilt), Math.sin(tilt)).normalize()
       camera.position.copy(target).addScaledVector(camDir, dist)
+      lookTarget.copy(target)
+      let fov = 30
+
+      // The Earth: where it is, how big, which side it shows.
+      const ea = real ? state.current.earth : undefined
+      earthMesh.visible = !!ea && earthLoaded
+      if (ea) {
+        earthDir.copy(surface(ea.lat, ea.lon)).normalize()
+        earthMesh.position.copy(earthDir).multiplyScalar(EARTH_AT)
+        earthMesh.scale.setScalar((EARTH_AT * 6371) / ea.km)
+        const key = `${ea.t}|${sunLocal.x.toFixed(3)}|${sunLocal.z.toFixed(3)}`
+        if (key !== earthKey) {
+          earthKey = key
+          orientEarth(ea.t)
+        }
+      } else if (viewGoal) {
+        viewGoal = 0
+        setView(0)
+      }
+      earthWorld.copy(earthDir).applyAxisAngle(Y_AXIS, spin)
+      // The other views, blended in from wherever the camera is.
+      vk += ((viewGoal ? 1 : 0) - vk) * (1 - Math.exp(-dt * (reduce ? 60 : 2.4)))
+      if (vk < 0.001 && !viewGoal) vk = 0
+      if (viewGoal) {
+        holdUntil = Math.max(holdUntil, now + 1500)
+        const fr = frameRef.current?.getBoundingClientRect()
+        const side = fr && fr.width > 0 ? Math.min(fr.width, fr.height) : Math.min(w, h)
+        let goalFov: number
+        if (viewGoal === 1) {
+          // From the Earth: far along the line to it, through a long lens, the whole disc in the frame.
+          goalPos.copy(earthWorld).multiplyScalar(30)
+          goalTarget.set(0, 0, 0)
+          goalFov = (3.82 * h) / (0.72 * side)
+        } else {
+          // Towards the Earth, from behind the Moon and south of it: the Earth over the polar limb.
+          sideUp.copy(Y_AXIS).addScaledVector(earthWorld, -earthWorld.y).normalize()
+          goalPos.copy(earthWorld).multiplyScalar(-7.87).addScaledVector(sideUp, -1.42)
+          goalTarget.copy(goalPos).addScaledVector(earthWorld, 10)
+          goalFov = (9 * h) / side
+        }
+        goalFov = Math.min(60, goalFov * THREE.MathUtils.clamp(zoom, 0.4, 2.5))
+        const gd = goalPos.length()
+        goalPos.divideScalar(gd)
+        if (vk < 0.02 || reduce) {
+          altDir.copy(goalPos)
+          altDist = gd
+          altTarget.copy(goalTarget)
+          altFov = goalFov
+        } else {
+          const s = 1 - Math.exp(-dt * 3)
+          altDir.lerp(goalPos, s).normalize()
+          altDist += (gd - altDist) * s
+          altTarget.lerp(goalTarget, s)
+          altFov += (goalFov - altFov) * s
+        }
+      }
+      if (vk > 0) {
+        const e = ease(vk)
+        const d0 = camera.position.length()
+        curDir.copy(camera.position).divideScalar(d0).lerp(altDir, e).normalize()
+        camera.position.copy(curDir).multiplyScalar(Math.exp(THREE.MathUtils.lerp(Math.log(d0), Math.log(altDist), e)))
+        lookTarget.lerp(altTarget, e)
+        fov = THREE.MathUtils.lerp(30, altFov, e)
+        dist = camera.position.distanceTo(lookTarget)
+      }
+      camera.fov = fov
       camera.up.set(0, 1, 0)
-      camera.lookAt(target)
+      camera.lookAt(lookTarget)
       // Street view dive: roll on the view axis, slowly, as the camera goes down to the ground.
-      roll += (standGoal * THREE.MathUtils.smoothstep(k, 0.85, 1) - roll) * (1 - Math.exp(-dt * (reduce ? 60 : 1.8)))
+      // The same when looking at the Earth, so the Moon's horizon lies at the bottom.
+      roll += (Math.max(standGoal * THREE.MathUtils.smoothstep(k, 0.85, 1), viewGoal === 2 ? 1 : 0) - roll) * (1 - Math.exp(-dt * (reduce ? 60 : 1.8)))
       if (roll < 0.001) roll = 0
       if (roll > 0) camera.rotateZ(Math.PI * roll)
 
@@ -768,7 +940,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         }
         ctl.style.opacity = k > 0.95 ? '1' : '0'
         ctl.style.pointerEvents = k > 0.95 ? 'auto' : 'none'
-        ctl.dataset.moved = Math.abs(zoomGoal - 1) > 0.08 || Math.abs(tiltGoal - TILT) > 3 * DEG ? 'true' : 'false'
+        ctl.dataset.moved = viewGoal || Math.abs(zoomGoal - 1) > 0.08 || Math.abs(tiltGoal - TILT) > 3 * DEG ? 'true' : 'false'
       }
       camera.setViewOffset(w, h, w / 2 - fx, h / 2 - fy, w, h)
       camera.updateProjectionMatrix()
@@ -789,7 +961,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         world.copy(m.local).applyMatrix4(moon.matrixWorld)
         // About the same size on screen wherever the marker is: those near the camera do not balloon.
         const reach = THREE.MathUtils.clamp(camera.position.distanceTo(world) / dist, 0.3, 1.4)
-        const size = Math.min(1, dist / 1.05) * 0.75 * reach
+        const size = Math.min(1, dist / 1.05) * 0.75 * reach * (Math.tan((fov * DEG) / 2) / Math.tan(15 * DEG))
         m.ring.scale.setScalar(size * (on ? 1.5 * pulse : 1))
         m.dot.scale.setScalar(size * (state.current.showLabels ? 1 : 1.35))
         ringMat.opacity = dotMat.opacity = k
@@ -839,6 +1011,27 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         m.el.dataset.on = on ? 'true' : 'false'
       }
       stars.rotation.y = spin * 0.08
+
+      // Name and distance of the Earth, when it is in view and the Moon is not in front of it.
+      let earthShown = false
+      if (ea && earthMesh.visible && k > 0.85) {
+        world.copy(earthWorld).multiplyScalar(EARTH_AT)
+        tmp.copy(world).sub(camera.position)
+        const len = tmp.length()
+        tmp.divideScalar(len)
+        const along = -camera.position.dot(tmp) // closest approach of the line of sight to the Moon's centre
+        const hidden = along > 0 && along < len && camera.position.lengthSq() - along * along < 1.02
+        const rPx = (((EARTH_AT * 6371) / ea.km / len) / Math.tan((fov * DEG) / 2)) * (h / 2)
+        tmp.copy(world).project(camera)
+        const x = (tmp.x * 0.5 + 0.5) * w
+        const y = (-tmp.y * 0.5 + 0.5) * h
+        if (!hidden && tmp.z < 1 && x > 0 && x < w && y > 0 && y < h && (!frameBox || (x > frameBox.left && x < frameBox.right && y > frameBox.top && y < frameBox.bottom))) {
+          earthShown = true
+          if (earthEl.textContent !== ea.label) earthEl.textContent = ea.label
+          earthEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y + rPx + 8)}px) translateX(-50%)`
+        }
+      }
+      earthEl.style.opacity = earthShown ? '1' : '0'
 
       // Callout: anchored on the hovered dot, opening to the side with more room.
       const co = calloutRef.current
@@ -924,6 +1117,32 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
               <span>{controls.layer}</span>
             </button>
           )}
+          {hdAvailable && controls.hd && (
+            <button type="button" className="moon-layer" data-on={hdState ? 'true' : 'false'} aria-pressed={!!hdState} aria-busy={hdState === 1} onClick={() => api.current?.setHd(!hdState)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 7v10M3 12h5M8 7v10M13 7h3a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4h-3z" />
+              </svg>
+              <span>{controls.hd}</span>
+            </button>
+          )}
+          {earth && controls.fromEarth && (
+            <button type="button" className="moon-layer" data-on={view === 1 ? 'true' : 'false'} aria-pressed={view === 1} onClick={() => api.current?.setView(view === 1 ? 0 : 1)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="8" />
+                <path d="M12 4a8 8 0 0 0 0 16c-3-2.2-3-13.8 0-16z" fill="currentColor" stroke="none" />
+              </svg>
+              <span>{controls.fromEarth}</span>
+            </button>
+          )}
+          {earth && controls.earth && (
+            <button type="button" className="moon-layer" data-on={view === 2 ? 'true' : 'false'} aria-pressed={view === 2} onClick={() => api.current?.setView(view === 2 ? 0 : 2)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="8" />
+                <path d="M4 12h16M12 4c2.6 2.4 2.6 13.6 0 16M12 4c-2.6 2.4-2.6 13.6 0 16" />
+              </svg>
+              <span>{controls.earth}</span>
+            </button>
+          )}
           <button type="button" className="moon-recenter" onClick={() => api.current?.recenter()}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <circle cx="12" cy="12" r="7" />
@@ -936,7 +1155,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       )}
       {credit && (
         <a href="https://cesium.com/platform/cesium-ion/" target="_blank" rel="noreferrer" className="fixed bottom-1 left-2 z-[6] bg-black/60 px-2 py-0.5 text-[11px] text-white/85">
-          Moon terrain: Cesium ion (NASA LRO data)
+          <img src="https://assets.ion.cesium.com/ion-credit.png" alt="Cesium ion" className="mr-1.5 inline h-4 align-middle" />
+          NASA and the USGS Astrogeology Science Center
         </a>
       )}
       {info && (

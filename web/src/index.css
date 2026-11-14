@@ -108,6 +108,17 @@ body {
 /* The heat map layer, on. */
 .moon-controls .moon-layer[data-on="true"] { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
 .moon-controls .moon-layer[aria-busy="true"] { opacity: 0.7; cursor: progress }
+/* Name of the Earth under its disc in the 3D scene. */
+.moon-earth-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  font: 600 12px/1.2 var(--font-sans);
+  color: #fff;
+  text-shadow: 0 1px 3px #000, 0 0 8px #000;
+  transition: opacity 0.3s;
+}
 /* Once the view has moved away, the way back stands out in Sun yellow. */
 .moon-controls[data-moved="true"] .moon-recenter { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
 
@@ -284,8 +295,9 @@ input[type="range"] {
 }
 
 /* Street view opens after the dive: a short fade from black. */
-.street-in { animation: street-in 1s cubic-bezier(0.22, 1, 0.36, 1) both }
-@keyframes street-in { from { opacity: 0; transform: scale(1.04) } }
+/* It fades in over the Moon while the camera is still closing in on the site, growing a little: one continuous push-in. */
+.street-in { animation: street-in 1.6s cubic-bezier(0.33, 0, 0.2, 1) both }
+@keyframes street-in { from { opacity: 0; transform: scale(0.9) } }
 @media (prefers-reduced-motion: reduce) { .street-in { animation: none } }
 
 /* Panels, strips and floating buttons arrive softly: a slow fade with a short rise (ease-out-quint). */

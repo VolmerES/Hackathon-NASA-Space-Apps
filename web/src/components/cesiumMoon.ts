@@ -1,4 +1,7 @@
-// EXPERIMENTAL, NOT YET TESTED WITH A REAL TOKEN: optional high-detail Moon from Cesium ion.
+// Optional high-detail Moon from Cesium ion. Tested with a real token: the tiles load and line up
+// with the site markers (same craters under them as on our own Moon). It is an option the viewer
+// turns on (HD button): the picture has its light baked in, so it does not show the Sun of the
+// chosen date, and the heat map and the shadows of the polar cap are not drawn over it.
 //
 // "Cesium Moon Terrain" (ion asset 2684829) is a 3D Tiles set of the Moon built from NASA LRO data
 // (LOLA, LROC), with terrain down to 5 m near the poles. It is streamed from Cesium ion, needs an
@@ -16,7 +19,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 const ASSET_ID = '2684829'
 const R_MOON_M = 1737400
 
-export type CesiumMoon = { update: () => void; dispose: () => void }
+export type CesiumMoon = { update: () => void; dispose: () => void; setVisible: (v: boolean) => void }
 
 /**
  * Adds the tiles to `parent` (the Moon group of the scene, unit sphere, north along +Y).
@@ -41,7 +44,11 @@ export function attachCesiumMoon(o: { token: string; parent: THREE.Object3D; cam
     o.onFirstTile()
   })
   return {
+    setVisible: (v: boolean) => {
+      tiles.group.visible = v
+    },
     update: () => {
+      if (!tiles.group.visible && !first) return // hidden: no more tiles are asked for
       tiles.setResolutionFromRenderer(o.camera, o.renderer)
       tiles.update()
     },
