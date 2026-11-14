@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FrankyBot } from './FrankyBot'
+import * as sfx from '../sound'
 
 // Franky, the assistant: helps someone new plan a landing with the tool. A language model (open model
 // on Groq, through api/agent.php, which holds the key) reads the question and acts through the tools
@@ -72,6 +73,7 @@ export function Assistant({ open, onClose, lang, text, tools, confirm, context, 
     let convo: Msg[] = [...msgs, { role: 'user', content: q.trim() }]
     setMsgs(convo)
     setBusy(true)
+    sfx.radioIn()
     try {
       for (let round = 0; round < MAX_ROUNDS; round++) {
         if (!navigator.onLine) throw new Error('offline')
@@ -87,7 +89,10 @@ export function Assistant({ open, onClose, lang, text, tools, confirm, context, 
         const calls = (message.tool_calls ?? []).filter((c) => c?.function?.name)
         convo = [...convo, { role: 'assistant', content: message.content ?? '', tool_calls: calls.length ? calls : undefined }]
         setMsgs(convo)
-        if (!calls.length) break
+        if (!calls.length) {
+          sfx.radioOut()
+          break
+        }
         for (const c of calls) {
           let out: unknown
           try {
@@ -105,6 +110,7 @@ export function Assistant({ open, onClose, lang, text, tools, confirm, context, 
       }
     } catch (e) {
       const k = e instanceof Error ? e.message : ''
+      sfx.warn()
       setError(k === 'rate' ? text.errRate : k === 'busy' ? text.errBusy : k === 'offline' ? text.errOffline : text.errOther)
     } finally {
       setBusy(false)

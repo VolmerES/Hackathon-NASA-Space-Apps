@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { horizonAt, ridgeKmAt, type Sample, type Site } from '../data/model'
 import { useT } from '../i18n'
+import * as sfx from '../sound'
 import { groundHeight, incidenceDeg, loadGround, type Ground } from '../data/ground'
 
 // First-person view from the landing site: look around, see the terrain, the Sun and Earth.
@@ -484,6 +485,8 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         // Dust blown outwards over the last metres.
         const near = Math.min(1, Math.max(0, 1 - alt / 22))
         dust.visible = near > 0 && p < 1
+        // The engine: a steady burn, louder over the last metres as it holds the lander up.
+        sfx.setEngine(p < 1 ? 0.55 + 0.45 * near : 0)
         dust.scale.setScalar(3 + near * 16 + (now % 700) / 70)
         ;(dust.material as THREE.MeshBasicMaterial).opacity = 0.22 * near * (1 - ((now % 700) / 700) * 0.6)
         // Keep the lander in the frame: look up at it, then down with it.
@@ -493,6 +496,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
           setHud({ alt, speed, clock, phase: p >= 1 ? 'down' : 'descent' })
         }
         if (p >= 1) {
+          sfx.touchdown()
           land = null
           landed = true
           dust.visible = false
@@ -670,6 +674,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
 
     return () => {
       api.current = null
+      sfx.setEngine(0) // closed mid-descent: the engine stops too
       ro.disconnect()
       if (raf) cancelAnimationFrame(raf)
       cvs.removeEventListener('wheel', wheel)

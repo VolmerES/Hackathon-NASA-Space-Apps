@@ -10,7 +10,8 @@ import { SiteLight } from './components/SiteLight'
 import { LangContext, STRINGS, readLang, useT, type Lang, type Strings } from './i18n'
 import { useBoxHeight, useMedia, useStay } from './hooks'
 import { CloseButton, FloatPanel, HamburgerMenu, NumberField, Overlay, Snackbar } from './components/Ui'
-import { Splash, SKIP as SKIP_SPLASH } from './components/Splash'
+import { Splash, SKIP as SKIP_SPLASH, LINK_MODE, type Mode } from './components/Splash'
+import * as sfx from './sound'
 import { TimeBar } from './components/TimeBar'
 import { Missions, type Evaluated } from './components/Missions'
 import { missionReportHtml, type ReportRow } from './report'
@@ -90,6 +91,32 @@ function resolveSite(id: string): Site | undefined {
   // Only the five landing sites of the team: a shared link naming any other candidate opens nothing.
   const site = SITES.find((s) => s.id === id)
   return site && (site.team || !SITES.some((x) => x.team)) ? site : undefined
+}
+
+// Speaker in the header: sound on or off, remembered in this browser.
+function SoundButton() {
+  const t = useT()
+  const [muted, setMutedState] = useState(sfx.isMuted)
+  useEffect(() => sfx.onMuteChange(setMutedState), [])
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        sfx.unlockAudio()
+        sfx.setMuted(!muted)
+        if (muted) sfx.startAmbient()
+      }}
+      aria-pressed={!muted}
+      aria-label={muted ? t.soundOn : t.soundOff}
+      title={muted ? t.soundOn : t.soundOff}
+      className="flex size-11 items-center justify-center rounded-sm border border-white/40 hover:bg-white/10"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 9h4l5-4v14l-5-4H4z" />
+        {muted ? <path d="M17 9l5 6M22 9l-5 6" /> : <path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" />}
+      </svg>
+    </button>
+  )
 }
 
 function VerdictIcon({ v, size = 22 }: { v: Metrics['verdict']; size?: number }) {
@@ -229,6 +256,8 @@ export default function App() {
     return p === 'sky' || p === 'when' || p === 'compare' ? p : null
   })
   const [splashDone, setSplashDone] = useState(SKIP_SPLASH)
+  // Guided (the usual flow) or expert (a site, the calendar and the sky open from the start).
+  const [mode, setMode] = useState<Mode>(LINK_MODE)
   const [moonOk, setMoonOk] = useState(true)
   const [moonState, setMoonState] = useState<'pending' | 'done' | 'failed'>('pending')
   const [ready, setReady] = useState(DATA.ready)
@@ -309,6 +338,7 @@ export default function App() {
 
   // Choosing a site: it becomes the one shown, and joins the comparison list.
   const pick = useCallback((id: string) => {
+    sfx.select()
     setChosen((c) => (c.includes(id) ? c : [id, ...c].slice(0, MAX_SITES)))
     setFocus(id)
     setPicking(false)
@@ -351,6 +381,26 @@ export default function App() {
   const focused = results.find((r) => r.site.id === focus) ?? results[0]
   // The sites of the team, evaluated for the current dates and listed best first: verdict, then
   // more sunlight, shorter darkness, more contact with Earth.
+  // Sound follows what the screen already shows: the verdict of the site in focus, panels opening
+  // and closing. Never on the first render.
+  const lastVerdict = useRef('')
+  useEffect(() => {
+    if (!splashDone || !focused) return
+    const key = `${focused.site.id}|${focused.m.verdict}`
+    if (lastVerdict.current && key !== lastVerdict.current) sfx.verdict(focused.m.verdict)
+    lastVerdict.current = key
+  }, [splashDone, focused])
+  const lastPanel = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    if (lastPanel.current !== undefined) (panel ? sfx.open : sfx.close)()
+    lastPanel.current = panel
+  }, [panel])
+  const lastSky = useRef<boolean | undefined>(undefined)
+  useEffect(() => {
+    if (lastSky.current !== undefined) (skyOpen ? sfx.open : sfx.close)()
+    lastSky.current = skyOpen
+  }, [skyOpen])
+
   const catalogue = useMemo(
     () =>
       ready
@@ -450,6 +500,17 @@ export default function App() {
     setMission((m) => ({ ...m, slipDays: 0, landing }))
     setToast(t.toastLanded(fmtDateTime(landing)))
   }
+  // Expert mode: once the tool shows, the best of the five sites with its calendar and its sky open.
+  const expertDone = useRef(false)
+  useEffect(() => {
+    if (mode !== 'expert' || !splashDone || !ready || expertDone.current || !catalogue.length) return
+    expertDone.current = true
+    if (!chosen.length) pick(catalogue[0].site.id)
+    setSkyOpen(true)
+    setPanel('when')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, splashDone, ready, catalogue])
+
   const downloadCsv = () => {
     if (!focused) return
     const url = URL.createObjectURL(new Blob([csvFor(focused.samples, t)], { type: 'text/csv;charset=utf-8' }))
@@ -474,6 +535,7 @@ export default function App() {
         const next = (i ?? 0) + PLAY_STEP
         if (next >= last) {
           setPlaying(false)
+          sfx.ready()
           return last
         }
         return next
@@ -530,6 +592,7 @@ export default function App() {
     setToast(t.ms.opened(m.name))
   }
   const saveMissionDef = (m: MissionDef) => {
+    sfx.confirm()
     // A mission created from "Add to mission" gets the view it was created from as its first scenario.
     const pend = pendingScenario.current
     pendingScenario.current = null
@@ -544,10 +607,12 @@ export default function App() {
     }
   }
   const deleteMission = (id: string) => {
+    sfx.warn()
     storeMissions(missions.filter((x) => x.id !== id))
     if (activeId === id) leaveMission()
   }
   const deleteScenario = (mid: string, sid: string) => {
+    sfx.warn()
     storeMissions(
       missions.map((x) => {
         if (x.id !== mid) return x
@@ -647,6 +712,7 @@ export default function App() {
   }
 
   const scrub = (i: number) => {
+    sfx.hover() // a soft detent, at most a few per second
     setPlaying(false)
     if (focused) setPlayIdx(i)
     else setFreeHour(i)
@@ -659,6 +725,7 @@ export default function App() {
   }, [ready, litAt.getTime(), t]) // eslint-disable-line react-hooks/exhaustive-deps
   const togglePlay = () => {
     if (!focused) return
+    sfx.toggle(!playing)
     if (!playing && (playIdx === null || playIdx >= focused.samples.length - 1)) setPlayIdx(0)
     setPlaying((p) => !p)
   }
@@ -879,6 +946,7 @@ export default function App() {
     `${focused ? `site ${focused.site.id} (${siteName(focused.site)}), ` : 'no site chosen, '}landing ${start.toISOString().slice(0, 16)}Z, ${mission.durationDays} days`
 
   const openStreet = () => {
+    sfx.whoosh()
     setPanel(null)
     setDiving(true)
     const instant = !moonOk || window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -886,6 +954,7 @@ export default function App() {
     window.setTimeout(() => setStreetOpen(true), instant ? 0 : 1300)
   }
   const closeStreet = () => {
+    sfx.close()
     setStreetOpen(false)
     setDiving(false)
     setLanding(0)
@@ -893,6 +962,7 @@ export default function App() {
   // Landing simulation: the dive from orbit, then the lander comes down in the street view.
   const [landing, setLanding] = useState(0)
   const simulateLanding = () => {
+    sfx.whoosh(1.2)
     setLanding(Date.now())
     openStreet()
   }
@@ -996,6 +1066,7 @@ export default function App() {
           )}
           {/* Settings and actions: a gear in the top right corner. */}
           <div className="ml-auto flex items-center gap-2 lg:ml-0">
+              <SoundButton />
               <button type="button" data-franky="franky" onClick={() => setAssistantOpen((o) => !o)} aria-pressed={assistantOpen} title={t.assistant.open} className={`flex h-11 items-center gap-1.5 rounded-sm border pl-1 pr-3 text-sm font-semibold ${assistantOpen ? 'border-sun bg-sun/15 text-sun' : 'border-white/40 hover:bg-white/10'}`}>
                 <FrankyBot size={34} mood={assistantOpen ? 'happy' : 'idle'} />
                 <span className="max-sm:hidden">{t.assistant.open}</span>
@@ -1464,7 +1535,7 @@ export default function App() {
           {/* Free area: the 3D Moon frames the south pole here. */}
           <div className={`pointer-events-none absolute inset-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'sm:left-[380px]' : ''}`}>
             <div ref={frameRef} className="relative min-h-0 flex-1">
-              {splashDone && moonOk && !panel && !lightOn && <p className={`absolute inset-x-0 hidden text-center text-xs text-white/60 lg:block ${focused && !picking && !skyOpen && !skyStay.value ? 'bottom-[76px]' : 'bottom-2'}`}>{t.dragHint}</p>}
+              {splashDone && moonOk && !panel && !lightOn && mode === 'guided' && <p className={`absolute inset-x-0 hidden text-center text-xs text-white/60 lg:block ${focused && !picking && !skyOpen && !skyStay.value ? 'bottom-[76px]' : 'bottom-2'}`}>{t.dragHint}</p>}
               {/* Desktop: the sky curves button, centred at the very bottom of the Moon's area. */}
                 {focused && !picking && panel !== 'sky' && !skyOpen && !skyStay.value && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-3 hidden justify-center lg:flex">
@@ -1824,7 +1895,7 @@ export default function App() {
         <p className="mt-4 border-t border-rule pt-3 text-sm">{t.caveat}</p>
         <p className="mt-2 text-sm text-muted">{t.footer}</p>
       </Overlay>
-      <Splash onDone={() => setSplashDone(true)} showMoon={false} moon={moonState} />
+      <Splash onDone={() => setSplashDone(true)} onMode={setMode} showMoon={false} moon={moonState} />
     </LangContext.Provider>
   )
 }

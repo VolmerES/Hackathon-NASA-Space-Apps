@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import * as THREE from 'three'
 import { measureQuality, qualityAt, type Quality } from './quality'
 import type { CesiumMoon } from './cesiumMoon'
+import * as sfx from '../sound'
 
 // The real Moon, behind the whole app. Colour: LRO LROC mosaic; relief: LRO LOLA elevation turned
 // into a normal map (NASA's Scientific Visualization Studio, CGI Moon Kit). Sunlight comes from the
@@ -262,6 +263,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             camera,
             renderer,
             onFirstTile: () => {
+              sfx.confirm()
               hdTiles = true
               if (hdOn) setHdState(2)
               showHd()
@@ -490,6 +492,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       dropTimer = 0
       sticky = !!id && byTouch
       if (id === hoverId) return
+      if (id) sfx.hover()
       hoverId = id
       setHover(id)
     }
@@ -568,6 +571,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const focus = (id?: string) => {
       const m = markers.find((x) => x.id === id)
       if (!m) return
+      sfx.whoosh(0.6)
       const a = Math.atan2(-m.local.x, m.local.z)
       let d = a - spin
       d = Math.atan2(Math.sin(d), Math.cos(d))
@@ -587,10 +591,12 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z))
     const clampTilt = (a: number) => Math.min(TILT_MAX, Math.max(TILT_MIN, a))
     const zoomBy = (f: number) => {
+      sfx.click()
       zoomGoal = clampZoom(zoomGoal * f)
       holdUntil = performance.now() + HOLD_MS
     }
     const setViewTo = (v: 0 | 1 | 2) => {
+      sfx.whoosh(0.9)
       viewGoal = v
       setView(v)
       zoomGoal = 1
@@ -598,6 +604,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       spinVel = tiltVel = 0
     }
     const recenter = () => {
+      sfx.whoosh(0.7)
       viewGoal = 0
       setView(0)
       zoomGoal = 1
@@ -853,6 +860,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     }
 
     let raf = 0
+    let lastSpinSound = 0
     let last = performance.now()
     const t0 = last
     const frame = (now: number) => {
@@ -904,6 +912,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         spin += SPIN * dt * (k < 0.5 ? 1.6 : 0.35)
       }
       moon.rotation.y = spin
+      // The sound of the rotation follows its speed (silent for the slow idle drift and in the intro).
+      sfx.setSpin(state.current.mode === 'app' && dt > 0 ? Math.abs(spin - lastSpinSound) / dt : 0)
+      lastSpinSound = spin
       canvas.dataset.spin = spin.toFixed(4) // read by the automated checks
 
       // Sunlight. App mode, with data: from the real sub-solar point of the chosen hour, fixed to the
@@ -1323,7 +1334,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           </div>
           <div className="moon-group">
           {controls.layer && controls.onLayer && (
-            <button type="button" className="moon-layer" data-on={controls.layerOn ? 'true' : 'false'} aria-pressed={!!controls.layerOn} aria-busy={!!controls.layerBusy} onClick={controls.onLayer} title={controls.layer}>
+            <button type="button" className="moon-layer" data-on={controls.layerOn ? 'true' : 'false'} aria-pressed={!!controls.layerOn} aria-busy={!!controls.layerBusy} onClick={() => { sfx.toggle(!controls.layerOn); controls.onLayer?.() }} title={controls.layer}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 3l9 5-9 5-9-5 9-5z" />
                 <path d="M3 13l9 5 9-5" />
@@ -1332,7 +1343,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             </button>
           )}
           {hdAvailable && controls.hd && (
-            <button type="button" className="moon-layer" data-on={hdState ? 'true' : 'false'} aria-pressed={!!hdState} aria-busy={hdState === 1} onClick={() => api.current?.setHd(!hdState)} title={controls.hd}>
+            <button type="button" className="moon-layer" data-on={hdState ? 'true' : 'false'} aria-pressed={!!hdState} aria-busy={hdState === 1} onClick={() => { sfx.toggle(!hdState); api.current?.setHd(!hdState) }} title={controls.hd}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M3 7v10M3 12h5M8 7v10M13 7h3a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4h-3z" />
               </svg>

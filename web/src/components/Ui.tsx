@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useT } from '../i18n'
 import { useStay } from '../hooks'
+import * as sfx from '../sound'
 
 /** Short confirmation at the bottom of the screen. Announced to screen readers. */
 export function Snackbar({ message, onDone }: { message: string | null; onDone: () => void }) {
   useEffect(() => {
     if (!message) return
+    sfx.notify()
     const id = window.setTimeout(onDone, 2600)
     return () => window.clearTimeout(id)
   }, [message, onDone])
@@ -33,7 +35,7 @@ export function Menu({ label, items, className = '' }: { label: string; items: M
   }, [open])
   return (
     <div ref={root} className={`relative ${className}`} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
-      <button aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex min-h-11 items-center gap-2 rounded-sm border border-white/50 px-3 text-sm hover:bg-white/10 lg:min-h-9">
+      <button aria-haspopup="menu" aria-expanded={open} onClick={() => { (open ? sfx.close : sfx.open)(); setOpen((o) => !o) }} className="flex min-h-11 items-center gap-2 rounded-sm border border-white/50 px-3 text-sm hover:bg-white/10 lg:min-h-9">
         {label}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />
@@ -77,7 +79,7 @@ export function HamburgerMenu({ label, children }: { label: string; children: (c
   }, [open])
   return (
     <div ref={root} className="relative" onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
-      <button aria-haspopup="true" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen((o) => !o)} className="flex size-11 items-center justify-center rounded-sm border border-white/40 hover:bg-white/10">
+      <button aria-haspopup="true" aria-expanded={open} aria-label={label} title={label} onClick={() => { (open ? sfx.close : sfx.open)(); setOpen((o) => !o) }} className="flex size-11 items-center justify-center rounded-sm border border-white/40 hover:bg-white/10">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={open ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {open ? (
             <path d="M6 6l12 12M18 6L6 18" />
@@ -125,8 +127,10 @@ export function Overlay({ open, title, onClose, children }: { open: boolean; tit
     if (open && !d.open) {
       d.classList.remove('modal-leaving')
       d.showModal()
+      sfx.open()
     }
     if (!open && d.open) {
+      sfx.close()
       // Sink out first, then close for real.
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return d.close()
       d.classList.add('modal-leaving')

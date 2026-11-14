@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { LogoMark } from './Logo'
 import { SplashHorizon } from './SplashHorizon'
 import { onDataProgress, type DataPart } from '../data/model'
+import { launch, ready, startAmbient, tick, unlockAudio, whoosh } from '../sound'
 
 const NAME = 'FLY ME TO THE MOON'
 const LETTERS = NAME.split('').map((c) => (c === ' ' ? ' ' : c))
@@ -16,17 +17,22 @@ const END_MS = 1000 // a beat on "ready" before the tool appears
 const CAP_MS = 30000 // never hold anyone longer, whatever happens (a very slow line)
 const LEAVE_MS = 550
 
-// `nosplash` in the link opens the tool directly (shared links, demos, tests).
+// `nosplash` in the link opens the tool directly (shared links, demos, tests); `mode=expert` with it
+// opens it in expert mode.
 export const SKIP = /(^|[#&])nosplash/.test(window.location.hash)
+export type Mode = 'guided' | 'expert'
+export const LINK_MODE: Mode = /(^|[#&])mode=expert/.test(window.location.hash) ? 'expert' : 'guided'
 
-// Opening screen over the live 3D Moon. It shows the real services the tool starts, one by one,
+// Opening screen over the live 3D Moon. First it asks for a mode (guided or expert): that click also
+// unlocks the sound, so the opening can be heard. Then it shows the real services the tool starts, one by one,
 // with what each brought (hours of ephemerides, sites, horizons...), while the Sun crosses a lunar
 // horizon as the progress bar and Earth rises once the ephemerides are in. Once everything is
 // in, a click, tap or key skips the rest of the reveal. `showMoon` draws a still SVG Moon when WebGL is not available.
-export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoon: boolean; moon: 'pending' | 'done' | 'failed' }) {
+export function Splash({ onDone, onMode, showMoon, moon }: { onDone: () => void; onMode: (m: Mode) => void; showMoon: boolean; moon: 'pending' | 'done' | 'failed' }) {
   const t = useT()
   const [phase, setPhase] = useState<'show' | 'leave' | 'gone'>(() => (SKIP ? 'gone' : 'show'))
   const [status, setStatus] = useState<Record<Service, State>>(() => Object.fromEntries(ORDER.map((s) => [s, { state: 'pending' }])) as Record<Service, State>)
+  const [stage, setStage] = useState<'choose' | 'load'>('choose')
   const [shown, setShown] = useState(0)
   const lastReveal = useRef(0)
   const reduce = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
@@ -44,9 +50,18 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
     if (moon !== 'pending') mark('moon', { state: moon === 'done' ? 'done' : 'failed' })
   }, [moon])
 
+  // The data keep loading in the background while the viewer chooses; the reveal starts on the choice.
+  const choose = (m: Mode) => {
+    unlockAudio()
+    launch()
+    startAmbient()
+    onMode(m)
+    setStage('load')
+  }
+
   // Reveal the services one at a time, never faster than they can be read.
   useEffect(() => {
-    if (phase !== 'show') return
+    if (phase !== 'show' || stage !== 'load') return
     const t0 = performance.now()
     lastReveal.current = t0
     const tick = window.setInterval(() => {
@@ -77,11 +92,22 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
       window.removeEventListener('keydown', skip)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, status, reduce])
+  }, [phase, status, reduce, stage])
 
   const settled = ORDER.slice(0, shown).filter((s) => status[s].state !== 'pending').length
   const allDone = shown === ORDER.length && settled === ORDER.length
   const progress = settled / ORDER.length
+
+  // Sound: a telemetry blip per source, a chord when all is in, air as the camera dives in.
+  useEffect(() => {
+    if (shown > 0) tick(shown - 1)
+  }, [shown])
+  useEffect(() => {
+    if (allDone) ready()
+  }, [allDone])
+  useEffect(() => {
+    if (phase === 'leave') whoosh(1.4)
+  }, [phase])
 
   useEffect(() => {
     if (!allDone || phase !== 'show') return
@@ -149,9 +175,9 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
       role="status"
       aria-label={t.splashLabel}
       onClick={() => {
-        if (ORDER.every((s) => status[s].state !== 'pending')) setPhase('leave')
+        if (stage === 'load' && ORDER.every((s) => status[s].state !== 'pending')) setPhase('leave')
       }}
-      className={`fixed inset-0 z-[60] cursor-pointer overflow-hidden text-white ${showMoon ? 'bg-black' : 'bg-transparent'} ${phase === 'leave' ? 'sp-leave' : ''}`}
+      className={`fixed inset-0 z-[60] ${stage === 'load' ? 'cursor-pointer' : ''} overflow-hidden text-white ${showMoon ? 'bg-black' : 'bg-transparent'} ${phase === 'leave' ? 'sp-leave' : ''}`}
     >
       {showMoon && (
         <>
@@ -192,6 +218,23 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
         </div>
         </div>
         <p className="sp-sub max-w-xl text-balance text-base font-light text-white/80 sm:text-lg" style={{ animationDelay: '1.5s' }}>{t.splashTagline}</p>
+        {stage === 'choose' ? (
+          <div className="sp-ui mt-[3vh] w-[min(760px,100%)]" role="group" aria-label={t.modeTitle}>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{t.modeTitle}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button type="button" autoFocus onClick={() => choose('guided')} className="mode-btn">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg>
+                <span className="block text-base font-semibold">{t.modeGuided}</span>
+                <span className="block text-sm font-normal text-white/65">{t.modeGuidedSub}</span>
+              </button>
+              <button type="button" onClick={() => choose('expert')} className="mode-btn">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><path d="M4 20h16M6 16l4-5 3 3 5-7" /><circle cx="18" cy="7" r="1.5" /></svg>
+                <span className="block text-base font-semibold">{t.modeExpert}</span>
+                <span className="block text-sm font-normal text-white/65">{t.modeExpertSub}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="sp-ui mt-[2vh] w-[min(880px,100%,88vh)] text-left">
           {/* Progress: the real horizon of one of the team's sites, with the Sun grazing its ridge. */}
           <div className="flex items-end justify-between gap-4">
@@ -263,11 +306,12 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
             })}
           </ol>
         </div>
+        )}
       </div>
 
       <div className="sp-meta absolute inset-x-0 bottom-6 flex flex-col items-center gap-1 px-6 text-xs text-white/80 [text-shadow:0_1px_10px_#000,0_0_2px_#000] sm:bottom-12 sm:flex-row sm:justify-between sm:px-20">
         <span className="text-center">{t.splashData}</span>
-        <span>{t.splashSkip}</span>
+        {stage === 'load' && <span>{t.splashSkip}</span>}
       </div>
     </div>
   )
