@@ -7,6 +7,7 @@ import { useT } from '../i18n'
 // - Terrain: the real horizon of the site (ray-traced on LOLA), wearing the real colour and relief
 //   of the south pole (LRO LROC + LOLA, NASA SVS CGI Moon Kit) plus a fine relief layer for the near ground.
 // - Sun and Earth: real directions from JPL Horizons for the chosen hour. Earth shows its real phase.
+// - Shadows: the terrain casts them for that Sun (shadow map).
 // Heights are stretched by STRETCH (terrain, Sun and Earth alike), as in the panorama, so what hides
 // what stays consistent. Sizes of the Sun and Earth are enlarged to be visible. A rendering, not a photo.
 const STRETCH = 4
@@ -220,6 +221,18 @@ export default function Surface3D({ site, sample, height = 420 }: { site: Site; 
     scene.add(new THREE.HemisphereLight(0x9fb4d8, 0x1a1a1a, 0.35))
     const sunLight = new THREE.DirectionalLight(0xfff4dc, 4.5)
     scene.add(sunLight, sunLight.target)
+    // Cast shadows: the relief between the site and its ridge shades the ground for the real Sun of
+    // the chosen hour. At the site itself light and shadow match the LOLA horizon; elsewhere in the
+    // bowl the ground is shaped from that horizon, so the shadows there are indicative.
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    sunLight.castShadow = true
+    const reach = RIDGE * 1.8
+    Object.assign(sunLight.shadow.camera, { left: -reach, right: reach, top: reach, bottom: -reach, near: 10, far: 6000 })
+    sunLight.shadow.camera.updateProjectionMatrix()
+    sunLight.shadow.mapSize.set(window.innerWidth < 768 ? 2048 : 4096, window.innerWidth < 768 ? 2048 : 4096)
+    sunLight.shadow.bias = -0.0004
+    sunLight.shadow.normalBias = 2
 
     const loader = new THREE.TextureLoader()
     const groundMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 })
@@ -245,6 +258,8 @@ export default function Surface3D({ site, sample, height = 420 }: { site: Site; 
       loaded()
     })
     const ground = new THREE.Mesh(new THREE.BufferGeometry(), groundMat)
+    ground.castShadow = true
+    ground.receiveShadow = true
     scene.add(ground)
 
     // The Sun: a bright disc inside a glow. The terrain hides it when it is below the ridge.

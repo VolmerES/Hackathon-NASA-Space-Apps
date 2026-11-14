@@ -3,7 +3,10 @@ import * as THREE from 'three'
 import { measureQuality, qualityAt, type Quality } from './quality'
 
 // The real Moon, behind the whole app. Colour: LRO LROC mosaic; relief: LRO LOLA elevation turned
-// into a normal map (NASA's Scientific Visualization Studio, CGI Moon Kit). One scene does three jobs:
+// into a normal map (NASA's Scientific Visualization Studio, CGI Moon Kit). Sunlight comes from the
+// real sub-solar point of the chosen hour, so the shadows of the LOLA relief on the polar cap are
+// the ones of that date.
+// One scene does three jobs:
 //  - intro: seen from afar, the limb low on the screen under the splash, turning slowly;
 //  - transition: the camera closes in on the south pole;
 //  - app: the south pole sits in the free area of the layout, turning slowly; every chosen site is
@@ -29,6 +32,9 @@ type Props = {
   controls?: { zoomIn: string; zoomOut: string; recenter: string }
   /** Street view: dive down onto the focused site until the camera skims its ground. */
   dive?: boolean
+  /** Sub-solar point (deg) at the chosen date and hour, from JPL Horizons. In app mode the sunlight
+   *  comes from there, so day, night and the terminator on the Moon are the real ones. */
+  sunAt?: { lat: number; lon: number }
   /** Street view button inside the callout: stand on that site. */
   onStreet?: (id: string) => void
   streetLabel?: string
@@ -100,14 +106,14 @@ function polarCap(q: Quality) {
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
-export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer' }: Props) {
+export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, sunAt, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer' }: Props) {
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const labelsRef = useRef<HTMLDivElement>(null)
-  const state = useRef({ mode, sites, focusId, onPick, showLabels })
-  state.current = { mode, sites, focusId, onPick, showLabels }
+  const state = useRef({ mode, sites, focusId, onPick, showLabels, sunAt })
+  state.current = { mode, sites, focusId, onPick, showLabels, sunAt }
   const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void } | null>(null)
 
   useEffect(() => {
@@ -261,6 +267,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Sunlight grazing the south pole, plus a faint earthshine so the night side is not pure black.
     const sun = new THREE.DirectionalLight(0xfff4e6, 3.2)
     scene.add(sun)
+    const Y_AXIS = new THREE.Vector3(0, 1, 0)
+    const sunGoal = new THREE.Vector3()
+    const sunLocal = new THREE.Vector3() // current sunlight direction, Moon-fixed
+
     // Shadows only over the polar cap, where the camera lives.
     renderer.shadowMap.enabled = q.shadows > 0
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -631,9 +641,21 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       moon.rotation.y = spin
       canvas.dataset.spin = spin.toFixed(4) // read by the automated checks
 
-      // The Sun walks slowly around the horizon of the pole; grazing, a few degrees high.
-      const az = (150 + (reduce ? 0 : (now - t0) / 1000) * 1.2) * DEG
-      sun.position.set(Math.cos(az), -0.13, Math.sin(az)).normalize().multiplyScalar(3).add(sun.target.position)
+      // Sunlight. App mode, with data: from the real sub-solar point of the chosen hour, fixed to the
+      // Moon (it turns with the globe), so lit and dark ground are the real ones for that date.
+      // Intro, or before the data arrive: a decorative Sun walking low around the pole.
+      const real = state.current.mode === 'app' ? state.current.sunAt : undefined
+      // Worked out in the Moon's own frame, so the light turns with the globe however fast it spins.
+      if (real) {
+        sunGoal.copy(surface(real.lat, real.lon)).normalize()
+      } else {
+        const az = (150 + (reduce ? 0 : (now - t0) / 1000) * 1.2) * DEG
+        sunGoal.set(Math.cos(az), -0.13, Math.sin(az)).normalize().applyAxisAngle(Y_AXIS, -spin)
+      }
+      // Glide to a new direction (a new date should not flash the whole globe).
+      if (sunLocal.lengthSq() === 0 || reduce) sunLocal.copy(sunGoal)
+      else sunLocal.lerp(sunGoal, 1 - Math.exp(-dt * 4)).normalize()
+      sun.position.copy(sunLocal).applyAxisAngle(Y_AXIS, spin).multiplyScalar(3).add(sun.target.position)
 
       // Camera framing. Intro: whole Moon from afar, its disc low so the limb sits under the title.
       // App: close over the south pole, placed in the centre of the free frame of the layout.
