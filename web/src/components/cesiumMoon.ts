@@ -1,4 +1,7 @@
-// EXPERIMENTAL, NOT YET TESTED WITH A REAL TOKEN: optional high-detail Moon from Cesium ion.
+// Optional high-detail Moon from Cesium ion. Tested with a real token: the tiles load and line up
+// with the site markers (same craters under them as on our own Moon). Not in the published build:
+// the picture has its light baked in, so it does not show the Sun of the chosen date, and the heat
+// map and the shadows of the polar cap are not drawn over it.
 //
 // "Cesium Moon Terrain" (ion asset 2684829) is a 3D Tiles set of the Moon built from NASA LRO data
 // (LOLA, LROC), with terrain down to 5 m near the poles. It is streamed from Cesium ion, needs an
