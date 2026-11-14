@@ -5,6 +5,8 @@ import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
 import { YearStrip, type YearMetric } from './components/YearView'
 import { readScenario, writeScenario } from './scenario'
+import { LIGHT_CAP_DEG, LIGHT_GRADIENT, lightMap, type LightMap } from './data/lightmap'
+import { SiteLight } from './components/SiteLight'
 import { LangContext, STRINGS, readLang, useT, type Lang, type Strings } from './i18n'
 import { useBoxHeight, useStay } from './hooks'
 import { CloseButton, FloatPanel, HamburgerMenu, Overlay, Snackbar } from './components/Ui'
@@ -306,6 +308,30 @@ export default function App() {
   const stayH = Math.max(1, focused?.samples.length ?? 1)
   const hrs = (pct: number) => t.hoursOf(num((pct * stayH) / 100), num(stayH))
   const start = new Date(mission.landing.getTime() + mission.slipDays * 86400000)
+  // Sunlight heat map over the pole, for the stay on screen. Computed when the layer is turned on.
+  const [lightOn, setLightOn] = useState(false)
+  const [light, setLight] = useState<LightMap | null>(null)
+  const [lightBusy, setLightBusy] = useState(false)
+  useEffect(() => {
+    if (!lightOn || !ready) return
+    let alive = true
+    setLightBusy(true)
+    lightMap(start, mission.durationDays, () => alive)
+      .then((m) => {
+        if (alive && m) setLight(m)
+      })
+      .catch(() => {
+        if (!alive) return
+        setLightOn(false)
+        setToast(t.lightFailed)
+      })
+      .finally(() => alive && setLightBusy(false))
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightOn, ready, start.getTime(), mission.durationDays])
+  const heat = useMemo(() => (lightOn && light ? { canvas: light.canvas, deg: LIGHT_CAP_DEG } : null), [lightOn, light])
   const end = new Date(start.getTime() + mission.durationDays * 86400000)
 
   const landOn = (d: Date) => {
@@ -443,7 +469,7 @@ export default function App() {
     <LangContext.Provider value={t}>
       {moonOk ? (
         <Suspense fallback={null}>
-        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} answerLabel={t.seeAnswer} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
+        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} answerLabel={t.seeAnswer} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />
@@ -662,6 +688,7 @@ export default function App() {
                     </div>
                   ))}
                 </dl>
+                <SiteLight site={focused.site} light={lightOn ? light : null} onTurnOn={() => setLightOn(true)} busy={lightBusy} />
                 <div className="mt-3">
                   <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
                   <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-muted">
@@ -778,7 +805,20 @@ export default function App() {
           {/* Free area: the 3D Moon frames the south pole here. */}
           <div className={`pointer-events-none absolute inset-x-0 top-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'bottom-[64dvh]' : 'bottom-20'}`}>
             <div ref={frameRef} className="relative min-h-0 flex-1" aria-hidden="true">
-              {splashDone && moonOk && !panel && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
+              {splashDone && moonOk && !panel && !lightOn && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
+              {/* Legend of the heat map: what the colours mean, and how far to trust them. */}
+              {splashDone && moonOk && lightOn && (
+                <div className="ui-in glass absolute bottom-2 left-2 max-w-[min(300px,calc(100%-88px))] px-3 py-2 text-xs">
+                  <p className="font-semibold">{t.lightLegend}{lightBusy ? '…' : ''}</p>
+                  <div className="mt-1.5 h-2.5" style={{ background: LIGHT_GRADIENT }} />
+                  <p className="mt-0.5 flex justify-between tabular-nums text-white/80">
+                    <span>0 %</span>
+                    <span>50 %</span>
+                    <span>100 %</span>
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug text-muted">{t.lightNote}</p>
+                </div>
+              )}
             </div>
             {/* Desktop: with a site chosen, its sky in 2D docked under the Moon. */}
             {skyStay.value && focused && (

@@ -105,6 +105,9 @@ body {
 }
 .moon-controls button:hover { background: rgba(255, 255, 255, 0.15) }
 .moon-controls button:active { transform: scale(0.96) }
+/* The heat map layer, on. */
+.moon-controls .moon-layer[data-on="true"] { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
+.moon-controls .moon-layer[aria-busy="true"] { opacity: 0.7; cursor: progress }
 /* Once the view has moved away, the way back stands out in Sun yellow. */
 .moon-controls[data-moved="true"] .moon-recenter { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
 

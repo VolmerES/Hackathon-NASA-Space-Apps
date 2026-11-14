@@ -29,7 +29,9 @@ type Props = {
   /** Contents of the callout shown while the mouse rests on a site (desktop only). */
   info?: (id: string) => ReactNode
   /** Texts of the view controls (zoom in, zoom out, back to the south pole). */
-  controls?: { zoomIn: string; zoomOut: string; recenter: string }
+  controls?: { zoomIn: string; zoomOut: string; recenter: string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void }
+  /** Heat map laid over the polar cap (a square picture out to `deg` of colatitude), or null. */
+  heat?: { canvas: HTMLCanvasElement; deg: number } | null
   /** Street view: dive down onto the focused site until the camera skims its ground. */
   dive?: boolean
   /** Sub-solar point (deg) at the chosen date and hour, from JPL Horizons. In app mode the sunlight
@@ -106,7 +108,7 @@ function polarCap(q: Quality) {
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
-export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, sunAt, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer' }: Props) {
+export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, sunAt, onStreet, streetLabel = 'Street view', answerLabel = 'See the answer', heat = null }: Props) {
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
@@ -114,7 +116,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
   const labelsRef = useRef<HTMLDivElement>(null)
   const state = useRef({ mode, sites, focusId, onPick, showLabels, sunAt })
   state.current = { mode, sites, focusId, onPick, showLabels, sunAt }
-  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void } | null>(null)
+  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void; setHeat: (h: Props['heat']) => void } | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -400,7 +402,32 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       spinVel = tiltVel = 0
       holdUntil = performance.now() + 60000
     }
-    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null) }
+    // Heat map: drawn into the cap's own texture space and shown as light the ground gives off, so
+    // it reads the same in sunlit and in shadowed terrain; the photo underneath is dimmed.
+    let heatTex: THREE.CanvasTexture | null = null
+    const setHeat = (h: Props['heat']) => {
+      heatTex?.dispose()
+      heatTex = null
+      if (h) {
+        const size = 640
+        const c = document.createElement('canvas')
+        c.width = c.height = size
+        const g = c.getContext('2d')
+        if (g) {
+          const span = (h.deg / CAP_DEG) * size
+          g.imageSmoothingQuality = 'high'
+          g.drawImage(h.canvas, (size - span) / 2, (size - span) / 2, span, span)
+          heatTex = new THREE.CanvasTexture(c)
+          heatTex.colorSpace = THREE.SRGBColorSpace
+        }
+      }
+      capMat.emissiveMap = heatTex
+      capMat.emissive.set(heatTex ? 0xffffff : 0x000000)
+      capMat.emissiveIntensity = heatTex ? 0.9 : 0
+      capMat.color.setScalar(heatTex ? 0.32 : 1)
+      capMat.needsUpdate = true
+    }
+    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null), setHeat }
     syncSites()
 
     const pointers = new Map<number, { x: number; y: number }>()
@@ -829,6 +856,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       canvas.removeEventListener('wheel', wheel)
       for (const m of markers) m.el.remove()
       api.current = null
+      heatTex?.dispose()
       renderer.dispose()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -844,6 +872,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
   useEffect(() => {
     api.current?.dive(dive)
   }, [dive])
+  useEffect(() => {
+    api.current?.setHeat(heat)
+  }, [heat])
 
   return (
     <>
@@ -857,6 +888,15 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           <button type="button" onClick={() => api.current?.zoomBy(1.6)} aria-label={controls.zoomOut} title={controls.zoomOut}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
           </button>
+          {controls.layer && controls.onLayer && (
+            <button type="button" className="moon-layer" data-on={controls.layerOn ? 'true' : 'false'} aria-pressed={!!controls.layerOn} aria-busy={!!controls.layerBusy} onClick={controls.onLayer}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3l9 5-9 5-9-5 9-5z" />
+                <path d="M3 13l9 5 9-5" />
+              </svg>
+              <span>{controls.layer}</span>
+            </button>
+          )}
           <button type="button" className="moon-recenter" onClick={() => api.current?.recenter()}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <circle cx="12" cy="12" r="7" />
