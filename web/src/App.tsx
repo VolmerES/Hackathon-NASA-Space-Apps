@@ -15,6 +15,7 @@ import * as sfx from './sound'
 import { TimeBar } from './components/TimeBar'
 import { Missions, type Evaluated } from './components/Missions'
 import { missionReportHtml, type ReportRow } from './report'
+import { technicalReportHtml } from './techReport'
 import { applyMission, kindOf, loadMissions, saveMissions, uid, type MissionDef, type SavedScenario } from './missions'
 import { Logo } from './components/Logo'
 import { StayHeatmap } from './components/StayHeatmap'
@@ -665,8 +666,9 @@ export default function App() {
   }
   // A mission's report: every scenario recomputed with the current data, plus the best landing days at
   // its baseline site, as one readable HTML file to keep or print to PDF.
-  const downloadReport = (m: MissionDef) => {
+  const downloadReport = async (m: MissionDef) => {
     if (!ready) return
+    await loadGrid() // the landing grid, for the landing-accuracy section
     const rows: ReportRow[] = m.scenarios.map((sc) => {
       const site = resolveSite(sc.focus)
       const landing = new Date(sc.landing)
@@ -679,7 +681,11 @@ export default function App() {
     const baseRow = rows.find((x) => x.site && x.sc.kind === 'baseline') ?? rows.find((x) => x.site)
     const plan = baseRow?.site ? landingCalendar(baseRow.site, m.durationDays, m.minAntennaElevDeg, m.req, m.survivalPowerW, m.batteryWh || undefined, m.dod, m.eta) : undefined
     const status = !m.scenarios.length ? 'draft' : rows.every((x) => x.m?.verdict === 'viable') ? 'planned' : 'at-risk'
-    const html = missionReportHtml({
+    // The technical report (template of the team, after the NASA Technical Memoranda) for the mission's
+    // site and date; the short report when those fall outside the data.
+    const repSite = resolveSite(m.site)
+    const tech = repSite ? technicalReportHtml({ mission: m, site: repSite, siteName: siteName(repSite), scenarios: rows.map((x) => ({ sc: x.sc, siteName: x.siteName, m: x.m })), t, cautious }) : null
+    const html = tech ?? missionReportHtml({
       mission: m,
       status,
       rows,
@@ -694,6 +700,11 @@ export default function App() {
     const slug = m.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'mission'
     const file = `${slug}-report-${new Date().toISOString().slice(0, 10)}.html`
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }))
+    // Open it in a new tab, where its button prints it to PDF; if the browser blocks the tab, download it.
+    if (tech && window.open(url, '_blank')) {
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000)
+      return
+    }
     const a = document.createElement('a')
     a.href = url
     a.download = file
