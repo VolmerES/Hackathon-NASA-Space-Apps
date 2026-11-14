@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../i18n'
-import { loadPlotly } from './Plot'
 import { LogoMark } from './Logo'
 import { onDataProgress, type DataPart } from '../data/model'
 
 const RIDGE =
   'M0,92 L40,86 L72,90 L110,72 L150,78 L190,62 L232,70 L280,54 L322,66 L362,60 L402,74 L452,68 L500,82 L542,76 L590,58 L632,64 L680,50 L722,62 L770,72 L820,66 L862,80 L910,74 L960,86 L1000,82'
 
-type Service = DataPart | 'moon' | 'charts'
+type Service = DataPart | 'moon'
 type State = { state: 'pending' | 'done' | 'failed'; detail?: Record<string, number> }
-const ORDER: Service[] = ['ephem', 'sites', 'horizons', 'madrid', 'moon', 'charts']
+const ORDER: Service[] = ['ephem', 'sites', 'horizons', 'madrid', 'moon']
 const FIRST_MS = 1100 // name and Moon first
 const STEP_MS = 850 // each service stays long enough to be read
 const END_MS = 1000 // a beat on "ready" before the tool appears
@@ -33,13 +32,10 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
 
   const mark = (s: Service, st: State) => setStatus((prev) => (prev[s].state === 'pending' ? { ...prev, [s]: st } : prev))
 
-  // Real events: data files, chart engine, Moon imagery.
+  // Real events: data files and Moon imagery.
   useEffect(() => {
     if (phase === 'gone') return
     const off = onDataProgress((part, detail) => mark(part, { state: 'done', detail }))
-    loadPlotly()
-      .then(() => mark('charts', { state: 'done' }))
-      .catch(() => mark('charts', { state: 'failed' }))
     return off
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -133,10 +129,8 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
         return t.svcHorizons(d.sites)
       case 'madrid':
         return t.svcMadrid(d.hours)
-      case 'moon':
-        return t.svcMoon
       default:
-        return t.svcCharts
+        return t.svcMoon
     }
   }
   const sec = reduce ? '0s' : '0.9s'

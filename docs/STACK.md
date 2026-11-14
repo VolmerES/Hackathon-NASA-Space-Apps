@@ -60,7 +60,7 @@ después del [alcance](ALCANCE.md). Las versiones exactas se fijan al instalar.
 |---|---|---|
 | Base | **Vite + React + TypeScript** | Lo que mejor conoce la IA; build estático |
 | Estilos | **Tailwind CSS** | Rápido y coherente sin diseñar desde cero |
-| Gráficas | **Plotly.js, paquete básico** (`plotly.js-basic-dist-min`), cargado solo al mostrar las gráficas | Más rápido de montar con IA; trae zoom, etiquetas y exportar a imagen. ⚠️ **Prueba el sábado en un móvil real** (carga, desplazar el panorama con el dedo, pellizco). Si no pasa, **solo el panorama** se cambia a SVG con D3 |
+| Gráficas | **SVG dibujado a mano** (el panorama del cielo y la barra de la estancia). *Antes: Plotly.js, paquete básico* | Plotly se quitó al rehacer el panorama en SVG: ya no lo usaba ninguna gráfica y pesaba 471 KB comprimidos (1,16 MB de JavaScript) en la carga del móvil |
 | Mapa del polo sur | MVP: **imagen del relieve + marcadores SVG**. Si da tiempo: **OpenLayers** con teselas WMTS de Moon Trek | OpenLayers maneja bien proyecciones polares; Leaflet necesita más apaños |
 | 3D (si da tiempo) | **three.js + React Three Fiber + drei** | Ver [`INTERFAZ.md`](INTERFAZ.md) |
 | Estado | Estado de React + **escenario en la URL** | Sin librerías extra |

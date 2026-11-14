@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useT } from '../i18n'
+import { useStay } from '../hooks'
 
 /** Short confirmation at the bottom of the screen. Announced to screen readers. */
 export function Snackbar({ message, onDone }: { message: string | null; onDone: () => void }) {
@@ -20,6 +21,7 @@ export type MenuItem = { label: string; onSelect: () => void; hidden?: boolean }
 /** Dropdown menu: opens on click, closes on Escape, on a choice or on a click outside. */
 export function Menu({ label, items, className = '' }: { label: string; items: MenuItem[]; className?: string }) {
   const [open, setOpen] = useState(false)
+  const stay = useStay(open, 220)
   const root = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -37,8 +39,8 @@ export function Menu({ label, items, className = '' }: { label: string; items: M
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
-      {open && (
-        <ul role="menu" className="pop-in absolute right-0 z-40 mt-1 min-w-56 border border-white/15 bg-black/85 py-1 text-white shadow-xl backdrop-blur-md">
+      {stay.value && (
+        <ul role="menu" className={`${stay.leaving ? 'pop-out' : 'pop-in'} absolute right-0 z-40 mt-1 min-w-56 border border-white/15 bg-black/85 py-1 text-white shadow-xl backdrop-blur-md`}>
           {items
             .filter((i) => !i.hidden)
             .map((i) => (
@@ -121,7 +123,7 @@ export function Overlay({ open, title, onClose, children }: { open: boolean; tit
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="m-auto w-[min(560px,calc(100%-32px))] border border-rule bg-paper/95 p-0 text-ink shadow-2xl backdrop-blur-md backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+      className="modal-soft m-auto w-[min(560px,calc(100%-32px))] border border-rule bg-paper/95 p-0 text-ink shadow-2xl backdrop-blur-md"
     >
       <div className="flex items-center justify-between gap-4 border-b border-rule px-5 py-3">
         <h2 className="text-lg font-bold">{title}</h2>

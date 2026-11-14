@@ -6,7 +6,7 @@ import { StayBar } from './components/StayBar'
 import { YearStrip, type YearMetric } from './components/YearView'
 import { readScenario, writeScenario } from './scenario'
 import { LangContext, STRINGS, readLang, useT, type Lang, type Strings } from './i18n'
-import { useBoxHeight } from './hooks'
+import { useBoxHeight, useStay } from './hooks'
 import { CloseButton, FloatPanel, HamburgerMenu, Overlay, Snackbar } from './components/Ui'
 import { Splash, SKIP as SKIP_SPLASH } from './components/Splash'
 import { MoonScene } from './components/MoonScene'
@@ -282,6 +282,15 @@ export default function App() {
     [panel, chosen, overviewFrom, mission.minAntennaElevDeg, ready],
   )
   const slipped = mission.slipDays !== 0
+  // Panels, street view and the sky strip fade out before they go.
+  const panelStay = useStay(focused ? panel : null)
+  const shownPanel = panelStay.value
+  const streetStay = useStay(streetOpen && !!focused, 520)
+  const skyStay = useStay(!!focused && !picking && panel !== 'sky' && skyOpen)
+  const cardStay = useStay(cardOpen)
+  // The stay in hours (one sample per hour), so every percentage can also be read as hours.
+  const stayH = Math.max(1, focused?.samples.length ?? 1)
+  const hrs = (pct: number) => t.hoursOf(num((pct * stayH) / 100), num(stayH))
   const start = new Date(mission.landing.getTime() + mission.slipDays * 86400000)
   const end = new Date(start.getTime() + mission.durationDays * 86400000)
 
@@ -431,7 +440,7 @@ export default function App() {
   return (
     <LangContext.Provider value={t}>
       {moonOk ? (
-        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
+        <MoonScene mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />
@@ -492,7 +501,7 @@ export default function App() {
 
         <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
           {/* The guided card: find a site, then the answer. A bottom sheet on phones. */}
-          <section className={`ui-in glass pointer-events-auto absolute inset-x-0 bottom-0 max-h-[64dvh] overflow-y-auto rounded-t-xl px-4 pb-6 pt-4 lg:relative lg:max-h-none lg:w-[400px] lg:shrink-0 lg:rounded-none lg:p-5 ${cardOpen ? '' : 'hidden'}`}>
+          <section className={`ui-in glass pointer-events-auto absolute inset-x-0 bottom-0 max-h-[64dvh] overflow-y-auto rounded-t-xl px-4 pb-6 pt-4 lg:relative lg:max-h-none lg:w-[400px] lg:shrink-0 lg:rounded-none lg:p-5 ${cardOpen ? '' : cardStay.value ? 'sheet-out' : 'hidden'}`}>
             <CloseButton label={t.hidePanel} onClick={() => setCardOpen(false)} kind="fold" className="float-right -mt-1 ml-2" />
             {picking || !focused ? (
               <div>
@@ -631,6 +640,7 @@ export default function App() {
                   {(
                     [
                       {
+                        sub: hrs(focused.m.sunlightPct),
                         label: t.sunlight,
                         value: `${num(focused.m.sunlightPct)} %`,
                         fill: focused.m.sunlightPct / 100,
@@ -640,6 +650,7 @@ export default function App() {
                         was: slipped && Math.round(focused.m.sunlightPct) !== Math.round(focused.base.sunlightPct) ? t.was(`${num(focused.base.sunlightPct)} %`) : '',
                       },
                       {
+                        sub: hrs(focused.m.earthLinkPct),
                         label: t.earthContact,
                         value: `${num(focused.m.earthLinkPct)} %`,
                         fill: focused.m.earthLinkPct / 100,
@@ -649,6 +660,7 @@ export default function App() {
                         was: slipped && Math.round(focused.m.earthLinkPct) !== Math.round(focused.base.earthLinkPct) ? t.was(`${num(focused.base.earthLinkPct)} %`) : '',
                       },
                       {
+                        sub: hrs(focused.m.opsPct),
                         label: t.both,
                         value: `${num(focused.m.opsPct)} %`,
                         fill: focused.m.opsPct / 100,
@@ -658,6 +670,7 @@ export default function App() {
                         was: slipped && Math.round(focused.m.opsPct) !== Math.round(focused.base.opsPct) ? t.was(`${num(focused.base.opsPct)} %`) : '',
                       },
                       {
+                        sub: t.ofStay(num((100 * focused.m.longestNightH) / stayH)),
                         label: t.longestDarkness,
                         value: fmtDuration(focused.m.longestNightH),
                         fill: Math.min(focused.m.longestNightH / 96, 1),
@@ -667,13 +680,14 @@ export default function App() {
                         was: slipped && focused.m.longestNightH !== focused.base.longestNightH ? t.was(fmtDuration(focused.base.longestNightH).toLowerCase()) : '',
                       },
                     ] as const
-                  ).map(({ label, value, fill, bar, tone, ticks, was }) => (
+                  ).map(({ label, value, sub, fill, bar, tone, ticks, was }) => (
                     <div key={label} className="border border-white/10 bg-black/30 p-2.5">
                       <dt className="flex items-center justify-between gap-2 text-xs text-muted">
                         <span>{label}</span>
                         {tone && <i aria-hidden="true" className={`inline-block size-2 rounded-full ${tone === 'ok' ? 'bg-ok' : tone === 'warn' ? 'bg-warn' : 'bg-bad'}`} />}
                       </dt>
                       <dd className="mt-1 text-2xl font-bold tabular-nums leading-none">{value}</dd>
+                      <dd className="mt-1 text-xs tabular-nums text-white/80">{sub}</dd>
                       <div className="relative mt-2 h-1.5 bg-white/10" role="presentation">
                         <div className={`h-full ${bar} transition-[width] duration-500`} style={{ width: `${Math.max(0, Math.min(1, fill)) * 100}%` }} />
                         {ticks.map((x) => (
@@ -685,14 +699,19 @@ export default function App() {
                   ))}
                 </dl>
                 <div className="mt-3">
-                  <StayBar samples={focused.samples} madrid={madrid} />
+                  <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
                   <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-muted">
                     <span className="flex items-center gap-1.5">
-                      <i className="inline-block size-2 bg-sun" /> {t.sunlight}
+                      <i className="inline-block size-2 bg-sun" /> {t.sunlight}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.sunlightPct * stayH) / 100)} h</b>
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <i className="inline-block size-2 bg-earth" /> {t.earthInView}
+                      <i className="inline-block size-2 bg-earth" /> {t.earthInView}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.earthLinkPct * stayH) / 100)} h</b>
                     </span>
+                    {madrid && (
+                      <span className="flex items-center gap-1.5">
+                        <i className="inline-block size-2 bg-nasa-red" /> {t.madridShort}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.madridPct * stayH) / 100)} h</b>
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -798,14 +817,14 @@ export default function App() {
               {splashDone && moonOk && !panel && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
             </div>
             {/* Desktop: with a site chosen, its sky in 2D docked under the Moon. */}
-            {focused && !picking && panel !== 'sky' && skyOpen && (
-              <section className="ui-in glass pointer-events-auto mx-3 mb-3 hidden lg:block" aria-label={t.skyFrom(siteName(focused.site))}>
+            {skyStay.value && focused && (
+              <section className={`${skyStay.leaving ? 'ui-out' : 'ui-in'} glass pointer-events-auto mx-3 mb-3 hidden lg:block`} aria-label={t.skyFrom(siteName(focused.site))}>
                 <SkyStrip name={siteName(focused.site)} height={190} onExpand={() => { setView('2d'); setPanel('sky') }} onClose={() => setSkyOpen(false)}>
                   <Panorama site={focused.site} samples={focused.samples} height={190} />
                 </SkyStrip>
               </section>
             )}
-            {focused && !picking && panel !== 'sky' && !skyOpen && (
+            {focused && !picking && panel !== 'sky' && !skyOpen && !skyStay.value && (
               <div className="pointer-events-none mb-12 hidden justify-center lg:flex">
                 <button onClick={() => setSkyOpen(true)} className="ui-in glass pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold hover:bg-white/10">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 18c3-7 6-10 9-10s6 3 9 10" /><path d="M3 21h18" /><circle cx="12" cy="8" r="1.6" fill="currentColor" /></svg>
@@ -814,7 +833,7 @@ export default function App() {
               </div>
             )}
             {/* The main card, folded: a floating button brings it back (fixed, so its place here does not matter). */}
-          {!cardOpen && (
+          {!cardOpen && !cardStay.value && (
             <button
               onClick={() => setCardOpen(true)}
               aria-label={t.showPanel}
@@ -835,8 +854,8 @@ export default function App() {
           </div>
 
           {/* On-demand panels: the sky, the best dates, the comparison. */}
-          {panel && focused && (
-            <section className="ui-in glass pointer-events-auto fixed inset-0 z-30 solid-phone flex flex-col lg:static lg:inset-auto lg:z-auto lg:w-[min(760px,50vw)] lg:shrink-0" aria-label={panel === 'sky' ? t.seeSky : panel === 'when' ? t.bestDates : t.compare}>
+          {shownPanel && focused && (
+            <section className={`${panelStay.leaving ? 'ui-out' : 'ui-in'} glass pointer-events-auto fixed inset-0 z-30 solid-phone flex flex-col lg:static lg:inset-auto lg:z-auto lg:w-[min(760px,50vw)] lg:shrink-0`} aria-label={shownPanel === 'sky' ? t.seeSky : shownPanel === 'when' ? t.bestDates : t.compare}>
               <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
                 <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto" role="tablist">
                   {(
@@ -846,7 +865,7 @@ export default function App() {
                       ['compare', t.compare],
                     ] as const
                   ).map(([id, label]) => (
-                    <button key={id} role="tab" aria-selected={panel === id} onClick={() => setPanel(id)} className={`min-h-11 shrink-0 whitespace-nowrap px-2.5 text-sm sm:px-3 ${panel === id ? 'border-b-2 border-sun font-semibold' : 'text-muted hover:text-ink'}`}>
+                    <button key={id} role="tab" aria-selected={shownPanel === id} onClick={() => setPanel(id)} className={`min-h-11 shrink-0 whitespace-nowrap px-2.5 text-sm sm:px-3 ${shownPanel === id ? 'border-b-2 border-sun font-semibold' : 'text-muted hover:text-ink'}`}>
                       {label}
                     </button>
                   ))}
@@ -854,8 +873,8 @@ export default function App() {
                 <CloseButton label={t.close} onClick={() => setPanel(null)} withText />
               </div>
 
-              <div key={panel} className="ui-fade flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-                {panel === 'sky' && (
+              <div key={shownPanel} className="ui-fade flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+                {shownPanel === 'sky' && (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="mr-auto text-lg font-bold">{t.skyFrom(siteName(focused.site))}</h2>
@@ -937,7 +956,7 @@ export default function App() {
                   </>
                 )}
 
-                {panel === 'when' && (
+                {shownPanel === 'when' && (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="mr-auto text-lg font-bold">{t.yearTitle}</h2>
@@ -967,7 +986,7 @@ export default function App() {
                   </>
                 )}
 
-                {panel === 'compare' && (
+                {shownPanel === 'compare' && (
                   <>
                     <h2 className="text-lg font-bold">{t.compareTitle}</h2>
                     <p className="mt-1 text-sm text-muted">{t.forDates(fmtDate(start), fmtDate(end))}</p>
@@ -1031,8 +1050,8 @@ export default function App() {
 
       <Snackbar message={toast} onDone={clearToast} />
       {/* Street view, full screen: the ground of the site, its Sun and Earth, and the stay to play. */}
-      {streetOpen && focused && (
-        <div className="street-in fixed inset-0 z-40 flex flex-col bg-black" role="dialog" aria-modal="true" aria-label={t.streetView}>
+      {streetStay.value && focused && (
+        <div className={`${streetStay.leaving ? 'street-out' : 'street-in'} fixed inset-0 z-40 flex flex-col bg-black`} role="dialog" aria-modal="true" aria-label={t.streetView}>
           <div className="glass flex items-center gap-3 px-3 py-2 sm:px-4">
             <span className={VERDICT_CLS[focused.m.verdict]}>
               <VerdictIcon v={focused.m.verdict} size={22} />

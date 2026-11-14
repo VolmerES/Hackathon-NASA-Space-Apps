@@ -264,7 +264,7 @@ Visualization Studio».
 | Fichero original | Qué es | Qué sale |
 |---|---|---|
 | `lroc_color_16bit_srgb_4k.tif` (59 MB) | Mosaico de color de LROC (LRO), versión 2025 | `web/public/moon/moon_color_{2k,4k}.jpg` |
-| `ldem_16_uint.tif` (31,7 MB) | Relieve LOLA, 16 px/grado, medios metros sobre 1727,4 km | Mapas de normales `moon_normal_{2k,4k}.jpg`, el casquete polar y su mapa de alturas `polar_height.bin` para las sombras proyectadas (`web/scripts/moon_polar_height.py`) |
+| `ldem_16_uint.tif` (31,7 MB) | Relieve LOLA, 16 px/grado, medios metros sobre 1727,4 km | Mapas de normales `moon_normal_{2k,4k}.jpg`, el casquete polar y su mapa de alturas `polar_height.png`, que levanta la malla y proyecta las sombras (`web/scripts/moon_polar_cap.py`) |
 
 - Scripts: `web/scripts/moon_textures.py` (esfera) y
   `web/scripts/moon_polar_cap.py` (casquete polar sur en proyección
