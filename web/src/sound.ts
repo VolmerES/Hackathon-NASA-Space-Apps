@@ -134,7 +134,7 @@ export function launch() {
   const c = live()
   if (!c) return
   tone(c, { f: 58, f2: 32, dur: 2.2, type: 'sine', gain: 0.7, attack: 0.01 })
-  noise(c, { dur: 1.6, type: 'lowpass', f: 900, f2: 120, gain: 0.25, attack: 0.005 })
+  tone(c, { f: 116, f2: 64, dur: 1.2, type: 'triangle', gain: 0.12, attack: 0.01 })
   const flt = c.createBiquadFilter()
   flt.type = 'lowpass'
   flt.Q.value = 6
@@ -182,13 +182,15 @@ export function ready() {
   ;[587, 880, 1175].forEach((f, i) => tone(c, { t: i * 0.06, f, dur: 0.9, type: 'sine', gain: 0.09 }))
 }
 
-/** A sweep of air: entering the Moon, changing view, flying between sites. */
+/** A transition (entering the Moon, changing view, flying between sites): an electronic glide, no
+ *  air (there is none in space). The name stays for the callers. */
 export function whoosh(strength = 1) {
   log('whoosh')
   const c = live()
   if (!c) return
-  noise(c, { dur: 0.9, type: 'bandpass', f: 300, f2: 2400, q: 0.8, gain: 0.12 * strength, attack: 0.35 })
-  tone(c, { f: 90, f2: 60, dur: 0.9, type: 'sine', gain: 0.08 * strength, attack: 0.3 })
+  tone(c, { f: 220, f2: 660, dur: 0.55, type: 'sine', gain: 0.06 * strength, attack: 0.18 })
+  tone(c, { t: 0.06, f: 330, f2: 990, dur: 0.5, type: 'triangle', gain: 0.025 * strength, attack: 0.16 })
+  tone(c, { f: 80, f2: 55, dur: 0.6, type: 'sine', gain: 0.06 * strength, attack: 0.2 })
 }
 
 export function click() {
@@ -215,7 +217,6 @@ export function open() {
   const c = live()
   if (!c) return
   tone(c, { f: 520, f2: 780, dur: 0.12, type: 'triangle', gain: 0.07 })
-  noise(c, { dur: 0.14, type: 'highpass', f: 3000, gain: 0.02 })
 }
 
 export function close() {
@@ -302,8 +303,9 @@ export function touchdown() {
   log('touchdown')
   const c = live()
   if (!c) return
+  // Felt through the lander's legs, not heard through air: a deep thump and a short settle.
   tone(c, { f: 70, f2: 38, dur: 0.6, gain: 0.5, attack: 0.004 })
-  noise(c, { dur: 1.8, type: 'lowpass', f: 1400, f2: 200, gain: 0.12, attack: 0.02 })
+  tone(c, { t: 0.18, f: 52, f2: 40, dur: 0.5, gain: 0.18, attack: 0.01 })
   setTimeout(radioOut, 1400)
 }
 
@@ -394,44 +396,95 @@ export function setEngine(level: number) {
 }
 
 let amb: AudioNode[] | null = null
-/** A very soft space bed: a low drone and brown-ish noise breathing slowly. */
+/** A very soft space bed: a low drone that breathes slowly (no noise: no wind in space). */
 export function startAmbient() {
   const c = init()
   if (!c || amb) return
   log('ambient')
+  const bed = c.createGain()
+  bed.gain.value = 0.8
+  bed.connect(ambBus)
   const nodes: AudioScheduledSourceNode[] = []
   for (const [f, g] of [
     [55, 0.5],
     [82.4, 0.25],
     [110.2, 0.12],
+    [164.8, 0.05],
   ]) {
     const o = c.createOscillator()
     o.frequency.value = f
     const og = c.createGain()
     og.gain.value = g
-    o.connect(og).connect(ambBus)
+    o.connect(og).connect(bed)
     o.start()
     nodes.push(o)
   }
-  const src = c.createBufferSource()
-  src.buffer = noiseBuf
-  src.loop = true
-  const flt = c.createBiquadFilter()
-  flt.type = 'lowpass'
-  flt.frequency.value = 260
-  const ng = c.createGain()
-  ng.gain.value = 0.6
-  src.connect(flt).connect(ng).connect(ambBus)
-  src.start()
-  nodes.push(src)
-  // Slow breathing of the filter.
+  // Slow breathing of the whole bed.
   const lfo = c.createOscillator()
-  lfo.frequency.value = 0.05
+  lfo.frequency.value = 0.06
   const lg = c.createGain()
-  lg.gain.value = 120
-  lfo.connect(lg).connect(flt.frequency)
+  lg.gain.value = 0.25
+  lfo.connect(lg).connect(bed.gain)
   lfo.start()
   nodes.push(lfo)
   amb = nodes
   ambBus.gain.setTargetAtTime(0.05, c.currentTime + 1.5, 2.5)
+}
+
+// ── Franky, the little robot ────────────────────────────────────────────────────────────────
+
+/** Robot chirps: quick sine blips gliding up and down, like a small droid talking. */
+export function chirp(kind: 'hello' | 'step' | 'bye' | 'in' = 'step') {
+  log(`chirp-${kind}`)
+  const c = live()
+  if (!c) return
+  const notes: [number, number, number][] =
+    kind === 'hello'
+      ? [[880, 1400, 0], [1400, 990, 0.11], [990, 1760, 0.2], [1320, 1320, 0.34]]
+      : kind === 'bye'
+        ? [[1320, 1760, 0], [1760, 990, 0.1], [990, 660, 0.2]]
+        : kind === 'in'
+          ? [[660, 2200, 0]]
+          : [[1100, 1500, 0], [1500, 1250, 0.09]]
+  for (const [f, f2, t] of notes) tone(c, { t, f, f2, dur: kind === 'in' ? 0.35 : 0.1, type: 'sine', gain: 0.07, attack: 0.008 })
+  // A little square-wave grit under the first blip, so it reads as electronic.
+  tone(c, { f: notes[0][0] / 2, dur: 0.06, type: 'square', gain: 0.015 })
+}
+
+let rollNode: { osc: OscillatorNode; lfo: OscillatorNode; gain: GainNode } | null = null
+/** Franky's wheels and motor while he rolls: a soft electric whir with a gentle wobble. */
+export function roll(on: boolean) {
+  const c = live()
+  if (!c) return
+  if (on && !rollNode) {
+    log('roll')
+    const osc = c.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.value = 210
+    const lfo = c.createOscillator()
+    lfo.frequency.value = 7
+    const lg = c.createGain()
+    lg.gain.value = 18
+    lfo.connect(lg).connect(osc.frequency)
+    const flt = c.createBiquadFilter()
+    flt.type = 'lowpass'
+    flt.frequency.value = 900
+    const gain = c.createGain()
+    gain.gain.value = 0
+    osc.connect(flt).connect(gain).connect(sfxBus)
+    osc.start()
+    lfo.start()
+    gain.gain.setTargetAtTime(0.035, c.currentTime, 0.08)
+    osc.frequency.setTargetAtTime(260, c.currentTime, 0.3)
+    rollNode = { osc, lfo, gain }
+  } else if (!on && rollNode) {
+    const r = rollNode
+    rollNode = null
+    r.gain.gain.setTargetAtTime(0, c.currentTime, 0.08)
+    r.osc.frequency.setTargetAtTime(150, c.currentTime, 0.1)
+    setTimeout(() => {
+      r.osc.stop()
+      r.lfo.stop()
+    }, 500)
+  }
 }

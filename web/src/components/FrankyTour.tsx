@@ -1,9 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { FrankyBot } from './FrankyBot'
+import { createFranky, type FrankyStage } from './franky3d'
+import * as sfx from '../sound'
 
 // The guided tour: Franky walks a newcomer through the tool in a few fixed steps. No AI here: the
 // same words every time, it works offline, and it can be skipped at any moment. Each step can point
-// at a part of the page (data-franky="…"); the rest of the screen dims around it.
+// at a part of the page (data-franky="…"); the rest of the screen dims around it. Franky himself, in 3D,
+// rolls beside the bubble from step to step, waves when he gets there, and at the end rolls into the
+// chat button (data-franky="franky"), where he lives.
 export type TourStep = { target?: string; title: string; text: string; before?: () => void }
 export type TourText = { next: string; back: string; skip: string; done: string; chat: string; step: (i: number, n: number) => string }
 
@@ -11,6 +14,21 @@ const PAD = 8
 
 export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]; text: TourText; onClose: () => void; onChat: () => void }) {
   const [i, setI] = useState(0)
+  const [exit, setExit] = useState<{ x: number; y: number } | null>(null)
+  const [bubbleH, setBubbleH] = useState(0)
+  // Leaving: Franky rolls into the chat button, then the tour closes (and the chat opens, if asked).
+  const leave = (chat = false) => {
+    if (exit) return
+    const btn = document.querySelector<HTMLElement>('[data-franky="franky"]')?.getBoundingClientRect()
+    const done = () => {
+      onClose()
+      if (chat) onChat()
+    }
+    if (!btn || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return done()
+    setExit({ x: btn.left + btn.width / 2, y: btn.top + btn.height / 2 })
+    sfx.chirp('in')
+    window.setTimeout(done, 950)
+  }
   const [rect, setRect] = useState<DOMRect | null>(null)
   const bubble = useRef<HTMLDivElement>(null)
   const [bubblePos, setBubblePos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
@@ -57,6 +75,7 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
     const h = window.innerHeight
     const bw = b.offsetWidth
     const bh = b.offsetHeight
+    setBubbleH(bh)
     if (!rect) return setBubblePos({ left: (w - bw) / 2, top: (h - bh) / 2 })
     const below = rect.bottom + PAD + 12
     const above = rect.top - PAD - 12 - bh
@@ -65,17 +84,19 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
     let left = rect.left + rect.width / 2 - bw / 2
     if (sideFits) left = rect.right + 16 + bw < w ? rect.right + 16 : rect.left - 16 - bw
     setBubblePos({ left: Math.max(8, Math.min(w - bw - 8, left)), top })
+    setBubbleH(bh)
   }, [rect, i])
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') leave()
       if (e.key === 'ArrowRight') setI((x) => Math.min(steps.length - 1, x + 1))
       if (e.key === 'ArrowLeft') setI((x) => Math.max(0, x - 1))
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [onClose, steps.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, steps.length, exit])
 
   const last = i === steps.length - 1
   return (
@@ -92,11 +113,10 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
       <div className="fixed inset-0" onClick={() => undefined} />
       <div
         ref={bubble}
-        className="fk-bubble fixed w-[min(380px,calc(100vw-16px))] rounded-xl border border-white/15 bg-[#0b0f18]/95 p-4 text-sm text-white shadow-2xl backdrop-blur-md"
+        className={`fk-bubble fixed w-[min(380px,calc(100vw-16px))] rounded-xl border border-sun/40 bg-[#0b0f18]/95 p-4 text-sm text-white shadow-2xl backdrop-blur-md transition-opacity duration-300 ${exit ? 'opacity-0' : ''}`}
         style={{ left: bubblePos.left, top: bubblePos.top }}
       >
         <div className="flex gap-3">
-          <FrankyBot size={58} mood="talking" look={rect ? (rect.left + rect.width / 2 < bubblePos.left ? -1 : rect.left > bubblePos.left + 300 ? 1 : 0) : 0} className="shrink-0" />
           <div key={i} className="ui-in min-w-0">
             <p className="text-[11px] text-white/50">{text.step(i + 1, steps.length)}</p>
             <p className="mt-0.5 text-base font-semibold leading-snug">{step.title}</p>
@@ -104,7 +124,7 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
           </div>
         </div>
         <div className="mt-4 flex items-center gap-2">
-          <button type="button" onClick={onClose} className="min-h-10 px-2 text-white/60 underline-offset-4 hover:text-white hover:underline">
+          <button type="button" onClick={() => leave()} className="min-h-10 px-2 text-white/60 underline-offset-4 hover:text-white hover:underline">
             {text.skip}
           </button>
           <span className="ml-auto" />
@@ -115,10 +135,10 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
           )}
           {last ? (
             <>
-              <button type="button" onClick={() => { onClose(); onChat() }} className="min-h-10 rounded-sm border border-sun/70 px-3 font-semibold text-sun hover:bg-sun/10">
+              <button type="button" onClick={() => leave(true)} className="min-h-10 rounded-sm border border-sun/70 px-3 font-semibold text-sun hover:bg-sun/10">
                 {text.chat}
               </button>
-              <button type="button" onClick={onClose} className="min-h-10 rounded-sm bg-sun px-3 font-semibold text-black hover:brightness-110">
+              <button type="button" onClick={() => leave()} className="min-h-10 rounded-sm bg-sun px-3 font-semibold text-black hover:brightness-110">
                 {text.done}
               </button>
             </>
@@ -134,6 +154,86 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
           ))}
         </div>
       </div>
+      <TourWalker bubble={{ ...bubblePos, h: bubbleH }} step={i} exit={exit} />
     </div>
+  )
+}
+
+// Franky in 3D beside the bubble: on the left of it if there is room, else on the right, standing on
+// its bottom edge. He rolls from place to place and waves when he arrives.
+function TourWalker({ bubble, step, exit }: { bubble: { left: number; top: number; h: number }; step: number; exit: { x: number; y: number } | null }) {
+  const small = window.innerWidth < 640
+  const W = small ? 96 : 150
+  const H = small ? 118 : 185
+  const box = useRef<HTMLDivElement>(null)
+  const stage = useRef<FrankyStage | null>(null)
+  const prev = useRef<number | null>(null)
+  const bw = Math.min(380, window.innerWidth - 16)
+  const onLeft = bubble.left - W + 18 > 0
+  const left = onLeft ? bubble.left - W + 18 : Math.min(window.innerWidth - W, bubble.left + bw - 18)
+  const top = Math.max(4, bubble.top + bubble.h - H + 10)
+
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    const s = createFranky(el, W, H, { facing: onLeft ? 0.25 : -0.25 })
+    stage.current = s
+    s.loaded.then((ok) => {
+      if (!ok) return
+      s.set({ waving: true })
+      sfx.chirp('hello')
+      window.setTimeout(() => s.set({ waving: false }), 1600)
+    })
+    return () => {
+      s.dispose()
+      stage.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // A new place: roll there (facing the way he goes), then turn towards the bubble and wave.
+  useEffect(() => {
+    const s = stage.current
+    if (!s || exit) return
+    const from = prev.current
+    prev.current = left
+    if (from === null || Math.abs(left - from) < 6) return
+    s.set({ rolling: true, waving: false, facing: left > from ? Math.PI / 2 : -Math.PI / 2 })
+    const a = window.setTimeout(() => {
+      s.set({ rolling: false, facing: onLeft ? 0.25 : -0.25, waving: true })
+      sfx.chirp('step')
+    }, 850)
+    const b = window.setTimeout(() => s.set({ waving: false }), 1900)
+    return () => {
+      window.clearTimeout(a)
+      window.clearTimeout(b)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left, top, step])
+
+  // Leaving: roll towards the chat button, shrinking into it.
+  useEffect(() => {
+    const s = stage.current
+    if (!exit || !s) return
+    s.set({ rolling: true, waving: false, facing: exit.x > left ? Math.PI / 2 : -Math.PI / 2 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exit])
+
+  const move = 'cubic-bezier(0.45, 0, 0.25, 1)'
+  return (
+    <div
+      ref={box}
+      aria-hidden="true"
+      className="pointer-events-none fixed z-[71]"
+      style={{
+        left,
+        top,
+        width: W,
+        height: H,
+        transition: `left 0.85s ${move}, top 0.85s ${move}, transform 0.9s ${move}, opacity 0.35s ease 0.6s`,
+        transform: exit ? `translate(${exit.x - left - W / 2}px, ${exit.y - top - H / 2}px) scale(0.12)` : 'none',
+        opacity: exit ? 0 : 1,
+      }}
+    />
   )
 }

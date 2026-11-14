@@ -54,12 +54,16 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
   }, [moon])
 
   // The data keep loading in the background while the viewer chooses; the reveal starts on the choice.
+  const [leaving, setLeaving] = useState(false)
   const choose = (m: Mode) => {
+    if (leaving) return
     unlockAudio()
     launch()
     startAmbient()
     onMode(m)
-    setStage('load')
+    // Franky waves goodbye and rolls off before the loading takes his place.
+    setLeaving(true)
+    window.setTimeout(() => setStage('load'), reduce ? 0 : 1300)
   }
 
   // Reveal the services one at a time, never faster than they can be read.
@@ -225,13 +229,12 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
           <div className="sp-ui mt-[2vh] flex w-[min(1000px,100%)] flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-4">
           {/* Franky rolls in, waves, and his speech bubble asks the question. */}
           <div className="flex shrink-0 flex-col items-center">
-            <SplashBot width={wide ? 220 : 104} height={wide ? 270 : 128} onWave={() => setBotWaved(true)} />
-            <p className="text-[10px] text-white/45">{t.botAiNote}</p>
+            <SplashBot width={wide ? 220 : 104} height={wide ? 270 : 128} leaving={leaving} onWave={() => setBotWaved(true)} />
           </div>
           <div className="w-full min-w-0 flex-1" role="group" aria-label={t.modeTitle}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               {botWaved ? (
-                <p className="bot-bubble pop-in text-sm font-semibold text-white" aria-live="polite">{t.botAsk}</p>
+                <BotBubble key={leaving ? 'bye' : 'ask'} text={leaving ? t.botBye : t.botAsk} />
               ) : (
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{t.modeTitle}</p>
               )}
@@ -250,12 +253,12 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <button type="button" autoFocus onClick={() => choose('guided')} className="mode-btn">
+              <button type="button" autoFocus disabled={leaving} onClick={() => choose('guided')} className="mode-btn">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg>
                 <span className="block text-base font-semibold">{t.modeGuided}</span>
                 <span className="block text-sm font-normal text-white/65">{t.modeGuidedSub}</span>
               </button>
-              <button type="button" onClick={() => choose('expert')} className="mode-btn">
+              <button type="button" disabled={leaving} onClick={() => choose('expert')} className="mode-btn">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><path d="M4 20h16M6 16l4-5 3 3 5-7" /><circle cx="18" cy="7" r="1.5" /></svg>
                 <span className="block text-base font-semibold">{t.modeExpert}</span>
                 <span className="block text-sm font-normal text-white/65">{t.modeExpertSub}</span>
@@ -343,5 +346,22 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
         {stage === 'load' && <span>{t.splashSkip}</span>}
       </div>
     </div>
+  )
+}
+
+// Franky's speech bubble: the words come out letter by letter, as if he were saying them.
+function BotBubble({ text }: { text: string }) {
+  const [n, setN] = useState(() => (window.matchMedia('(prefers-reduced-motion: reduce)').matches ? text.length : 0))
+  useEffect(() => {
+    const id = window.setInterval(() => setN((k) => (k >= text.length ? (window.clearInterval(id), k) : k + 1)), 28)
+    return () => window.clearInterval(id)
+  }, [text])
+  return (
+    <p className="bot-bubble pop-in" aria-live="polite" aria-label={text}>
+      <span aria-hidden="true">{text.slice(0, n)}</span>
+      <span aria-hidden="true" className={`bot-caret ${n >= text.length ? 'bot-caret-done' : ''}`} />
+      {/* Reserve the full width so the bubble does not grow while typing. */}
+      <span aria-hidden="true" className="invisible block h-0 overflow-hidden">{text}</span>
+    </p>
   )
 }

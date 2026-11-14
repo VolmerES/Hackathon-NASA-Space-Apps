@@ -170,9 +170,35 @@ body {
 @media (max-width: 639px) { .mode-btn { min-height: 0; padding: 12px 16px; gap: 4px } }
 .mode-btn:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 3px }
 /* Franky's speech bubble, its tail towards him (left on wide screens, up on phones). */
-.bot-bubble { position: relative; padding: 8px 14px; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 10px }
-.bot-bubble::before { content: ''; position: absolute; left: 14px; top: -7px; width: 12px; height: 12px; background: inherit; border-left: inherit; border-top: inherit; transform: rotate(45deg) }
-@media (min-width: 640px) { .bot-bubble::before { left: -7px; top: calc(50% - 6px); transform: rotate(-45deg) } }
+.bot-bubble {
+  position: relative;
+  max-width: 30rem;
+  padding: 12px 18px;
+  font: 600 15px/1.35 var(--font-sans);
+  color: #fff;
+  background: linear-gradient(180deg, rgba(20, 26, 40, 0.95), rgba(8, 11, 18, 0.95));
+  border: 1px solid rgba(242, 183, 5, 0.55);
+  border-radius: 14px;
+  box-shadow: 0 0 0 4px rgba(242, 183, 5, 0.06), 0 10px 30px rgba(0, 0, 0, 0.45);
+  transform-origin: 0 50%;
+}
+.bot-bubble::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  top: -8px;
+  width: 14px;
+  height: 14px;
+  background: rgb(20, 26, 40);
+  border-left: 1px solid rgba(242, 183, 5, 0.55);
+  border-top: 1px solid rgba(242, 183, 5, 0.55);
+  transform: rotate(45deg);
+}
+@media (min-width: 640px) { .bot-bubble::before { left: -8px; top: calc(50% - 7px); transform: rotate(-45deg) } }
+.bot-caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--color-sun); animation: bot-blink 0.8s steps(1) infinite }
+.bot-caret-done { animation-delay: 0.8s; opacity: 0.8 }
+@keyframes bot-blink { 50% { opacity: 0 } }
+.mode-btn:disabled { opacity: 0.55; cursor: default; transform: none }
 .moon-controls button:active { transform: scale(0.96) }
 /* The heat map layer, on. */
 .moon-controls .moon-layer[data-on="true"] { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
@@ -563,7 +589,13 @@ details[open] > .disclosure::after { transform: translateY(2px) rotate(-135deg) 
 
 /* Franky, the guide robot: floats, blinks, lights its antenna while thinking, talks, waves. */
 .fk-bot { overflow: visible }
-.fk-bot .fk-float { animation: fk-float 3.2s ease-in-out infinite; transform-origin: 32px 40px }
+.fk-bot .fk-float { animation: fk-float 3.2s ease-in-out infinite; transform-origin: 50% 60% }
+.fk-bot .fk-head { transition: transform 0.4s ease, filter 0.3s }
+.fk-thinking .fk-head { filter: drop-shadow(0 0 6px rgb(242 183 5 / 0.7)) }
+.fk-talking .fk-head { animation: fk-nod 0.5s ease-in-out 4 alternate }
+@keyframes fk-nod { from { translate: 0 0 } to { translate: 0 -2px } }
+.fk-happy .fk-head { animation: fk-hop 0.45s ease-in-out 2 alternate }
+@keyframes fk-hop { from { translate: 0 0 } to { translate: 0 -4px } }
 @keyframes fk-float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-2.5px) } }
 .fk-bot .fk-eyes > circle:nth-child(-n+2) { animation: fk-blink 4.6s infinite; transform-box: fill-box; transform-origin: center }
 @keyframes fk-blink { 0%, 94%, 100% { transform: scaleY(1) } 96% { transform: scaleY(0.1) } }
