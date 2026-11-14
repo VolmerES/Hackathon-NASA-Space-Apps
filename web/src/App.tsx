@@ -659,7 +659,9 @@ export default function App() {
   const seg = (on: boolean) => `min-h-11 px-3 text-sm ${on ? 'bg-ink font-semibold text-paper' : 'hover:bg-white/10'}`
 
   const moonSites = useMemo(() => {
-    const list = picking ? catalogue.map((c) => c.site) : results.map((r) => r.site)
+    // The five sites stay on the Moon at all times (picking one used to hide the others), plus any
+    // own coordinates added to the list.
+    const list = [...catalogue.map((c) => c.site), ...results.map((r) => r.site).filter((s) => !catalogue.some((c) => c.site.id === s.id))]
     const verdictOf = new Map([...catalogue.map((c) => [c.site.id, c.m.verdict] as const), ...results.map((r) => [r.site.id, r.m.verdict] as const)])
     return list.map((s) => ({ id: s.id, name: siteName(s), lat: s.lat, lon: s.lon, color: VERDICT_HEX[verdictOf.get(s.id) ?? 'not-viable'] }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
