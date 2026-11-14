@@ -419,6 +419,17 @@ details.soft-moving { overflow: hidden }
   .moon-controls button { padding: 0; width: 44px }
   .moon-controls button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
 }
+/* A big panel open beside the Moon: the view buttons fold to their icons too. */
+.moon-controls.compact button { padding: 0; width: 44px }
+.moon-controls.compact button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+/* Icons only (phones, or a big panel open): the groups keep their joined look, the icon centred,
+   and the zoom pair stacks above them. */
+.moon-controls.compact .moon-group button { justify-content: center; padding: 0 }
+.moon-controls.compact .moon-zoom { flex-direction: column; align-items: flex-end }
+@media (max-width: 639px) {
+  .moon-controls .moon-group button { justify-content: center; padding: 0 }
+  .moon-controls .moon-zoom { flex-direction: column; align-items: flex-end }
+}
 
 /* Narrow phones: the header wordmark stays on one line. */
 @media (max-width: 399px) { .wordmark-tight { letter-spacing: 0.12em } }
