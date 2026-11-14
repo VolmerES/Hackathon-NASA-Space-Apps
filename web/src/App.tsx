@@ -8,7 +8,7 @@ import { readScenario, writeScenario } from './scenario'
 import { LIGHT_CAP_DEG, LIGHT_GRADIENT, lightMap, lightUpTo, type LightMap } from './data/lightmap'
 import { SiteLight } from './components/SiteLight'
 import { LangContext, STRINGS, readLang, useT, type Lang, type Strings } from './i18n'
-import { useBoxHeight, useStay } from './hooks'
+import { useBoxHeight, useMedia, useStay } from './hooks'
 import { CloseButton, FloatPanel, HamburgerMenu, Overlay, Snackbar } from './components/Ui'
 import { Splash, SKIP as SKIP_SPLASH } from './components/Splash'
 import { TimeBar } from './components/TimeBar'
@@ -245,8 +245,8 @@ export default function App() {
 
   useEffect(() => {
     const extra = (lang === 'es' ? '&l=es' : '') + (view === '3d' ? '&v=3d' : '') + (madrid ? '&dsn=1' : '') + (panel ? `&p=${panel}` : '')
-    if (chosen.length) window.history.replaceState(null, '', writeScenario({ chosen, focus, mission, mode: 'planner' }) + extra)
-    else window.history.replaceState(null, '', lang === 'es' ? '#l=es' : window.location.pathname)
+    if (chosen.length) window.history.replaceState(window.history.state, '', writeScenario({ chosen, focus, mission, mode: 'planner' }) + extra)
+    else window.history.replaceState(window.history.state, '', lang === 'es' ? '#l=es' : window.location.pathname)
   }, [chosen, focus, mission, lang, view, madrid, panel])
 
   useEffect(() => {
@@ -342,6 +342,28 @@ export default function App() {
   const skyStay = useStay(!!focused && !picking && panel !== 'sky' && skyOpen)
   const cardStay = useStay(cardOpen)
   const swipe = useRef<{ x: number; y: number } | null>(null)
+  // Phones: the card is a centred pop-up; the system Back button closes it (one history entry while open).
+  const isPhone = useMedia('(max-width: 639px)')
+  const cardHistory = useRef(false)
+  useEffect(() => {
+    if (cardOpen && isPhone && !cardHistory.current) {
+      window.history.pushState({ ...(window.history.state ?? {}), card: true }, '', window.location.href)
+      cardHistory.current = true
+    }
+    if (!cardOpen && cardHistory.current) {
+      cardHistory.current = false
+      if (window.history.state?.card) window.history.back()
+    }
+  }, [cardOpen, isPhone])
+  useEffect(() => {
+    const onPop = () => {
+      if (!cardHistory.current) return
+      cardHistory.current = false
+      setCardOpen(false)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
   // The stay in hours (one sample per hour), so every percentage can also be read as hours.
   const stayH = Math.max(1, focused?.samples.length ?? 1)
   const hrs = (pct: number) => t.hoursOf(num((pct * stayH) / 100), num(stayH))
@@ -692,11 +714,15 @@ export default function App() {
         </header>
 
         <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
+          {/* Phones: a dimmed backdrop behind the pop-up; tapping it closes the card. */}
+          {cardOpen && <div className="ui-fade pointer-events-auto fixed inset-0 z-30 bg-black/55 sm:hidden" onClick={() => setCardOpen(false)} aria-hidden="true" />}
           {/* The guided card: find a site, then the answer. A drawer on the left at every size: over the
               Moon on phones, beside it from tablets up. A slim tab on its edge folds it; on phones a swipe
               to the left does too. */}
           <div
-            className={`pointer-events-auto absolute inset-y-0 left-0 z-20 w-[min(88vw,380px)] lg:relative lg:z-auto lg:w-[400px] lg:shrink-0 ${cardOpen ? 'drawer-in' : cardStay.value ? 'drawer-out' : 'hidden'}`}
+            className={`pointer-events-auto fixed inset-x-3 inset-y-0 z-40 m-auto h-fit max-w-[440px] sm:absolute sm:inset-x-auto sm:left-0 sm:z-20 sm:m-0 sm:h-auto sm:w-[380px] sm:max-w-none lg:relative lg:z-auto lg:w-[400px] lg:shrink-0 ${cardOpen ? 'drawer-in' : cardStay.value ? 'drawer-out' : 'hidden'}`}
+            role={isPhone ? 'dialog' : undefined}
+            aria-modal={isPhone ? true : undefined}
             onTouchStart={(e) => {
               const p = e.touches[0]
               swipe.current = { x: p.clientX, y: p.clientY }
@@ -708,7 +734,13 @@ export default function App() {
               if (st && st.x - p.clientX > 70 && Math.abs(p.clientY - st.y) < 50) setCardOpen(false)
             }}
           >
-          <section className="glass h-full overflow-y-auto overscroll-contain rounded-r-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 lg:rounded-none lg:p-5">
+          <section className="glass max-h-[82dvh] overflow-y-auto overscroll-contain rounded-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:h-full sm:max-h-none sm:rounded-l-none sm:rounded-r-xl lg:rounded-none lg:p-5">
+            {/* Phones: the pop-up's close button, always in reach at the top right. */}
+            <div className="sticky top-0 z-10 -mx-1 -mt-1 flex justify-end sm:hidden">
+              <button type="button" onClick={() => setCardOpen(false)} aria-label={t.closePanel} title={t.closePanel} className="flex size-10 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white backdrop-blur hover:bg-white/15">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
             {picking || !focused ? (
               <div>
                 {focused && (
@@ -1056,7 +1088,7 @@ export default function App() {
             onClick={() => setCardOpen(false)}
             aria-label={t.hidePanel}
             title={t.hidePanel}
-            className="glass absolute -right-5 top-1/2 flex h-14 w-5 -translate-y-1/2 items-center justify-center rounded-r-md border-l-0 text-white/70 hover:text-white"
+            className="glass absolute -right-5 top-1/2 hidden h-14 w-5 -translate-y-1/2 items-center justify-center rounded-r-md border-l-0 text-white/70 hover:text-white sm:flex"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
           </button>

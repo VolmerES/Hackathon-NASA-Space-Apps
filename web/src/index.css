@@ -410,3 +410,11 @@ details.soft-moving { overflow: hidden }
 
 /* Narrow phones: the header wordmark stays on one line. */
 @media (max-width: 399px) { .wordmark-tight { letter-spacing: 0.12em } }
+
+/* Phones: the card is a centred pop-up, so it grows in instead of sliding from the side. */
+@media (max-width: 639px) {
+  .drawer-in { animation-name: pop-card-in }
+  .drawer-out { animation-name: pop-card-out }
+}
+@keyframes pop-card-in { from { opacity: 0; transform: translateY(10px) scale(0.97) } }
+@keyframes pop-card-out { to { opacity: 0; transform: translateY(10px) scale(0.97) } }
