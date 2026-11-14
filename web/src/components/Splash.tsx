@@ -226,18 +226,10 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
         </div>
         <p className="sp-sub max-w-xl text-balance text-base font-light text-white/80 sm:text-lg" style={{ animationDelay: '1.5s' }}>{t.splashTagline}</p>
         {stage === 'choose' ? (
-          <div className="sp-ui mt-[2vh] flex w-[min(1000px,100%)] flex-col items-center gap-2 sm:flex-row sm:items-end sm:gap-4">
-          {/* Franky rolls in, waves, and his speech bubble asks the question. */}
-          <div className="flex shrink-0 flex-col items-center">
-            <SplashBot width={wide ? 220 : 104} height={wide ? 270 : 128} leaving={leaving} onWave={() => setBotWaved(true)} />
-          </div>
+          <div className="sp-ui mt-[2vh] flex w-[min(860px,100%)] flex-col items-center gap-2">
           <div className="w-full min-w-0 flex-1" role="group" aria-label={t.modeTitle}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              {botWaved ? (
-                <BotBubble key={leaving ? 'bye' : 'ask'} text={leaving ? t.botBye : t.botAsk} />
-              ) : (
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{t.modeTitle}</p>
-              )}
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{t.modeTitle}</p>
               {/* Language, before anything else: the whole tool follows it. */}
               <div className="inline-flex border border-white/30" role="group" aria-label={t.language}>
                 {(
@@ -255,16 +247,21 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
             <div className="grid gap-3 sm:grid-cols-2">
               {/* Educational mode: Franky himself is in the button and says he comes along. */}
               <button type="button" autoFocus disabled={leaving} onClick={() => choose('guided')} className="mode-btn mode-btn-franky">
+                {/* Franky in 3D rolls into the button, waves and says he comes along; on a choice he says goodbye and rolls off. */}
                 <span className="flex w-full items-center gap-3">
-                  <img src="franky-head.png" alt="" width={52} height={52} className="mode-franky shrink-0" />
-                  <span className="mode-says">{t.modeGuidedFranky}</span>
+                  <span className="-my-2 -ml-2 shrink-0">
+                    <SplashBot width={wide ? 150 : 100} height={wide ? 185 : 123} leaving={leaving} onWave={() => setBotWaved(true)} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block min-h-[52px]">{botWaved && <BotBubble key={leaving ? 'bye' : 'ask'} text={leaving ? t.botBye : t.modeGuidedFranky} />}</span>
+                    <span className="mt-2 block text-base font-semibold">{t.modeGuided}</span>
+                  </span>
                 </span>
-                <span className="block text-base font-semibold">{t.modeGuided}</span>
                 <span className="block text-sm font-normal text-white/65">{t.modeGuidedSub}</span>
               </button>
-              <button type="button" disabled={leaving} onClick={() => choose('expert')} className="mode-btn">
+              <button type="button" disabled={leaving} onClick={() => choose('expert')} className="mode-btn sm:justify-end">
                 {/* As tall as Franky in the other button, so the two titles line up. */}
-                <span className="flex h-10 items-center sm:h-[52px]"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><path d="M4 20h16M6 16l4-5 3 3 5-7" /><circle cx="18" cy="7" r="1.5" /></svg></span>
+                <span className="flex h-10 items-center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-sun"><path d="M4 20h16M6 16l4-5 3 3 5-7" /><circle cx="18" cy="7" r="1.5" /></svg></span>
                 <span className="block text-base font-semibold">{t.modeExpert}</span>
                 <span className="block text-sm font-normal text-white/65">{t.modeExpertSub}</span>
               </button>
@@ -362,11 +359,11 @@ function BotBubble({ text }: { text: string }) {
     return () => window.clearInterval(id)
   }, [text])
   return (
-    <p className="bot-bubble pop-in" aria-live="polite" aria-label={text}>
+    <span className="bot-bubble pop-in" aria-live="polite" aria-label={text}>
       <span aria-hidden="true">{text.slice(0, n)}</span>
       <span aria-hidden="true" className={`bot-caret ${n >= text.length ? 'bot-caret-done' : ''}`} />
       {/* Reserve the full width so the bubble does not grow while typing. */}
       <span aria-hidden="true" className="invisible block h-0 overflow-hidden">{text}</span>
-    </p>
+    </span>
   )
 }
