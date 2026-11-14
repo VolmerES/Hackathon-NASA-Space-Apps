@@ -178,6 +178,36 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, transparent: true, opacity: 0.75 }))
     scene.add(stars)
 
+    // Decoration for the opening only: a small orbiter on a polar orbit, like the Lunar
+    // Reconnaissance Orbiter whose LOLA data the tool uses. It passes over the south pole, goes behind
+    // the Moon (the globe hides it) and fades out once the tool opens. Not to scale.
+    const orbit = new THREE.Group()
+    scene.add(orbit)
+    const ORBIT_R = 1.24
+    const ORBIT_S = 34 // seconds per turn
+    const orbitPts: THREE.Vector3[] = []
+    for (let i = 0; i <= 256; i++) orbitPts.push(new THREE.Vector3(Math.cos((i / 256) * Math.PI * 2) * ORBIT_R, Math.sin((i / 256) * Math.PI * 2) * ORBIT_R, 0))
+    const orbitMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+    orbit.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(orbitPts), orbitMat))
+    const sat = new THREE.Group()
+    const satBody = new THREE.MeshStandardMaterial({ color: 0xc8a659, roughness: 0.45, metalness: 0.6, transparent: true })
+    const satPanel = new THREE.MeshStandardMaterial({ color: 0x24375e, roughness: 0.5, metalness: 0.35, side: THREE.DoubleSide, transparent: true })
+    sat.add(new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.014, 0.02), satBody))
+    for (const side of [-1, 1]) {
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.014, 0.042), satPanel)
+      panel.rotation.x = Math.PI / 2
+      panel.position.z = side * 0.034
+      sat.add(panel)
+    }
+    const satDotMat = new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false })
+    sat.add(new THREE.Points(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3()]), satDotMat))
+    sat.scale.setScalar(1.5)
+    orbit.add(sat)
+    let orbitA = 2.2
+    const orbitU = new THREE.Vector3()
+    const orbitN = new THREE.Vector3()
+    const orbitM = new THREE.Matrix4()
+
     // The Moon.
     const moon = new THREE.Group()
     scene.add(moon)
@@ -1209,6 +1239,23 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           }
           co.style.visibility = 'visible'
         } else co.style.visibility = 'hidden'
+      }
+
+      // The orbiter: its plane holds the Moon's axis and is turned 40° from the line of sight, so the
+      // orbit reads as an ellipse over the pole.
+      const show = 1 - k
+      orbit.visible = show > 0.01
+      if (orbit.visible) {
+        if (!reduce) orbitA -= (dt * Math.PI * 2) / ORBIT_S
+        orbitN.set(camera.position.x, 0, camera.position.z).normalize().applyAxisAngle(Y_AXIS, (40 * Math.PI) / 180)
+        orbitU.crossVectors(Y_AXIS, orbitN).normalize()
+        orbitM.makeBasis(orbitU, Y_AXIS, orbitN)
+        orbit.quaternion.setFromRotationMatrix(orbitM)
+        sat.position.set(Math.cos(orbitA) * ORBIT_R, Math.sin(orbitA) * ORBIT_R, 0)
+        sat.rotation.z = orbitA
+        orbitMat.opacity = 0.13 * show
+        satBody.opacity = satPanel.opacity = show
+        satDotMat.opacity = 0.7 * show
       }
 
       const rise = shownAt ? Math.min(1, (now - shownAt) / (reduce ? 1 : 1400)) : 0

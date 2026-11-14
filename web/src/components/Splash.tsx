@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { LogoMark } from './Logo'
+import { SplashHorizon } from './SplashHorizon'
 import { onDataProgress, type DataPart } from '../data/model'
 
-const RIDGE =
-  'M0,92 L40,86 L72,90 L110,72 L150,78 L190,62 L232,70 L280,54 L322,66 L362,60 L402,74 L452,68 L500,82 L542,76 L590,58 L632,64 L680,50 L722,62 L770,72 L820,66 L862,80 L910,74 L960,86 L1000,82'
+const NAME = 'FLY ME TO THE MOON'
+const LETTERS = NAME.split('').map((c) => (c === ' ' ? ' ' : c))
 
 type Service = DataPart | 'moon'
 type State = { state: 'pending' | 'done' | 'failed'; detail?: Record<string, number> }
@@ -141,7 +142,6 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
         return t.svcMoon
     }
   }
-  const sec = reduce ? '0s' : '0.9s'
   const earthUp = status.ephem.state === 'done' && shown >= 1
 
   return (
@@ -169,67 +169,78 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
         <span className="hidden sm:inline">{t.southPole2}</span>
       </div>
 
-      <div className="absolute inset-x-0 top-[13vh] flex flex-col items-center gap-4 px-6 text-center">
+      <div className="absolute inset-x-0 top-[11vh] flex flex-col items-center gap-4 px-6 text-center">
         <LogoMark size={62} animated className="mb-3 text-white" />
-        <h1 className="sp-sheen wordmark text-[clamp(22px,4.4vw,60px)] leading-none" style={{ paddingLeft: '0.28em', letterSpacing: '0.28em' }}>
-          FLY ME TO THE MOON
-        </h1>
-        <p className="sp-sub max-w-xl text-balance text-base font-light text-white/80 sm:text-lg">{t.splashTagline}</p>
+        {/* The name, letter by letter: each comes in from a blur while the tracking closes, then a
+            glint of sunlight runs across it (a copy on top, masked to a moving band). */}
+        <div className="flex w-full justify-center">
+        <div className="relative shrink-0">
+          <h1 aria-label={NAME} className="sp-name wordmark whitespace-nowrap text-[clamp(16px,4.2vw,60px)] leading-none">
+            {LETTERS.map((ch, i) => (
+              <span key={i} aria-hidden="true" className="sp-l" style={{ animationDelay: `${(0.55 + i * 0.045).toFixed(3)}s` }}>
+                {ch}
+              </span>
+            ))}
+          </h1>
+          <span aria-hidden="true" className="sp-name sp-glint wordmark absolute inset-0 whitespace-nowrap text-[clamp(16px,4.2vw,60px)] leading-none">
+            {LETTERS.map((ch, i) => (
+              <span key={i} className="inline-block">
+                {ch}
+              </span>
+            ))}
+          </span>
+        </div>
+        </div>
+        <p className="sp-sub max-w-xl text-balance text-base font-light text-white/80 sm:text-lg" style={{ animationDelay: '1.5s' }}>{t.splashTagline}</p>
       </div>
 
-      <div className="sp-ui absolute left-1/2 top-[40vh] w-[min(760px,calc(100%-48px))] -translate-x-1/2">
-        {/* Instrument-style progress: a lunar horizon lit from the left as the Sun crosses it. */}
-        <div className="relative h-[clamp(52px,7vh,80px)]">
-          <svg viewBox="0 0 1000 120" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
-            <defs>
-              <clipPath id="sp-litclip">
-                <rect x="0" y="0" height="120" style={{ width: `${progress * 1000}px`, transition: `width ${sec} cubic-bezier(.45,0,.25,1)` }} />
-              </clipPath>
-            </defs>
-            <path className="sp-ridge" d={RIDGE} fill="none" stroke="#3a3f46" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-            <path d={RIDGE} clipPath="url(#sp-litclip)" fill="none" stroke="#fff" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-          </svg>
-          <span
-            className="absolute left-[16%] size-[11px] -translate-x-1/2 rounded-full border-[1.5px] border-earth"
-            style={{ top: earthUp ? '30%' : '64%', opacity: earthUp ? 1 : 0, transition: `top ${sec} cubic-bezier(.16,1,.3,1), opacity ${sec}` }}
-            aria-hidden="true"
-          />
-          <span
-            className="absolute top-0 bottom-0 w-px -translate-x-1/2 bg-gradient-to-b from-sun/70 to-sun/0"
-            style={{ left: `${progress * 100}%`, opacity: shown ? 1 : 0, transition: `left ${sec} cubic-bezier(.45,0,.25,1), opacity 0.4s` }}
-            aria-hidden="true"
-          >
-            <span className="absolute left-1/2 top-[14%] size-[9px] -translate-x-1/2 rounded-full bg-sun shadow-[0_0_0_3px_rgba(242,183,5,0.18)]" />
+      <div className="sp-ui absolute left-1/2 top-[35vh] w-[min(800px,calc(100%-32px))] -translate-x-1/2 rounded-2xl bg-black/60 p-4 ring-1 ring-white/10 backdrop-blur-md sm:p-5">
+        {/* Progress: the real horizon of one of the team's sites, with the Sun grazing its ridge. */}
+        <div className="flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm text-white">{allDone ? t.splashReady : t.splashStarting}</p>
+            <p className="mt-1 truncate text-xs text-white/50">{t.splashHorizon}</p>
+          </div>
+          <span className="wordmark shrink-0 text-[28px] leading-none tabular-nums text-white sm:text-[34px]" style={{ letterSpacing: 0, fontStretch: '112%' }}>
+            {Math.round(progress * 100)}
+            <span className="ml-1 text-base text-white/50">%</span>
           </span>
         </div>
-        <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-white/15 pt-3 text-sm">
-          <span>{allDone ? t.splashReady : t.splashStarting}</span>
-          <span className="wordmark tabular-nums text-white/70" style={{ letterSpacing: 0, fontStretch: '112%' }}>
-            {Math.round(progress * 100)} %
-          </span>
+        <div className="mt-3">
+          <SplashHorizon progress={progress} earthUp={earthUp} reduce={reduce} />
+          <div className="relative mt-1 h-4 text-[10px] tracking-[0.18em] text-white/45" aria-hidden="true">
+            {['N', 'E', 'S', 'W', 'N'].map((c, i) => (
+              <span key={i} className="absolute -translate-x-1/2" style={{ left: `${i * 25}%` }}>
+                {c}
+              </span>
+            ))}
+          </div>
         </div>
 
-        {/* The services, as they come up. */}
-        <ol className="mt-4 space-y-2 text-[13px]" aria-live="polite">
-          {ORDER.slice(0, shown).map((s) => {
-            const st = status[s].state
+        {/* Mission checklist: every source from the start, each one filled in as it arrives. */}
+        <ol className="mt-5 border-t border-white/10 text-[13px]" aria-live="polite">
+          {ORDER.map((s, i) => {
+            const on = i < shown
+            const st = on ? status[s].state : 'queued'
             return (
-              <li key={s} className="toast-in flex items-center gap-3">
+              <li key={s} className={`flex items-center gap-3 border-b border-white/[0.07] py-1.5 transition-opacity duration-500 ${on ? 'opacity-100' : 'opacity-35'}`}>
+                <span className="w-5 shrink-0 tabular-nums text-[11px] text-white/40">{String(i + 1).padStart(2, '0')}</span>
                 <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
+                  {st === 'queued' && <span className="size-1.5 rounded-full bg-white/40" />}
                   {st === 'pending' && <span className="size-3 animate-spin rounded-full border-[1.5px] border-white/25 border-t-sun" />}
                   {st === 'done' && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fcf8e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fcf8e" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 12.5l4.5 4.5L19 7.5" />
                     </svg>
                   )}
                   {st === 'failed' && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f2a93b" strokeWidth="3" strokeLinecap="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f2a93b" strokeWidth="2.6" strokeLinecap="round">
                       <path d="M12 6v8M12 18v.5" />
                     </svg>
                   )}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-white">{t.svc[s]}</span>
-                <span className={`shrink-0 tabular-nums ${st === 'failed' ? 'text-warn' : 'text-white/55'}`}>{detail(s)}</span>
+                <span className="min-w-0 flex-1 truncate text-white/90">{t.svc[s]}</span>
+                <span className={`hidden shrink-0 tabular-nums sm:inline ${st === 'failed' ? 'text-warn' : 'text-white/55'}`}>{on ? detail(s) : t.svcQueued}</span>
               </li>
             )
           })}
