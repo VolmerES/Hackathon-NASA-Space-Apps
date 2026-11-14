@@ -192,78 +192,77 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
         </div>
         </div>
         <p className="sp-sub max-w-xl text-balance text-base font-light text-white/80 sm:text-lg" style={{ animationDelay: '1.5s' }}>{t.splashTagline}</p>
-      </div>
-
-      <div className="sp-ui absolute left-1/2 top-[34vh] w-[min(560px,calc(100%-32px))] -translate-x-1/2 rounded-2xl bg-black/55 p-3.5 ring-1 ring-white/10 backdrop-blur-md sm:p-4">
-        {/* Progress: the real horizon of one of the team's sites, with the Sun grazing its ridge. */}
-        <div className="flex items-end justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm text-white">{allDone ? t.splashReady : t.splashStarting}</p>
-            <p className="mt-1 truncate text-xs text-white/50">{t.splashHorizon}</p>
-          </div>
-          <span className="wordmark shrink-0 text-[24px] leading-none tabular-nums text-white sm:text-[28px]" style={{ letterSpacing: 0, fontStretch: '112%' }}>
-            {Math.round(progress * 100)}
-            <span className="ml-1 text-base text-white/50">%</span>
-          </span>
-        </div>
-        <div className="mt-3">
-          <SplashHorizon progress={progress} earthUp={earthUp} reduce={reduce} />
-          <div className="relative mt-1 h-4 text-[10px] tracking-[0.18em] text-white/45" aria-hidden="true">
-            {['N', 'E', 'S', 'W', 'N'].map((c, i) => (
-              <span key={i} className="absolute -translate-x-1/2" style={{ left: `${i * 25}%` }}>
-                {c}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Mission checklist: every source from the start, each one filled in as it arrives. */}
-        {(() => {
-          const cur = Math.max(0, Math.min(shown, ORDER.length) - 1)
-          const s = ORDER[cur]
-          const st = shown ? status[s].state : 'queued'
-          return (
-            <div className="mt-3 border-t border-white/10 pt-2.5" aria-hidden="true">
-              <div className="flex gap-1">
-                {ORDER.map((x, k) => (
-                  <span key={x} className={`h-1 flex-1 rounded-full transition-colors duration-500 ${k < shown && status[x].state === 'done' ? 'bg-ok' : k < shown && status[x].state === 'failed' ? 'bg-warn' : k < shown ? 'bg-sun' : 'bg-white/15'}`} />
-                ))}
-              </div>
-              <p className="mt-2 flex items-center gap-2 text-[13px]">
-                <span className="shrink-0 tabular-nums text-[11px] text-white/45">{String(cur + 1).padStart(2, '0')}/{String(ORDER.length).padStart(2, '0')}</span>
-                <span className="min-w-0 flex-1 truncate text-white/90">{t.svc[s]}</span>
-                <span className={`hidden shrink-0 tabular-nums sm:inline ${st === 'failed' ? 'text-warn' : 'text-white/55'}`}>{shown ? detail(s) : t.svcQueued}</span>
-              </p>
+        <div className="sp-ui mt-[2vh] w-[min(880px,100%,88vh)] text-left">
+          {/* Progress: the real horizon of one of the team's sites, with the Sun grazing its ridge. */}
+          <div className="flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm text-white">{allDone ? t.splashReady : t.splashStarting}</p>
+              <p className="mt-1 truncate text-xs text-white/50">{t.splashHorizon}</p>
             </div>
-          )
-        })()}
-        <ol className="sr-only" aria-live="polite">
-          {ORDER.map((s, i) => {
-            const on = i < shown
-            const st = on ? status[s].state : 'queued'
-            return (
-              <li key={s} className={`flex items-center gap-3 border-b border-white/[0.07] py-1.5 transition-opacity duration-500 ${on ? 'opacity-100' : 'opacity-35'}`}>
-                <span className="w-5 shrink-0 tabular-nums text-[11px] text-white/40">{String(i + 1).padStart(2, '0')}</span>
-                <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
-                  {st === 'queued' && <span className="size-1.5 rounded-full bg-white/40" />}
-                  {st === 'pending' && <span className="size-3 animate-spin rounded-full border-[1.5px] border-white/25 border-t-sun" />}
-                  {st === 'done' && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fcf8e" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 12.5l4.5 4.5L19 7.5" />
-                    </svg>
-                  )}
-                  {st === 'failed' && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f2a93b" strokeWidth="2.6" strokeLinecap="round">
-                      <path d="M12 6v8M12 18v.5" />
-                    </svg>
-                  )}
+            <span className="wordmark shrink-0 text-[24px] leading-none tabular-nums text-white sm:text-[28px]" style={{ letterSpacing: 0, fontStretch: '112%' }}>
+              {Math.round(progress * 100)}
+              <span className="ml-1 text-base text-white/50">%</span>
+            </span>
+          </div>
+          <div className="mt-3">
+            <SplashHorizon progress={progress} earthUp={earthUp} reduce={reduce} />
+            <div className="relative mt-1 h-4 text-[10px] tracking-[0.18em] text-white/45" aria-hidden="true">
+              {['N', 'E', 'S', 'W', 'N'].map((c, i) => (
+                <span key={i} className="absolute -translate-x-1/2" style={{ left: `${i * 25}%` }}>
+                  {c}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-white/90">{t.svc[s]}</span>
-                <span className={`hidden shrink-0 tabular-nums sm:inline ${st === 'failed' ? 'text-warn' : 'text-white/55'}`}>{on ? detail(s) : t.svcQueued}</span>
-              </li>
+              ))}
+            </div>
+          </div>
+
+          {/* Mission checklist: every source from the start, each one filled in as it arrives. */}
+          {(() => {
+            const cur = Math.max(0, Math.min(shown, ORDER.length) - 1)
+            const s = ORDER[cur]
+            const st = shown ? status[s].state : 'queued'
+            return (
+              <div className="mt-3 border-t border-white/10 pt-2.5" aria-hidden="true">
+                <div className="flex gap-1">
+                  {ORDER.map((x, k) => (
+                    <span key={x} className={`h-1 flex-1 rounded-full transition-colors duration-500 ${k < shown && status[x].state === 'done' ? 'bg-ok' : k < shown && status[x].state === 'failed' ? 'bg-warn' : k < shown ? 'bg-sun' : 'bg-white/15'}`} />
+                  ))}
+                </div>
+                <p className="mt-2 flex items-center gap-2 text-[13px]">
+                  <span className="shrink-0 tabular-nums text-[11px] text-white/45">{String(cur + 1).padStart(2, '0')}/{String(ORDER.length).padStart(2, '0')}</span>
+                  <span className="min-w-0 flex-1 truncate text-white/90">{t.svc[s]}</span>
+                  <span className={`hidden shrink-0 tabular-nums sm:inline ${st === 'failed' ? 'text-warn' : 'text-white/55'}`}>{shown ? detail(s) : t.svcQueued}</span>
+                </p>
+              </div>
             )
-          })}
-        </ol>
+          })()}
+          <ol className="sr-only" aria-live="polite">
+            {ORDER.map((s, i) => {
+              const on = i < shown
+              const st = on ? status[s].state : 'queued'
+              return (
+                <li key={s} className={`flex items-center gap-3 border-b border-white/[0.07] py-1.5 transition-opacity duration-500 ${on ? 'opacity-100' : 'opacity-35'}`}>
+                  <span className="w-5 shrink-0 tabular-nums text-[11px] text-white/40">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
+                    {st === 'queued' && <span className="size-1.5 rounded-full bg-white/40" />}
+                    {st === 'pending' && <span className="size-3 animate-spin rounded-full border-[1.5px] border-white/25 border-t-sun" />}
+                    {st === 'done' && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3fcf8e" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" />
+                      </svg>
+                    )}
+                    {st === 'failed' && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f2a93b" strokeWidth="2.6" strokeLinecap="round">
+                        <path d="M12 6v8M12 18v.5" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-white/90">{t.svc[s]}</span>
+                  <span className={`hidden shrink-0 tabular-nums sm:inline ${st === 'failed' ? 'text-warn' : 'text-white/55'}`}>{on ? detail(s) : t.svcQueued}</span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
       </div>
 
       <div className="sp-meta absolute inset-x-0 bottom-6 flex flex-col items-center gap-1 px-6 text-xs text-white/80 [text-shadow:0_1px_10px_#000,0_0_2px_#000] sm:bottom-12 sm:flex-row sm:justify-between sm:px-20">
