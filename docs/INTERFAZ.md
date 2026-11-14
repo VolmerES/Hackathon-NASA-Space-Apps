@@ -58,6 +58,20 @@ En segundos y sin interpretar datos en bruto. Todo lo demás es secundario.
 
 Las cifras del boceto son inventadas: solo muestran la forma.
 
+## En el móvil (se tiene que poder usar entero)
+
+Decidido el 14‑nov: **móvil primero**. El boceto de arriba es la versión de
+escritorio; en el móvil:
+
+- **Una columna:** misión y retraso arriba, tarjetas, cronograma, panorama.
+- **Elegir sitios con una lista** (con buscador), no tocando el mapa: los
+  marcadores son demasiado pequeños para el dedo. El mapa queda como vista.
+- **Comparar deslizando** entre tarjetas, con una tabla compacta de resumen.
+- **Panorama desplazable con el dedo** (360°) y zoom de pellizco.
+- **Deslizador de retraso grande**, con botones de ±1 día.
+- **Zonas táctiles de al menos 44 px.**
+- **El 3D, solo bajo petición** y a resolución reducida.
+
 ## Las piezas
 
 ### 1. Mapa del polo sur

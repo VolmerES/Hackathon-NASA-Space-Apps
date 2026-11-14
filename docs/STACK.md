@@ -12,11 +12,13 @@ después del [alcance](ALCANCE.md). Las versiones exactas se fijan al instalar.
 | Tiempo | Una base de código, sin revisiones de tiendas | Dos plataformas o un framework más |
 | Sin conexión | **PWA** (si da tiempo): instalable y con caché | Sí, pero no compensa |
 
-- **Escritorio primero** (1366 px en adelante): ahí se usa de verdad.
-- **Móvil en modo lectura:** tarjetas y panorama apilados. Algunos jueces
-  abren los enlaces en el móvil.
-- **PWA si da tiempo:** instalable y con los datos en caché. Si falla el wifi
-  en el pitch, funciona igual.
+- **Móvil primero** (decidido el 14‑nov): **se tiene que poder usar entero en
+  el móvil**, no solo consultar. Se diseña para 360–430 px y se amplía a
+  escritorio (paneles lado a lado desde ~1024 px).
+- **Probado en un iPhone (Safari) y un Android (Chrome) de verdad.**
+- **PWA, la primera de «si da tiempo»:** instalable en la pantalla de inicio y
+  con los datos en caché, como una app pero sin tienda. Si falla el wifi en el
+  pitch, funciona igual.
 - Navegadores: Chrome, Edge, Firefox y Safari recientes.
 
 ## 2. Las piezas
@@ -59,11 +61,11 @@ después del [alcance](ALCANCE.md). Las versiones exactas se fijan al instalar.
 |---|---|---|
 | Base | **Vite + React + TypeScript** | Lo que mejor conoce la IA; build estático |
 | Estilos | **Tailwind CSS** | Rápido y coherente sin diseñar desde cero |
-| Gráficas | **Plotly.js** | Cronograma y panorama (silueta rellena + trayectorias) sin dibujarlos a mano. Si pesa demasiado, D3 para el panorama |
+| Gráficas | **SVG con D3** (escalas y gestos) | Panorama y cronograma ligeros y táctiles. **Plotly descartado:** ~1 MB comprimido y manejo táctil regular en el móvil |
 | Mapa del polo sur | MVP: **imagen del relieve + marcadores SVG**. Si da tiempo: **OpenLayers** con teselas WMTS de Moon Trek | OpenLayers maneja bien proyecciones polares; Leaflet necesita más apaños |
 | 3D (si da tiempo) | **three.js + React Three Fiber + drei** | Ver [`INTERFAZ.md`](INTERFAZ.md) |
 | Estado | Estado de React + **escenario en la URL** | Sin librerías extra |
-| PWA (si da tiempo) | `vite-plugin-pwa` | Instalable y sin conexión |
+| PWA (la primera si da tiempo) | `vite-plugin-pwa` | Instalable y sin conexión |
 | Textos | Inglés | Lo que ve el jurado |
 
 ### IA
@@ -102,9 +104,9 @@ La forma exacta de los ficheros entre Python y la web. Con él, Angela trabaja
 desde las 10:30 con datos de prueba. Esbozo, a cerrar el sábado:
 
 - `ephemeris.bin` + `ephemeris.json`: posiciones del Sol y la Tierra respecto
-  al centro de la Luna, en MOON_ME, 2026–2028. Paso de 10 min ≈ 158.000
-  instantes × 6 valores × 4 bytes ≈ 3,8 MB (≈ 1,3 MB con paso de 30 min). Se
-  decide el paso según el peso.
+  al centro de la Luna, en MOON_ME, 2026–2028. **Paso de 30 min ≈ 1,3 MB**
+  (pensado para datos móviles; 10 min serían ≈ 3,8 MB). Si hace falta más
+  detalle, se cargan solo los meses de la misión.
 - `sites/<id>.json`: nombre, coordenadas, altura, fuente, **horizonte** (720
   valores de elevación por acimut) y valores de PGDA para comparar.
 - `validation.json`: diferencias con Horizons y con PGDA por sitio.
