@@ -683,43 +683,6 @@ export default function App() {
       <div className={`pointer-events-none relative z-10 flex h-dvh flex-col transition-opacity duration-700 ${splashDone ? 'opacity-100' : 'opacity-0'}`}>
         <header className="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 bg-gradient-to-b from-black/85 to-transparent px-4 pb-4 pt-3">
           <div className="flex items-center gap-3">
-            <HamburgerMenu label={t.mainMenu}>
-              {(close) => (
-                <>
-                  <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted">{t.language}</p>
-                  <div className="mx-4 mb-2 inline-flex border border-white/30" role="group" aria-label={t.language}>
-                    {(
-                      [
-                        ['en', 'English'],
-                        ['es', 'Español'],
-                      ] as const
-                    ).map(([id, label]) => (
-                      <button key={id} lang={id} onClick={() => setLang(id)} aria-pressed={lang === id} className={seg(lang === id)}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="border-t border-white/10 pt-1">
-                    {[
-                      { label: t.ms.title, onSelect: () => setMissionsOpen(true) },
-                      { label: t.copyLink, onSelect: share, hidden: !chosen.length },
-                      { label: focused ? t.downloadCsv(siteName(focused.site)) : '', onSelect: downloadCsv, hidden: !focused },
-                      { label: t.dataSources, onSelect: () => setSourcesOpen(true) },
-                    ]
-                      .filter((i) => !i.hidden)
-                      .map((i) => (
-                        <button key={i.label} onClick={() => { close(); i.onSelect() }} className="block min-h-11 w-full px-4 text-left text-sm hover:bg-white/10 lg:min-h-10">
-                          {i.label}
-                        </button>
-                      ))}
-                  </div>
-                  <p className="mx-4 mt-2 border-t border-white/10 pt-2 text-xs text-white/75">
-                    <strong className="mb-0.5 block text-white">{t.demoStrong}</strong>
-                    {t.demoRest}
-                  </p>
-                </>
-              )}
-            </HamburgerMenu>
             <button onClick={() => setPicking(true)} aria-label={t.findTitle} className="min-h-11">
               <Logo />
             </button>
@@ -730,6 +693,46 @@ export default function App() {
               <TimeBar start={start} min={DATA.start} max={DATA.end} stay={mission.durationDays} index={focused ? (playIdx ?? 0) : freeHour} sunHours={focused?.samples.map((x) => x.sunVisible)} plan={plan} label={fmtDateTime} onStart={setStart} onStay={(n) => setMissionValue('durationDays', n)} onScrub={scrub} />
             </div>
           )}
+          {/* Settings and actions: a gear in the top right corner. */}
+          <div className="ml-auto lg:ml-0">
+              <HamburgerMenu label={t.mainMenu}>
+                {(close) => (
+                  <>
+                    <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted">{t.language}</p>
+                    <div className="mx-4 mb-2 inline-flex border border-white/30" role="group" aria-label={t.language}>
+                      {(
+                        [
+                          ['en', 'English'],
+                          ['es', 'Español'],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button key={id} lang={id} onClick={() => setLang(id)} aria-pressed={lang === id} className={seg(lang === id)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="border-t border-white/10 pt-1">
+                      {[
+                        { label: t.ms.title, onSelect: () => setMissionsOpen(true) },
+                        { label: t.copyLink, onSelect: share, hidden: !chosen.length },
+                        { label: focused ? t.downloadCsv(siteName(focused.site)) : '', onSelect: downloadCsv, hidden: !focused },
+                        { label: t.dataSources, onSelect: () => setSourcesOpen(true) },
+                      ]
+                        .filter((i) => !i.hidden)
+                        .map((i) => (
+                          <button key={i.label} onClick={() => { close(); i.onSelect() }} className="block min-h-11 w-full px-4 text-left text-sm hover:bg-white/10 lg:min-h-10">
+                            {i.label}
+                          </button>
+                        ))}
+                    </div>
+                    <p className="mx-4 mt-2 border-t border-white/10 pt-2 text-xs text-white/75">
+                      <strong className="mb-0.5 block text-white">{t.demoStrong}</strong>
+                      {t.demoRest}
+                    </p>
+                  </>
+                )}
+              </HamburgerMenu>
+          </div>
         </header>
 
         <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">

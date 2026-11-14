@@ -12,7 +12,7 @@ const en = {
   copyLink: 'Copy link to this comparison',
   linkCopied: 'Link copied',
   demoStrong: 'Preliminary data',
-  demoRest: 'Real NASA ephemerides (JPL Horizons) and LRO LOLA relief at 1.9 km per pixel. Not yet checked at landing-site detail.',
+  demoRest: 'Real NASA data: Sun and Earth from JPL Horizons (checked to 0.007°), relief from LRO LOLA at 80 m, and 5 m around the five sites. A hackathon prototype, not for mission decisions.',
 
   whereTitle: 'Where do you want to land?',
   pickUpTo: (n: number) => `Pick up to ${n} sites to compare.`,
@@ -154,7 +154,7 @@ const en = {
   terrain: 'Terrain',
   fadedHidden: 'Faded points are hidden behind the terrain.',
   footer:
-    'Preliminary results: real NASA data (JPL Horizons, LRO LOLA at 1.9 km per pixel). Terrain closer than a few kilometres is not resolved yet; the 5 m LOLA site maps are the next step. Not for mission decisions.',
+    'Real NASA data: JPL Horizons for the Sun and Earth, LRO LOLA relief at 80 m and 5 m around the five sites. A hackathon prototype: not for mission decisions.',
 
   compassShort: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'],
   compassLong: ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'],
@@ -365,7 +365,7 @@ const es: Strings = {
   copyLink: 'Copiar el enlace a esta comparación',
   linkCopied: 'Enlace copiado',
   demoStrong: 'Datos preliminares',
-  demoRest: 'Efemérides reales de la NASA (JPL Horizons) y relieve LOLA del LRO a 1,9 km por píxel. Aún sin comprobar al detalle de cada sitio.',
+  demoRest: 'Datos reales de la NASA: Sol y Tierra de JPL Horizons (comprobados a 0,007°) y relieve LOLA del LRO a 80 m, y a 5 m alrededor de los cinco sitios. Prototipo de hackathon, no sirve para decidir una misión.',
 
   whereTitle: '¿Dónde quieres alunizar?',
   pickUpTo: (n) => `Elige hasta ${n} sitios para compararlos.`,
@@ -507,7 +507,7 @@ const es: Strings = {
   terrain: 'Relieve',
   fadedHidden: 'Los puntos atenuados quedan ocultos tras el relieve.',
   footer:
-    'Resultados preliminares: datos reales de la NASA (JPL Horizons, LOLA del LRO a 1,9 km por píxel). El relieve a menos de unos kilómetros aún no se resuelve; el siguiente paso son los mapas LOLA de 5 m de cada sitio. No sirve para decidir una misión.',
+    'Datos reales de la NASA: JPL Horizons para el Sol y la Tierra, relieve LOLA del LRO a 80 m y a 5 m alrededor de los cinco sitios. Prototipo de hackathon: no sirve para decidir una misión.',
 
   compassShort: ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO', 'N'],
   compassLong: ['al norte', 'al noreste', 'al este', 'al sureste', 'al sur', 'al suroeste', 'al oeste', 'al noroeste'],

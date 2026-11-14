@@ -246,9 +246,19 @@ function earthTexture() {
   return tex
 }
 
+// The fold mark of a panel: points down when closed, up when open.
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className={`ml-auto shrink-0 text-white/70 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+
 export default function Surface3D({ site, sample, height = 420, landing = 0 }: { site: Site; sample: Sample; height?: number; /** Changes to a new number to play a landing. */ landing?: number }) {
   const t = useT()
   const [real, setReal] = useState<Ground | null>(null)
+  const [hudOpen, setHudOpen] = useState(true)
   // Sun, Earth and ground cards: each opens on its own; open on wide screens, folded on phones.
   const wide = typeof window === 'undefined' || window.innerWidth >= 768
   const [open, setOpen] = useState({ sun: wide, earth: wide, ground: wide })
@@ -424,6 +434,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     dust.visible = false
     scene.add(dust)
     let land: { t: number; ground: number; lastHud: number } | null = null
+    let landAt: { x: number; z: number } | null = null
     // The lander comes down upright and, as its pads touch, settles to the slope of the ground.
     const slopeQ = new THREE.Quaternion()
     const yawQ = new THREE.Quaternion()
@@ -433,6 +444,26 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     const groundAt = (x: number, z: number) => {
       const hit = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)).intersectObject(ground)[0]
       return hit ? hit.point.y : 0
+    }
+    // Where the lander touches down: the height and the slope of the ground under its footpads (4.5 m
+    // from the centre, as on the Apollo lunar module), at most 25 degrees. Run again whenever the
+    // ground changes: the real 5 m ground arrives after the view opens, and the lander used to stay
+    // at the old height, under the new ground.
+    const placeLander = () => {
+      if (!landAt) return
+      const { x, z } = landAt
+      const g = groundAt(x, z)
+      dust.position.set(x, g + 0.05, z)
+      const d = 4.5
+      const n = new THREE.Vector3(groundAt(x - d, z) - groundAt(x + d, z), 2 * d, groundAt(x, z - d) - groundAt(x, z + d)).normalize()
+      slopeQ.setFromUnitVectors(UP, n)
+      const lean = 2 * Math.acos(Math.min(1, Math.abs(slopeQ.w)))
+      if (lean > 25 * DEG) slopeQ.identity().slerp(new THREE.Quaternion().setFromUnitVectors(UP, n), (25 * DEG) / lean)
+      if (land) land.ground = g
+      if (landed) {
+        lander.position.y = g
+        lander.quaternion.copy(slopeQ).multiply(yawQ.setFromAxisAngle(UP, landYaw))
+      }
     }
     const tick = (now: number) => {
       raf = 0
@@ -589,6 +620,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       setSite: (s, g) => {
         ground.geometry.dispose()
         ground.geometry = buildTerrain(s, g)
+        placeLander()
         invalidate()
       },
       setSample: (s) => {
@@ -622,17 +654,11 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
             lander.position.set(x, 0, z)
             lander.visible = true
             landed = false
-            dust.position.set(x, groundAt(x, z) + 0.05, z)
-            // Slope under the footpads (4.5 m from the centre, as on the Apollo lunar module), on the
-            // real ground of the site where there is one. At most 25 degrees.
-            const d = 4.5
-            const n = new THREE.Vector3(groundAt(x - d, z) - groundAt(x + d, z), 2 * d, groundAt(x, z - d) - groundAt(x, z + d)).normalize()
-            slopeQ.setFromUnitVectors(UP, n)
-            const lean = 2 * Math.acos(Math.min(1, Math.abs(slopeQ.w)))
-            if (lean > 25 * DEG) slopeQ.identity().slerp(new THREE.Quaternion().setFromUnitVectors(UP, n), (25 * DEG) / lean)
+            landAt = { x, z }
             landYaw = 0
             lander.quaternion.identity()
-            land = { t: 0, ground: groundAt(x, z), lastHud: 0 }
+            land = { t: 0, ground: 0, lastHud: 0 }
+            placeLander()
             yawGoal += 24
             vYaw = vPitch = 0
             fovGoal = 60
@@ -703,10 +729,14 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       {/* Landing simulation: height above the ground, descent speed and what is happening. */}
       <div className="pointer-events-none absolute right-3 top-2 flex max-h-[calc(100%-76px)] w-[min(260px,calc(100%-24px))] flex-col gap-1.5 overflow-y-auto">
       {hud && (
-        <div className="ui-in glass px-3 py-2 text-sm" role="status">
-          <p className={`font-semibold ${hud.phase === 'down' ? 'text-ok' : hud.phase === 'failed' ? 'text-warn' : 'text-sun'}`}>
-            {hud.phase === 'load' ? t.simLoading : hud.phase === 'descent' ? t.simDescent : hud.phase === 'down' ? t.simDown : t.simFailed}
-          </p>
+        <details open={hudOpen} onToggle={(e) => setHudOpen((e.target as HTMLDetailsElement).open)} className="ui-in glass pointer-events-auto px-3 py-2 text-sm" role="status">
+          <summary className={`flex cursor-pointer list-none items-center gap-2 font-semibold ${hud.phase === 'down' ? 'text-ok' : hud.phase === 'failed' ? 'text-warn' : 'text-sun'}`}>
+            <span className="min-w-0 flex-1">
+              {hud.phase === 'load' ? t.simLoading : hud.phase === 'descent' ? t.simDescent : hud.phase === 'down' ? t.simDown : t.simFailed}
+              {!hudOpen && (hud.phase === 'descent' || hud.phase === 'down') && <span className="ml-2 font-normal tabular-nums text-white/80">{hud.alt.toFixed(hud.alt < 10 ? 1 : 0)} m</span>}
+            </span>
+            <Chevron open={hudOpen} />
+          </summary>
           {(hud.phase === 'descent' || hud.phase === 'down') && (
             <dl className="mt-1 grid grid-cols-2 gap-x-3 tabular-nums">
               <div>
@@ -723,7 +753,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
             <p className="mt-1 text-xs tabular-nums text-white/80">{t.simClock(`102:${String(43 + Math.floor((1 + Math.round(hud.clock)) / 60)).padStart(2, '0')}:${String((1 + Math.round(hud.clock)) % 60).padStart(2, '0')}`, A11_SPEEDUP)}</p>
           )}
           <p className="mt-1 text-[11px] leading-snug text-muted">{t.simNote}</p>
-        </div>
+        </details>
       )}
       {/* What the sky and the ground are like at this hour, from the data of the tool. */}
       <button type="button" onClick={() => setCardsShown((v) => !v)} aria-expanded={cardsShown} title={cardsShown ? t.hideCards : t.skyPanel} className="glass pointer-events-auto flex min-h-9 items-center gap-2 self-end px-3 text-xs font-semibold hover:bg-white/10">
@@ -733,9 +763,10 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       {cardsShown && (
       <>
       <details open={open.sun} onToggle={toggle('sun')} className="glass pointer-events-auto border-l-2 border-l-sun px-3 py-2 text-xs tabular-nums">
-        <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-sun">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-sun">
           <i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />{t.sunWord}
-          {!open.sun && <span className="ml-auto text-xs font-normal text-white/80">{sample.sunEl.toFixed(1)}° · {sample.sunVisible > 0.5 ? t.yesCap : t.noCap}</span>}
+          {!open.sun && <span className="ml-auto pr-1 text-xs font-normal text-white/80">{sample.sunEl.toFixed(1)}° · {sample.sunVisible > 0.5 ? t.yesCap : t.noCap}</span>}
+        <Chevron open={open.sun} />
         </summary>
         <dl className="mt-1 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
           <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.sunAz.toFixed(1)}°</dd>
@@ -745,9 +776,10 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         <p className="mt-1.5 text-[11px] leading-snug text-muted">{real ? t.skyNoteGround : t.skyNote}</p>
       </details>
       <details open={open.earth} onToggle={toggle('earth')} className="glass pointer-events-auto border-l-2 border-l-earth px-3 py-2 text-xs tabular-nums">
-        <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-earth">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-earth">
           <i className="inline-block size-2.5 rounded-full bg-earth" aria-hidden="true" />{t.earthWord}
-          {!open.earth && <span className="ml-auto text-xs font-normal text-white/80">{sample.earthEl.toFixed(1)}° · {sample.earthVisible ? t.yesCap : t.noCap}</span>}
+          {!open.earth && <span className="ml-auto pr-1 text-xs font-normal text-white/80">{sample.earthEl.toFixed(1)}° · {sample.earthVisible ? t.yesCap : t.noCap}</span>}
+        <Chevron open={open.earth} />
         </summary>
         <dl className="mt-1 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
           <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.earthAz.toFixed(1)}°</dd>
@@ -757,9 +789,10 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       </details>
       {real && (
         <details open={open.ground} onToggle={toggle('ground')} className="glass pointer-events-auto border-l-2 border-l-white/40 px-3 py-2 text-xs tabular-nums">
-          <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-semibold">
             {t.groundHere}
-            {!open.ground && <span className="ml-auto text-xs font-normal text-white/80">{real.slopeDeg.toFixed(1)}°</span>}
+            {!open.ground && <span className="ml-auto pr-1 text-xs font-normal text-white/80">{real.slopeDeg.toFixed(1)}°</span>}
+          <Chevron open={open.ground} />
           </summary>
           <dl className="mt-1 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
             <dt className="text-white/75">{t.slope}</dt><dd className="text-right">{real.slopeDeg.toFixed(1)}°</dd>
