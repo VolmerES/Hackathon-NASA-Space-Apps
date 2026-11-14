@@ -252,6 +252,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
   // Sun, Earth and ground cards: each opens on its own; open on wide screens, folded on phones.
   const wide = typeof window === 'undefined' || window.innerWidth >= 768
   const [open, setOpen] = useState({ sun: wide, earth: wide, ground: wide })
+  const [cardsShown, setCardsShown] = useState(wide) // the whole stack, hidden behind one pill
   const toggle = (k: keyof typeof open) => (e: React.SyntheticEvent<HTMLDetailsElement>) => {
     const isOpen = e.currentTarget.open
     setOpen((o) => (o[k] === isOpen ? o : { ...o, [k]: isOpen }))
@@ -725,7 +726,12 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         </div>
       )}
       {/* What the sky and the ground are like at this hour, from the data of the tool. */}
-      <p className="glass pointer-events-auto px-3 py-1.5 text-xs font-semibold">{t.skyPanel}</p>
+      <button type="button" onClick={() => setCardsShown((v) => !v)} aria-expanded={cardsShown} title={cardsShown ? t.hideCards : t.skyPanel} className="glass pointer-events-auto flex min-h-9 items-center gap-2 self-end px-3 text-xs font-semibold hover:bg-white/10">
+        {t.skyPanel}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 transition-transform ${cardsShown ? 'rotate-180' : ''}`} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {cardsShown && (
+      <>
       <details open={open.sun} onToggle={toggle('sun')} className="glass pointer-events-auto border-l-2 border-l-sun px-3 py-2 text-xs tabular-nums">
         <summary className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-sun">
           <i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />{t.sunWord}
@@ -760,6 +766,8 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
             <dt className="text-white/75">{t.incidence}</dt><dd className="text-right">{incidenceDeg(real, sample.sunAz, sample.sunEl).toFixed(1)}°</dd>
           </dl>
         </details>
+      )}
+      </>
       )}
       </div>
       <div className="absolute bottom-3 right-3 flex gap-2">

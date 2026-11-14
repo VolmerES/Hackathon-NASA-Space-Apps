@@ -111,6 +111,7 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 | Ficha como pop‑up en móvil | En móvil la ficha es un pop‑up centrado con fondo oscuro, una ✕ siempre visible arriba a la derecha y cierre con el botón «atrás» (una entrada en el historial mientras está abierta); en tablet y ordenador sigue el cajón lateral. La URL del escenario conserva el estado del historial | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin probar el botón «atrás» en un móvil real |
 | «Cielo y suelo a esta hora» en cajas | En la vista de calle, el Sol y la Tierra van cada uno en su caja, lado a lado, y el suelo debajo; panel algo más ancho (340 px) | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | Sol, Tierra y suelo como tarjetas plegables | Las tres cajas pasan a tarjetas apiladas que se abren y cierran por separado; plegadas muestran la elevación y si se ve; abiertas en pantallas anchas y plegadas en móvil | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
+| Ocultar las tarjetas de la vista de calle | Botón en el título «Cielo y suelo a esta hora» que oculta y muestra las tres tarjetas a la vez; oculto en móvil al entrar | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 
 ### 15‑nov · domingo
 
