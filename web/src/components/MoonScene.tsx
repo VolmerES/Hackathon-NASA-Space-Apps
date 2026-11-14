@@ -1037,16 +1037,17 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       if (roll > 0) camera.rotateZ(Math.PI * roll)
 
       let fx = w / 2
-      let fy = h * 1.12
+      // Opening: the Moon rises higher than before, a third of the screen, the star of the splash.
+      let fy = h * 1.0
       const frameEl = frameRef.current
       if (frameEl) {
         const r = frameEl.getBoundingClientRect()
         if (r.width > 0 && r.height > 0) {
           fx = THREE.MathUtils.lerp(w / 2, r.left + r.width / 2, k)
-          fy = THREE.MathUtils.lerp(h * 1.12, r.top + r.height / 2, k)
+          fy = THREE.MathUtils.lerp(h * 1.0, r.top + r.height / 2, k)
         }
       } else {
-        fy = THREE.MathUtils.lerp(h * 1.12, h * 0.42, k)
+        fy = THREE.MathUtils.lerp(h * 1.0, h * 0.42, k)
       }
       const ctl = controlsRef.current
       if (ctl) {

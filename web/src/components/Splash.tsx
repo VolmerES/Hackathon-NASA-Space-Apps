@@ -169,20 +169,20 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
         <span className="hidden sm:inline">{t.southPole2}</span>
       </div>
 
-      <div className="absolute inset-x-0 top-[11vh] flex flex-col items-center gap-4 px-6 text-center">
-        <LogoMark size={62} animated className="mb-3 text-white" />
+      <div className="absolute inset-x-0 top-[8vh] flex flex-col items-center gap-3 px-6 text-center">
+        <LogoMark size={52} animated className="mb-2 text-white" />
         {/* The name, letter by letter: each comes in from a blur while the tracking closes, then a
             glint of sunlight runs across it (a copy on top, masked to a moving band). */}
         <div className="flex w-full justify-center">
         <div className="relative shrink-0">
-          <h1 aria-label={NAME} className="sp-name wordmark whitespace-nowrap text-[clamp(16px,4.2vw,60px)] leading-none">
+          <h1 aria-label={NAME} className="sp-name wordmark whitespace-nowrap text-[clamp(16px,3.6vw,52px)] leading-none">
             {LETTERS.map((ch, i) => (
               <span key={i} aria-hidden="true" className="sp-l" style={{ animationDelay: `${(0.55 + i * 0.045).toFixed(3)}s` }}>
                 {ch}
               </span>
             ))}
           </h1>
-          <span aria-hidden="true" className="sp-name sp-glint wordmark absolute inset-0 whitespace-nowrap text-[clamp(16px,4.2vw,60px)] leading-none">
+          <span aria-hidden="true" className="sp-name sp-glint wordmark absolute inset-0 whitespace-nowrap text-[clamp(16px,3.6vw,52px)] leading-none">
             {LETTERS.map((ch, i) => (
               <span key={i} className="inline-block">
                 {ch}
@@ -194,14 +194,14 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
         <p className="sp-sub max-w-xl text-balance text-base font-light text-white/80 sm:text-lg" style={{ animationDelay: '1.5s' }}>{t.splashTagline}</p>
       </div>
 
-      <div className="sp-ui absolute left-1/2 top-[35vh] w-[min(800px,calc(100%-32px))] -translate-x-1/2 rounded-2xl bg-black/60 p-4 ring-1 ring-white/10 backdrop-blur-md sm:p-5">
+      <div className="sp-ui absolute left-1/2 top-[34vh] w-[min(560px,calc(100%-32px))] -translate-x-1/2 rounded-2xl bg-black/55 p-3.5 ring-1 ring-white/10 backdrop-blur-md sm:p-4">
         {/* Progress: the real horizon of one of the team's sites, with the Sun grazing its ridge. */}
         <div className="flex items-end justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm text-white">{allDone ? t.splashReady : t.splashStarting}</p>
             <p className="mt-1 truncate text-xs text-white/50">{t.splashHorizon}</p>
           </div>
-          <span className="wordmark shrink-0 text-[28px] leading-none tabular-nums text-white sm:text-[34px]" style={{ letterSpacing: 0, fontStretch: '112%' }}>
+          <span className="wordmark shrink-0 text-[24px] leading-none tabular-nums text-white sm:text-[28px]" style={{ letterSpacing: 0, fontStretch: '112%' }}>
             {Math.round(progress * 100)}
             <span className="ml-1 text-base text-white/50">%</span>
           </span>
@@ -218,7 +218,26 @@ export function Splash({ onDone, showMoon, moon }: { onDone: () => void; showMoo
         </div>
 
         {/* Mission checklist: every source from the start, each one filled in as it arrives. */}
-        <ol className="mt-5 border-t border-white/10 text-[13px]" aria-live="polite">
+        {(() => {
+          const cur = Math.max(0, Math.min(shown, ORDER.length) - 1)
+          const s = ORDER[cur]
+          const st = shown ? status[s].state : 'queued'
+          return (
+            <div className="mt-3 border-t border-white/10 pt-2.5" aria-hidden="true">
+              <div className="flex gap-1">
+                {ORDER.map((x, k) => (
+                  <span key={x} className={`h-1 flex-1 rounded-full transition-colors duration-500 ${k < shown && status[x].state === 'done' ? 'bg-ok' : k < shown && status[x].state === 'failed' ? 'bg-warn' : k < shown ? 'bg-sun' : 'bg-white/15'}`} />
+                ))}
+              </div>
+              <p className="mt-2 flex items-center gap-2 text-[13px]">
+                <span className="shrink-0 tabular-nums text-[11px] text-white/45">{String(cur + 1).padStart(2, '0')}/{String(ORDER.length).padStart(2, '0')}</span>
+                <span className="min-w-0 flex-1 truncate text-white/90">{t.svc[s]}</span>
+                <span className={`hidden shrink-0 tabular-nums sm:inline ${st === 'failed' ? 'text-warn' : 'text-white/55'}`}>{shown ? detail(s) : t.svcQueued}</span>
+              </p>
+            </div>
+          )
+        })()}
+        <ol className="sr-only" aria-live="polite">
           {ORDER.map((s, i) => {
             const on = i < shown
             const st = on ? status[s].state : 'queued'
