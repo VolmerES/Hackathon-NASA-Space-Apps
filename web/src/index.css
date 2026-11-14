@@ -67,7 +67,7 @@ body {
   border-radius: 2px;
   white-space: nowrap;
   cursor: pointer;
-  transition: opacity 0.25s, background 0.2s, color 0.2s;
+  transition: opacity 0.45s ease, background 0.25s, color 0.25s;
   backdrop-filter: blur(6px);
 }
 .moon-label:hover { background: rgba(255, 255, 255, 0.15) }
@@ -130,7 +130,7 @@ body {
 .moon-callout[data-side="left"] .moon-callout-lead { transform: scaleX(-1) }
 .moon-callout[data-drop="down"] .moon-callout-lead { transform: scaleY(-1) }
 .moon-callout[data-side="left"][data-drop="down"] .moon-callout-lead { transform: scale(-1, -1) }
-.moon-callout-lead path { stroke-dasharray: 1; stroke-dashoffset: 0; animation: callout-draw 0.22s ease-out both }
+.moon-callout-lead path { stroke-dasharray: 1; stroke-dashoffset: 0; animation: callout-draw 0.38s cubic-bezier(0.22, 1, 0.36, 1) both }
 .moon-callout-card {
   position: absolute;
   left: 64px;
@@ -142,7 +142,7 @@ body {
   background: rgba(8, 10, 14, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(10px);
-  animation: callout-open 0.2s 0.12s ease-out both;
+  animation: callout-open 0.4s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .moon-callout[data-side="left"] .moon-callout-card { left: auto; right: 64px }
 .moon-callout[data-drop="down"] .moon-callout-card { transform: none; top: 44px }
@@ -281,6 +281,13 @@ input[type="range"] {
 }
 
 /* Street view opens after the dive: a short fade from black. */
-.street-in { animation: street-in 0.6s ease-out both }
-@keyframes street-in { from { opacity: 0 } }
+.street-in { animation: street-in 1s cubic-bezier(0.22, 1, 0.36, 1) both }
+@keyframes street-in { from { opacity: 0; transform: scale(1.04) } }
 @media (prefers-reduced-motion: reduce) { .street-in { animation: none } }
+
+/* Panels, strips and floating buttons arrive softly: a slow fade with a short rise (ease-out-quint). */
+.ui-in { animation: ui-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both }
+@keyframes ui-in { from { opacity: 0; transform: translateY(12px) } }
+.ui-fade { animation: ui-fade 0.45s ease-out both }
+@keyframes ui-fade { from { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .ui-in, .ui-fade { animation: none } }

@@ -425,7 +425,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let kFrom = k
     let kStart = 0
     let lastMode = state.current.mode
-    const TRANSITION_MS = 1800
+    const TRANSITION_MS = 2600
 
     const target = new THREE.Vector3()
     const camDir = new THREE.Vector3()
@@ -503,7 +503,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         if (Math.abs(tiltVel) < 0.004) tiltVel = 0
         holdUntil = now + HOLD_MS
       } else if (spinTarget !== null) {
-        spin += (spinTarget - spin) * Math.min(1, dt * 3.2)
+        spin += (spinTarget - spin) * (1 - Math.exp(-dt * 1.6))
         if (Math.abs(spinTarget - spin) < 0.001) spinTarget = null
       } else if (!drag && !reduce && now > holdUntil && now > hoverHold) {
         // Slower while choosing, so labels are easy to tap.
@@ -526,15 +526,16 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         // keep appTarget and appDist as they are
       } else if (fm) {
         focusWorld.copy(fm.local).applyAxisAngle(new THREE.Vector3(0, 1, 0), spin)
-        appTarget.lerp(focusWorld, Math.min(1, dt * 2.2))
-        appDist += ((small ? 0.85 : 0.62) - appDist) * Math.min(1, dt * 2.2)
+        // Slow, frame-rate independent glides: the camera drifts to a site rather than jumping.
+        appTarget.lerp(focusWorld, 1 - Math.exp(-dt * 1.3))
+        appDist += ((small ? 0.85 : 0.62) - appDist) * (1 - Math.exp(-dt * 1.3))
       } else {
-        appTarget.lerp(pole, Math.min(1, dt * 2.2))
-        appDist += ((small ? 0.62 : 0.48) - appDist) * Math.min(1, dt * 2.2)
+        appTarget.lerp(pole, 1 - Math.exp(-dt * 1.3))
+        appDist += ((small ? 0.62 : 0.48) - appDist) * (1 - Math.exp(-dt * 1.3))
       }
       // Frame-rate independent easing: the same feel at 30 or 120 frames per second.
-      zoom += (zoomGoal - zoom) * (1 - Math.exp(-dt * 12))
-      tiltCur += (tiltGoal - tiltCur) * (1 - Math.exp(-dt * 14))
+      zoom += (zoomGoal - zoom) * (1 - Math.exp(-dt * (pinch ? 14 : 4.5)))
+      tiltCur += (tiltGoal - tiltCur) * (1 - Math.exp(-dt * (drag ? 12 : 3.5)))
       const viewDist = appDist * zoom
       // Far out, orbit the whole Moon instead of a point on its surface.
       const far = THREE.MathUtils.smoothstep(viewDist, 1.1, 3.2)
@@ -576,6 +577,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       camera.setViewOffset(w, h, w / 2 - fx, h / 2 - fy, w, h)
       camera.updateProjectionMatrix()
 
+      const frameBox = frameEl ? frameEl.getBoundingClientRect() : null
       // Markers and their labels. Labels that would overlap are nudged down, in screen order.
       const pulse = 1 + 0.25 * Math.sin(now / 260)
       const placed: { x: number; y: number; w: number }[] = []
@@ -599,14 +601,27 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         tmp.copy(world).project(camera)
         const x = (tmp.x * 0.5 + 0.5) * w
         const y = (-tmp.y * 0.5 + 0.5) * h
-        const show = k > 0.85 && facing > 0.08 && (on || (state.current.showLabels && (!small || !!state.current.focusId)))
+        // Only where the Moon is in the clear: no label shows through the panels.
+        const inFrame = !frameBox || (x > frameBox.left - 4 && x < frameBox.right - 8 && y > frameBox.top - 4 && y < frameBox.bottom - 8)
+        const show = inFrame && k > 0.85 && facing > 0.08 && (on || (state.current.showLabels && (!small || !!state.current.focusId)))
         m.sx = x
         m.sy = y
         m.vis = k > 0.85 && facing > 0.08
         let ly = y
         const lw = m.el.offsetWidth || 120
         // Near the right edge (and the view buttons), the label goes to the left of its dot instead.
-        const lx = x + lw + (small ? 76 : 22) > w ? Math.max(8, x - lw - 28) : x
+        // The label is drawn 14 px right of (lx, ly) and 14 px up (see .moon-label).
+        const right = Math.min(w - (small ? 76 : 22), frameBox ? frameBox.right - 8 : w)
+        const left = frameBox ? frameBox.left + 8 : 8
+        let lx = x
+        if (x + 14 + lw > right) {
+          if (x - lw - 14 >= left) lx = x - lw - 28
+          else {
+            // No room either side (a narrow free area): centred under the dot, kept inside.
+            lx = Math.min(right - lw, Math.max(left, x - lw / 2)) - 14
+            ly = y + 30
+          }
+        }
         for (let guard = 0; guard < 8; guard++) {
           const hit = placed.find((p) => Math.abs(p.y - ly) < 30 && lx < p.x + p.w + 6 && p.x < lx + lw + 6)
           if (!hit) break

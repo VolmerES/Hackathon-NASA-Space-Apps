@@ -332,7 +332,7 @@ export default function App() {
     setPanel(null)
     setDiving(true)
     const instant = !moonOk || window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    window.setTimeout(() => setStreetOpen(true), instant ? 0 : 1600)
+    window.setTimeout(() => setStreetOpen(true), instant ? 0 : 2400)
   }
   const closeStreet = () => {
     setStreetOpen(false)
@@ -463,7 +463,7 @@ export default function App() {
 
         <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
           {/* The guided card: find a site, then the answer. A bottom sheet on phones. */}
-          <section className={`glass pointer-events-auto absolute inset-x-0 bottom-0 max-h-[64dvh] overflow-y-auto rounded-t-xl px-4 pb-6 pt-4 lg:relative lg:max-h-none lg:w-[400px] lg:shrink-0 lg:rounded-none lg:p-5 ${cardOpen ? '' : 'hidden'}`}>
+          <section className={`ui-in glass pointer-events-auto absolute inset-x-0 bottom-0 max-h-[64dvh] overflow-y-auto rounded-t-xl px-4 pb-6 pt-4 lg:relative lg:max-h-none lg:w-[400px] lg:shrink-0 lg:rounded-none lg:p-5 ${cardOpen ? '' : 'hidden'}`}>
             <CloseButton label={t.hidePanel} onClick={() => setCardOpen(false)} kind="fold" className="float-right -mt-1 ml-2" />
             {picking || !focused ? (
               <div>
@@ -779,7 +779,7 @@ export default function App() {
             </div>
             {/* Desktop: with a site chosen, its sky in 2D docked under the Moon. */}
             {focused && !picking && panel !== 'sky' && skyOpen && (
-              <section className="glass pointer-events-auto mx-3 mb-3 hidden lg:block" aria-label={t.skyFrom(siteName(focused.site))}>
+              <section className="ui-in glass pointer-events-auto mx-3 mb-3 hidden lg:block" aria-label={t.skyFrom(siteName(focused.site))}>
                 <SkyStrip name={siteName(focused.site)} height={190} onExpand={() => { setView('2d'); setPanel('sky') }} onClose={() => setSkyOpen(false)}>
                   <Panorama site={focused.site} samples={focused.samples} height={190} />
                 </SkyStrip>
@@ -787,7 +787,7 @@ export default function App() {
             )}
             {focused && !picking && panel !== 'sky' && !skyOpen && (
               <div className="pointer-events-none mb-12 hidden justify-center lg:flex">
-                <button onClick={() => setSkyOpen(true)} className="glass pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold hover:bg-white/10">
+                <button onClick={() => setSkyOpen(true)} className="ui-in glass pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold hover:bg-white/10">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 18c3-7 6-10 9-10s6 3 9 10" /><path d="M3 21h18" /><circle cx="12" cy="8" r="1.6" fill="currentColor" /></svg>
                   {t.skyCurves}
                 </button>
@@ -798,7 +798,7 @@ export default function App() {
             <button
               onClick={() => setCardOpen(true)}
               aria-label={t.showPanel}
-              className="glass pointer-events-auto fixed bottom-4 left-1/2 z-20 flex min-h-12 max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-2.5 rounded-full px-5 font-semibold lg:bottom-6 lg:left-6 lg:translate-x-0"
+              className="ui-in glass pointer-events-auto fixed bottom-4 left-1/2 z-20 flex min-h-12 max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-2.5 rounded-full px-5 font-semibold lg:bottom-6 lg:left-6 lg:translate-x-0"
             >
               {focused && !picking ? (
                 <>
@@ -816,7 +816,7 @@ export default function App() {
 
           {/* On-demand panels: the sky, the best dates, the comparison. */}
           {panel && focused && (
-            <section className="glass pointer-events-auto fixed inset-0 z-30 solid-phone flex flex-col lg:static lg:inset-auto lg:z-auto lg:w-[min(760px,50vw)] lg:shrink-0" aria-label={panel === 'sky' ? t.seeSky : panel === 'when' ? t.bestDates : t.compare}>
+            <section className="ui-in glass pointer-events-auto fixed inset-0 z-30 solid-phone flex flex-col lg:static lg:inset-auto lg:z-auto lg:w-[min(760px,50vw)] lg:shrink-0" aria-label={panel === 'sky' ? t.seeSky : panel === 'when' ? t.bestDates : t.compare}>
               <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
                 <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto" role="tablist">
                   {(
@@ -834,7 +834,7 @@ export default function App() {
                 <CloseButton label={t.close} onClick={() => setPanel(null)} withText />
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+              <div key={panel} className="ui-fade flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
                 {panel === 'sky' && (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
@@ -965,9 +965,7 @@ export default function App() {
                                 <span className={`block text-sm ${VERDICT_CLS[r.m.verdict]}`}>{t.verdictLong[r.m.verdict]}</span>
                               </span>
                             </button>
-                            <button onClick={() => remove(r.site.id)} className="min-h-11 px-2 text-sm text-muted underline underline-offset-4 hover:text-ink">
-                              {t.remove}
-                            </button>
+                            <CloseButton label={t.remove} onClick={() => remove(r.site.id)} withText />
                           </div>
                           <dl className="mt-2 grid grid-cols-4 gap-2 text-sm">
                             {[
