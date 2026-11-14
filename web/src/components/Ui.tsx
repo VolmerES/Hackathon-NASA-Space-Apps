@@ -61,6 +61,30 @@ export function Menu({ label, items, className = '' }: { label: string; items: M
   )
 }
 
+/** Hamburger button on the left of the header; its panel holds language, actions and notes. */
+export function HamburgerMenu({ label, children }: { label: string; children: (close: () => void) => ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const away = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [open])
+  return (
+    <div ref={root} className="relative" onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
+      <button aria-haspopup="true" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen((o) => !o)} className="flex size-11 items-center justify-center rounded-sm border border-white/40 hover:bg-white/10">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+          {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+        </svg>
+      </button>
+      {open && <div className="pop-in absolute left-0 z-40 mt-1 w-72 border border-white/15 bg-black/90 py-2 text-white shadow-xl backdrop-blur-md">{children(() => setOpen(false))}</div>}
+    </div>
+  )
+}
+
 /**
  * The one button that closes, folds or goes back, everywhere: a 44 px target with a clear outline,
  * an X (close), a chevron (fold) or an arrow (back), and the word next to it when `withText`.

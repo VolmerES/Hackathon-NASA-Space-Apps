@@ -291,3 +291,11 @@ input[type="range"] {
 .ui-fade { animation: ui-fade 0.45s ease-out both }
 @keyframes ui-fade { from { opacity: 0 } }
 @media (prefers-reduced-motion: reduce) { .ui-in, .ui-fade { animation: none } }
+
+/* Time bar slider: transparent track, so the daily-sunlight strip behind it shows; a Sun-coloured thumb. */
+.time-range { -webkit-appearance: none; appearance: none; background: transparent }
+.time-range::-webkit-slider-runnable-track { height: 6px; background: rgb(255 255 255 / 0.12); border-radius: 999px }
+.time-range::-moz-range-track { height: 6px; background: rgb(255 255 255 / 0.12); border-radius: 999px }
+.time-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--color-sun); border: 2px solid #000; box-shadow: 0 0 10px rgb(255 201 74 / 0.7) }
+.time-range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--color-sun); border: 2px solid #000; box-shadow: 0 0 10px rgb(255 201 74 / 0.7) }
+.time-range:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 2px }

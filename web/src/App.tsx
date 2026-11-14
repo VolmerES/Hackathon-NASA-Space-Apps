@@ -7,9 +7,10 @@ import { YearStrip, type YearMetric } from './components/YearView'
 import { readScenario, writeScenario } from './scenario'
 import { LangContext, STRINGS, readLang, useT, type Lang, type Strings } from './i18n'
 import { useBoxHeight } from './hooks'
-import { CloseButton, FloatPanel, Menu, Overlay, Snackbar } from './components/Ui'
+import { CloseButton, FloatPanel, HamburgerMenu, Overlay, Snackbar } from './components/Ui'
 import { Splash, SKIP as SKIP_SPLASH } from './components/Splash'
 import { MoonScene } from './components/MoonScene'
+import { TimeBar } from './components/TimeBar'
 import { Logo } from './components/Logo'
 import { StayHeatmap } from './components/StayHeatmap'
 import { MoonFallback } from './components/MoonFallback'
@@ -39,7 +40,6 @@ const VERDICT_BG = { viable: 'bg-ok', marginal: 'bg-warn', 'not-viable': 'bg-bad
 const RANK = { viable: 0, marginal: 1, 'not-viable': 2 } as const
 const VERDICT_HEX = { viable: '#3fcf8e', marginal: '#f2a93b', 'not-viable': '#ff5a6a' } as const
 
-const toInputValue = (d: Date) => d.toISOString().slice(0, 16)
 
 // Everything that turns a value into words, in the chosen language.
 function formatters(t: Strings) {
@@ -305,6 +305,7 @@ export default function App() {
   useEffect(() => {
     setPlaying(false)
     setPlayIdx(null)
+    setFreeHour(0)
   }, [focus, mission])
   useEffect(() => {
     if (!playing || !focused) return
@@ -322,8 +323,17 @@ export default function App() {
     return () => window.clearInterval(id)
   }, [playing, focused])
   const cursor = focused && playIdx !== null ? focused.samples[Math.min(playIdx, focused.samples.length - 1)] : undefined
-  // The hour the Moon is lit for: the one being played or scrubbed, else the chosen landing hour.
-  const litAt = cursor?.t ?? start
+  // The hour the Moon is lit for: the one being played or scrubbed (time bar, sky chart), else the
+  // start of the stay. With no site chosen yet the time bar keeps its own hour.
+  const [freeHour, setFreeHour] = useState(0)
+  const litAt = cursor?.t ?? (focused ? start : new Date(start.getTime() + freeHour * 3600000))
+  // The date field of the time bar sets the start of the stay; a slip already set is kept.
+  const setStart = (d: Date) => set('landing', new Date(clampToData(d.getTime()) - mission.slipDays * 86400000))
+  const scrub = (i: number) => {
+    setPlaying(false)
+    if (focused) setPlayIdx(i)
+    else setFreeHour(i)
+  }
   const sunAt = useMemo(() => (ready ? subsolarAt(litAt) : undefined), [ready, litAt.getTime()]) // eslint-disable-line react-hooks/exhaustive-deps
   const togglePlay = () => {
     if (!focused) return
@@ -430,38 +440,54 @@ export default function App() {
       )}
 
       <div className={`pointer-events-none relative z-10 flex h-dvh flex-col transition-opacity duration-700 ${splashDone ? 'opacity-100' : 'opacity-0'}`}>
-        <header className="pointer-events-auto flex items-center justify-between gap-3 bg-gradient-to-b from-black/85 to-transparent px-4 pb-6 pt-3">
-          <button onClick={() => setPicking(true)} aria-label={t.findTitle} className="min-h-11">
-            <Logo />
-          </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="hidden border border-white/30 px-2 py-1 text-xs text-white/85 sm:inline" title={t.demoRest}>
-              {t.demoStrong}
-            </span>
-            <button onClick={() => setLang(lang === 'en' ? 'es' : 'en')} lang={lang === 'en' ? 'es' : 'en'} aria-label={t.language} className="min-h-11 border border-white/30 px-3 text-sm font-semibold sm:hidden">
-              {lang === 'en' ? 'ES' : 'EN'}
+        <header className="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 bg-gradient-to-b from-black/85 to-transparent px-4 pb-4 pt-3">
+          <div className="flex items-center gap-3">
+            <HamburgerMenu label={t.mainMenu}>
+              {(close) => (
+                <>
+                  <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted">{t.language}</p>
+                  <div className="mx-4 mb-2 inline-flex border border-white/30" role="group" aria-label={t.language}>
+                    {(
+                      [
+                        ['en', 'English'],
+                        ['es', 'Español'],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button key={id} lang={id} onClick={() => setLang(id)} aria-pressed={lang === id} className={seg(lang === id)}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-white/10 pt-1">
+                    {[
+                      { label: t.copyLink, onSelect: share, hidden: !chosen.length },
+                      { label: focused ? t.downloadCsv(siteName(focused.site)) : '', onSelect: downloadCsv, hidden: !focused },
+                      { label: t.dataSources, onSelect: () => setSourcesOpen(true) },
+                    ]
+                      .filter((i) => !i.hidden)
+                      .map((i) => (
+                        <button key={i.label} onClick={() => { close(); i.onSelect() }} className="block min-h-11 w-full px-4 text-left text-sm hover:bg-white/10 lg:min-h-10">
+                          {i.label}
+                        </button>
+                      ))}
+                  </div>
+                  <p className="mx-4 mt-2 border-t border-white/10 pt-2 text-xs text-white/75">
+                    <strong className="mb-0.5 block text-white">{t.demoStrong}</strong>
+                    {t.demoRest}
+                  </p>
+                </>
+              )}
+            </HamburgerMenu>
+            <button onClick={() => setPicking(true)} aria-label={t.findTitle} className="min-h-11">
+              <Logo />
             </button>
-            <div className="hidden border border-white/30 sm:inline-flex" role="group" aria-label={t.language}>
-              {(
-                [
-                  ['en', 'EN'],
-                  ['es', 'ES'],
-                ] as const
-              ).map(([id, label]) => (
-                <button key={id} lang={id} onClick={() => setLang(id)} aria-pressed={lang === id} className={seg(lang === id)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <Menu
-              label={t.menu}
-              items={[
-                { label: t.copyLink, onSelect: share, hidden: !chosen.length },
-                { label: focused ? t.downloadCsv(siteName(focused.site)) : '', onSelect: downloadCsv, hidden: !focused },
-                { label: t.dataSources, onSelect: () => setSourcesOpen(true) },
-              ]}
-            />
           </div>
+          {/* Quick date and hour: the Moon's light and shadows follow it. A second line on phones. */}
+          {splashDone && ready && (
+            <div className="order-last min-w-0 basis-full lg:order-none lg:ml-auto lg:max-w-2xl lg:flex-1 lg:basis-auto">
+              <TimeBar start={start} min={DATA.start} max={DATA.end} stay={mission.durationDays} index={focused ? (playIdx ?? 0) : freeHour} sunHours={focused?.samples.map((x) => x.sunVisible)} label={fmtDateTime} onStart={setStart} onStay={(n) => set('durationDays', n)} onScrub={scrub} />
+            </div>
+          )}
         </header>
 
         <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
@@ -714,17 +740,8 @@ export default function App() {
                     <span>{t.whenTitle}</span>
                     <span className="text-xs font-normal text-muted">{t.stayDays(mission.durationDays)}, {fmtDate(start)}</span>
                   </summary>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                    <label>
-                      {t.landingDate}
-                      <input type="datetime-local" value={toInputValue(mission.landing)} min={ready ? toInputValue(DATA.start) : undefined} max={ready ? toInputValue(DATA.end) : undefined} onChange={(e) => e.target.value && set('landing', new Date(clampToData(Date.parse(e.target.value + ':00Z'))))} className={`mt-1 ${field}`} />
-                    </label>
-                    <label>
-                      {t.daysOnSurface}
-                      <input type="number" min={1} max={60} value={mission.durationDays} onChange={(e) => set('durationDays', Math.min(60, Math.max(1, Number(e.target.value) || 1)))} className={`mt-1 ${field}`} />
-                    </label>
-                  </div>
-                  <details className="mt-3" open={slipped}>
+                  {/* Date, hour and days on the surface are set in the time bar of the header. */}
+                  <details className="mt-1" open={slipped}>
                     <summary className="min-h-11 cursor-pointer py-2 text-sm text-nasa-blue underline underline-offset-4">{t.slipTitle}</summary>
                     <div className="flex items-center gap-2">
                       <button aria-label={t.dayEarlier} onClick={() => set('slipDays', Math.max(-30, mission.slipDays - 1))} className="size-11 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">
@@ -776,8 +793,8 @@ export default function App() {
           </section>
 
           {/* Free area: the 3D Moon frames the south pole here. */}
-          <div className={`pointer-events-none absolute inset-x-0 top-0 lg:static lg:flex lg:min-w-0 lg:flex-1 lg:flex-col ${cardOpen ? 'bottom-[64dvh]' : 'bottom-20'}`}>
-            <div ref={frameRef} className="relative h-full lg:h-auto lg:min-h-0 lg:flex-1" aria-hidden="true">
+          <div className={`pointer-events-none absolute inset-x-0 top-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'bottom-[64dvh]' : 'bottom-20'}`}>
+            <div ref={frameRef} className="relative min-h-0 flex-1" aria-hidden="true">
               {splashDone && moonOk && !panel && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
             </div>
             {/* Desktop: with a site chosen, its sky in 2D docked under the Moon. */}
