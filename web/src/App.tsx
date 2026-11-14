@@ -76,7 +76,9 @@ function resolveSite(id: string): Site | undefined {
     const [lat, lon] = id.slice(7).split(',').map(Number)
     return Number.isFinite(lat) && Number.isFinite(lon) ? customSite(lat, lon) : undefined
   }
-  return SITES.find((s) => s.id === id)
+  // Only the five landing sites of the team: a shared link naming any other candidate opens nothing.
+  const site = SITES.find((s) => s.id === id)
+  return site && (site.team || !SITES.some((x) => x.team)) ? site : undefined
 }
 
 function VerdictIcon({ v, size = 22 }: { v: Metrics['verdict']; size?: number }) {
