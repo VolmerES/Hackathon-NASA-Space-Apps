@@ -21,10 +21,10 @@ consideraciones del [enunciado](retos/lunar-landing-site-navigator.md).
 5. El % de Sol y de Tierra de cada sitio está comparado con el mapa de PGDA 69,
    y la diferencia, explicada.
 6. Está publicado en `nasaspaceapps.volmer.es` y funciona sin servidor.
-8. **Sigue funcionando sin conexión** una vez abierta, y si falla un servicio
-   externo lo dice sin enseñar cifras falsas.
 7. **Se usa entero en el móvil:** probado en un iPhone (Safari) y un Android
    (Chrome) de verdad.
+8. **Sigue funcionando sin conexión** una vez abierta, y si falla un servicio
+   externo lo dice sin enseñar cifras falsas.
 
 ## Lo que pide el enunciado (objetivos)
 
