@@ -717,16 +717,11 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <CloseButton label={t.changeSite} onClick={() => setPicking(true)} kind="back" withText />
-                <h1 className="mt-3 text-2xl font-bold">{siteName(focused.site)}</h1>
-                <p className="text-xs text-muted">
-                  {focused.site.lat.toFixed(2)}°, {focused.site.lon.toFixed(2)}°
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 border border-white/10 bg-black/30 px-2.5 py-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2 border border-white/10 bg-black/30 px-2.5 py-2 text-xs">
                   {active ? (
                     <>
                       <span className="text-muted">{t.ms.missionLabel}</span>
-                      <button type="button" onClick={() => setMissionsOpen(true)} className="min-w-0 truncate font-semibold text-ink underline-offset-4 hover:underline">{active.name}</button>
+                      <button type="button" onClick={() => setMissionsOpen(true)} className="min-w-0 truncate text-sm font-semibold text-ink underline-offset-4 hover:underline">{active.name}</button>
                       {openScenario ? (
                         <>
                           <span className="basis-full text-muted sm:basis-auto">
@@ -752,6 +747,11 @@ export default function App() {
                     </>
                   )}
                 </div>
+                <CloseButton label={t.changeSite} onClick={() => setPicking(true)} kind="back" withText className="mt-3" />
+                <h1 className="mt-3 text-2xl font-bold">{siteName(focused.site)}</h1>
+                <p className="text-xs text-muted">
+                  {focused.site.lat.toFixed(2)}°, {focused.site.lon.toFixed(2)}°
+                </p>
 
                 <div className={`mt-4 flex items-center gap-3 ${VERDICT_CLS[focused.m.verdict]}`}>
                   <VerdictIcon v={focused.m.verdict} size={34} />
