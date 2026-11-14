@@ -30,7 +30,7 @@ type Props = {
   /** Contents of the callout shown while the mouse rests on a site (desktop only). */
   info?: (id: string) => ReactNode
   /** Texts of the view controls (zoom in, zoom out, back to the south pole). */
-  controls?: { zoomIn: string; zoomOut: string; recenter: string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void; earth?: string; fromEarth?: string; hd?: string }
+  controls?: { zoomIn: string; zoomOut: string; recenter: string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void; earth?: string; fromEarth?: string; hd?: string; newMoon?: (pct: number) => string }
   /** Heat map laid over the polar cap (a square picture out to `deg` of colatitude), or null. */
   heat?: { canvas: HTMLCanvasElement; deg: number } | null
   /** Street view: dive down onto the focused site until the camera skims its ground. */
@@ -921,6 +921,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       if (sunLocal.lengthSq() === 0 || reduce) sunLocal.copy(sunGoal)
       else sunLocal.lerp(sunGoal, 1 - Math.exp(-dt * 4)).normalize()
       sun.position.copy(sunLocal).applyAxisAngle(Y_AXIS, spin).multiplyScalar(3).add(sun.target.position)
+      cesium?.setSun(sunLocal)
 
       // Camera framing. Intro: whole Moon from afar, its disc low so the limb sits under the title.
       // App: close over the south pole, placed in the centre of the free frame of the layout.
@@ -1369,6 +1370,14 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           </div>
         </div>
       )}
+      {/* Seen from the Earth near new Moon the near side is in night: say so, it is not a fault. */}
+      {view === 1 && controls?.newMoon && sunAt && earth && (() => {
+        const u = (lat: number, lon: number) => [Math.cos(lat * DEG) * Math.cos(lon * DEG), Math.cos(lat * DEG) * Math.sin(lon * DEG), Math.sin(lat * DEG)]
+        const a = u(sunAt.lat, sunAt.lon)
+        const b = u(earth.lat, earth.lon)
+        const lit = (100 * (1 + a[0] * b[0] + a[1] * b[1] + a[2] * b[2])) / 2
+        return lit < 15 ? <p className="ui-in glass pointer-events-none fixed left-1/2 top-24 z-[6] -translate-x-1/2 px-3 py-2 text-center text-sm">{controls.newMoon(Math.round(lit))}</p> : null
+      })()}
       {credit && (
         <a href="https://cesium.com/platform/cesium-ion/" target="_blank" rel="noreferrer" className="fixed bottom-1 left-2 z-[6] bg-black/60 px-2 py-0.5 text-[11px] text-white/85">
           <img src="https://assets.ion.cesium.com/ion-credit.png" alt="Cesium ion" className="mr-1.5 inline h-4 align-middle" />

@@ -114,6 +114,31 @@ function SkyLoading({ height, label }: { height: number; label: string }) {
   )
 }
 
+// A small picture of the site's sky for the button that opens it: the real horizon all the way
+// round (N, E, S, W, N) and the paths of the Sun and Earth over the stay. Same layout as the strip.
+function SkyThumb({ site, samples, w = 112, h = 34 }: { site: Site; samples: Sample[]; w?: number; h?: number }) {
+  const hor = Array.from({ length: 91 }, (_, i) => site.horizon[(i * 8) % 720])
+  const sun = samples.filter((_, i) => i % 2 === 0).map((x) => [x.sunAz, x.sunEl] as const)
+  const earth = samples.filter((_, i) => i % 3 === 0).map((x) => [x.earthAz, x.earthEl] as const)
+  const els = [...hor, ...sun.map((p) => p[1]), ...earth.map((p) => p[1])]
+  const lo = Math.max(-8, Math.min(...els) - 0.5)
+  const hi = Math.min(14, Math.max(...els) + 0.8)
+  const X = (az: number) => (az / 360) * w
+  const Y = (el: number) => h - 2 - ((Math.min(hi, Math.max(lo, el)) - lo) / (hi - lo || 1)) * (h - 4)
+  // A path through az/el points, broken where it wraps round north.
+  const line = (pts: readonly (readonly [number, number])[]) =>
+    pts.map(([az, el], i) => `${i && Math.abs(az - pts[i - 1][0]) < 180 ? 'L' : 'M'}${X(az).toFixed(1)},${Y(el).toFixed(1)}`).join('')
+  const ground = `M0,${h} ${hor.map((el, i) => `L${((i * 4 * w) / 360).toFixed(1)},${Y(el).toFixed(1)}`).join(' ')} L${w},${h}Z`
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true" className="shrink-0 overflow-hidden rounded-[2px] bg-[#05070a]">
+      <path d={line(earth)} fill="none" stroke="#4f97ea" strokeWidth="1.2" strokeOpacity="0.85" strokeDasharray="1.5 2" />
+      <path d={line(sun)} fill="none" stroke="#f2b705" strokeWidth="1.6" strokeLinecap="round" />
+      <path d={ground} fill="#8a8d91" fillOpacity="0.55" />
+      <path d={ground.replace(/^M0,[^ ]+ /, 'M').replace(/ L[^ ]+Z$/, '')} fill="none" stroke="#c9ccd1" strokeWidth="0.8" />
+    </svg>
+  )
+}
+
 // The sky of the chosen site in 2D: terrain silhouette with the Sun and Earth paths over it.
 function SkyStrip({ name, height, onExpand, onClose, children }: { name: string; height: number; onExpand: () => void; onClose?: () => void; children: ReactNode }) {
   const t = useT()
@@ -809,7 +834,7 @@ export default function App() {
     <LangContext.Provider value={t}>
       {moonOk ? (
         <Suspense fallback={null}>
-        <MoonScene compactControls={!!panel} mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} earth={earthAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, earth: t.viewEarth, fromEarth: t.viewFromEarth, hd: t.viewHd, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
+        <MoonScene compactControls={!!panel} mode={splashDone ? 'app' : 'intro'} sites={moonSites} showLabels={moonLabels} focusId={picking ? undefined : focused?.site.id} onPick={pick} info={moonInfo} dive={diving} sunAt={sunAt} earth={earthAt} onStreet={(id) => { pick(id); openStreet() }} streetLabel={t.streetView} heat={heat} controls={{ zoomIn: t.zoomIn, zoomOut: t.zoomOut, recenter: t.recenter, earth: t.viewEarth, fromEarth: t.viewFromEarth, newMoon: t.newMoonNote, hd: t.viewHd, layer: t.lightLayer, layerOn: lightOn, layerBusy: lightBusy, onLayer: () => setLightOn((o) => !o) }} frameRef={frameRef} onFail={() => {
             setMoonOk(false)
             setMoonState('failed')
           }} onReady={() => setMoonState('done')} />
@@ -1192,9 +1217,13 @@ export default function App() {
                     </SkyStrip>
                   </div>
                 ) : (
-                  <button onClick={() => setSkyOpen(true)} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-sm border border-white/20 bg-black/30 text-sm font-semibold hover:bg-white/10 lg:hidden">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 18c3-7 6-10 9-10s6 3 9 10" /><path d="M3 21h18" /><circle cx="12" cy="8" r="1.6" fill="currentColor" /></svg>
-                    {t.skyCurves}
+                  <button onClick={() => setSkyOpen(true)} className="sky-btn mt-4 w-full lg:hidden">
+                    <SkyThumb site={focused.site} samples={focused.samples} />
+                    <span className="min-w-0 flex-1 text-left">
+                      <span className="block">{t.skyCurves}</span>
+                      <span className="block truncate text-xs font-normal text-white/60">{t.skyCurvesSub}</span>
+                    </span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-white/70"><path d="M6 9l6 6 6-6" /></svg>
                   </button>
                 )}
 
@@ -1280,13 +1309,17 @@ export default function App() {
           {/* Free area: the 3D Moon frames the south pole here. */}
           <div className={`pointer-events-none absolute inset-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'sm:left-[380px]' : ''}`}>
             <div ref={frameRef} className="relative min-h-0 flex-1">
-              {splashDone && moonOk && !panel && !lightOn && <p className={`absolute inset-x-0 hidden text-center text-xs text-white/60 lg:block ${focused && !picking && !skyOpen && !skyStay.value ? 'bottom-16' : 'bottom-2'}`}>{t.dragHint}</p>}
+              {splashDone && moonOk && !panel && !lightOn && <p className={`absolute inset-x-0 hidden text-center text-xs text-white/60 lg:block ${focused && !picking && !skyOpen && !skyStay.value ? 'bottom-[76px]' : 'bottom-2'}`}>{t.dragHint}</p>}
               {/* Desktop: the sky curves button, centred at the very bottom of the Moon's area. */}
                 {focused && !picking && panel !== 'sky' && !skyOpen && !skyStay.value && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-3 hidden justify-center lg:flex">
-                  <button onClick={() => setSkyOpen(true)} className="ui-in glass pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold hover:bg-white/10">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 18c3-7 6-10 9-10s6 3 9 10" /><path d="M3 21h18" /><circle cx="12" cy="8" r="1.6" fill="currentColor" /></svg>
-                    {t.skyCurves}
+                  <button onClick={() => setSkyOpen(true)} className="sky-btn ui-in pointer-events-auto">
+                    <SkyThumb site={focused.site} samples={focused.samples} />
+                    <span className="text-left">
+                      <span className="block">{t.skyCurves}</span>
+                      <span className="block text-xs font-normal text-white/60">{t.skyCurvesSub}</span>
+                    </span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ml-1 shrink-0 text-white/70"><path d="M6 15l6-6 6 6" /></svg>
                   </button>
                 </div>
               )}

@@ -1,7 +1,7 @@
 // Optional high-detail Moon from Cesium ion. Tested with a real token: the tiles load and line up
 // with the site markers (same craters under them as on our own Moon). It is an option the viewer
-// turns on (HD button). Our Sun lights it and the heat map is laid over it, but the shadows painted
-// in its picture stay.
+// turns on (HD button). Its picture keeps its own painted relief; our Sun of the chosen date sets
+// where it is day and night, and the heat map is laid over it.
 //
 // "Cesium Moon Terrain" (ion asset 2684829) is a 3D Tiles set of the Moon built from NASA LRO data
 // (LOLA, LROC), with terrain down to 5 m near the poles. It is streamed from Cesium ion, needs an
@@ -19,39 +19,47 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 const ASSET_ID = '2684829'
 const R_MOON_M = 1737400
 
-export type CesiumMoon = { update: () => void; dispose: () => void; setVisible: (v: boolean) => void; setHeat: (tex: THREE.Texture | null, capDeg: number) => void }
+export type CesiumMoon = { update: () => void; dispose: () => void; setVisible: (v: boolean) => void; setHeat: (tex: THREE.Texture | null, capDeg: number) => void; setSun: (dir: THREE.Vector3) => void }
 
-// Their tiles come unlit (the light is painted in the picture). We give them a lit material, so the
-// real Sun of the chosen date shades their relief and casts shadows, and the sunlight heat map can
-// be laid over them: the picture's own painted shadows still show underneath.
+// Their tiles come unlit: the relief is already painted in the picture (LROC), shadows included.
+// Shading it again with the Sun on their own normals made it far too dark: a dim lit half and a
+// straight terminator from the Earth, a black polar cap with the Sun a degree or two up. So the
+// picture keeps its own relief, and our Sun only says where it is day: the real Sun of the chosen
+// date against each point of the lunar sphere, with a soft terminator. The sunlight heat map is laid
+// over it the same way as on our own Moon.
 const shared = {
   heatMap: { value: null as THREE.Texture | null },
   heatOn: { value: 0 },
   capDeg: { value: 25 },
   toMoon: { value: new THREE.Matrix4() }, // world -> Moon-fixed (unit sphere, north along +Y)
+  sunDir: { value: new THREE.Vector3(1, 0, 0) }, // towards the Sun, Moon-fixed
 }
-function litMaterial(old: THREE.Material): THREE.Material {
+function dayMaterial(old: THREE.Material): THREE.Material {
   const src = old as THREE.MeshBasicMaterial
-  const m = new THREE.MeshStandardMaterial({ map: src.map ?? null, color: 0xffffff, roughness: 1, metalness: 0 })
+  const m = new THREE.MeshBasicMaterial({ map: src.map ?? null, color: 0xffffff })
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, shared)
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nuniform mat4 toMoon;\nvarying vec3 vMoonPos;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvMoonPos = (toMoon * modelMatrix * vec4(transformed, 1.0)).xyz;')
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D heatMap;\nuniform float heatOn;\nuniform float capDeg;\nvarying vec3 vMoonPos;')
+      .replace('#include <common>', '#include <common>\nuniform sampler2D heatMap;\nuniform float heatOn;\nuniform float capDeg;\nuniform vec3 sunDir;\nvarying vec3 vMoonPos;')
       .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        vec3 p = normalize(vMoonPos);
+        // Day and night from the Sun's height over this point's horizon: full light once it is a
+        // few degrees up, a faint glow (earthshine) at night.
+        float sunUp = dot(p, normalize(sunDir));
+        diffuseColor.rgb *= mix(0.03, 1.0, smoothstep(-0.015, 0.06, sunUp));
         if (heatOn > 0.5) {
-          vec3 p = normalize(vMoonPos);
           float colat = degrees(acos(clamp(-p.y, -1.0, 1.0)));
           if (colat < capDeg) {
             float lon = atan(p.z, -p.x) - PI; // the same longitude as the scene's own Moon
             float r = colat / capDeg * 0.5;
             vec4 heat = texture2D(heatMap, vec2(0.5 + r * sin(lon), 0.5 + r * cos(lon)));
             diffuseColor.rgb *= mix(vec3(1.0), heat.rgb * 1.7 + 0.12, heat.a * 0.9);
-            totalEmissiveRadiance += heat.rgb * heat.a * 0.3;
+            diffuseColor.rgb += heat.rgb * heat.a * 0.3;
           }
         }`,
       )
@@ -83,12 +91,8 @@ export function attachCesiumMoon(o: { token: string; parent: THREE.Object3D; cam
     e.scene.traverse((c) => {
       const mesh = c as THREE.Mesh
       if (!mesh.isMesh) return
-      if (!mesh.geometry.getAttribute('normal')) mesh.geometry.computeVertexNormals()
-      mesh.material = Array.isArray(mesh.material) ? mesh.material.map(litMaterial) : litMaterial(mesh.material)
-      // They cast shadows on our polar cap but do not receive them: the shadow map is tuned for our own
-      // Moon, and on their much finer relief, with the Sun this low, it shadowed the tiles themselves
-      // (shadow acne) and the whole polar cap came out black. Their relief is still shaded by the Sun's
-      // angle, and the shadows painted in their picture stay.
+      mesh.material = Array.isArray(mesh.material) ? mesh.material.map(dayMaterial) : dayMaterial(mesh.material)
+      // They cast shadows on our polar cap; they do not receive them (their shadows are in the picture).
       mesh.castShadow = true
       mesh.receiveShadow = false
     })
@@ -99,6 +103,9 @@ export function attachCesiumMoon(o: { token: string; parent: THREE.Object3D; cam
   return {
     setVisible: (v: boolean) => {
       tiles.group.visible = v
+    },
+    setSun: (dir) => {
+      shared.sunDir.value.copy(dir)
     },
     setHeat: (tex, capDeg) => {
       shared.heatMap.value = tex
