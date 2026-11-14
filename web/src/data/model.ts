@@ -2,8 +2,9 @@
 //  - sub-solar and sub-Earth points on the Moon (libration included) and the Earth-Moon distance,
 //    from NASA JPL Horizons (DE441), scripts/fetch_subpoints.py. Checked against direct per-site
 //    Horizons runs: max difference 0.0065 deg over 10,249 hours and 6 sites;
-//  - terrain horizon of every candidate site, ray-traced on NASA LRO LOLA relief (16 px/deg),
-//    scripts/build_catalogue.py;
+//  - terrain horizon of every candidate site, ray-traced on NASA LRO LOLA relief (80 m),
+//    scripts/build_catalogue.py; the 5 sites of the team use 5 m relief near the site
+//    (scripts/import_team_package.py);
 //  - candidate sites: Wueller et al. (2026), 130 sites in the 16 Artemis candidate regions;
 //  - Moon elevation over NASA's Madrid deep space station, from Horizons (fetch_madrid.py).
 // Everything is computed here, in the browser, from those files: no server.
@@ -25,6 +26,20 @@ export interface Site {
   oursSunDays2027?: number
   /** Custom coordinates: no terrain data, ideal (smooth sphere) horizon. */
   ideal?: boolean
+  /** One of the sites the team studied in depth: finer horizon (5 m relief), hypothesis, NASA check. */
+  team?: TeamSite
+}
+
+type Check = { nasa: number; band: [number, number]; ours: number; ours2027: number }
+export interface TeamSite {
+  code: string
+  hypothesis: { es: string; en: string }
+  nasaRegion: { name: string; lat: number; lon: number }
+  heightM: number
+  /** Distance (km) to the ridge that makes the horizon, for azimuths 0..359.5 every 0.5 deg. */
+  ridgeKm: number[]
+  /** Share of time with the Sun and with Earth in view over 18.6 years, ours against NASA PGDA 69. */
+  pgda69: { sun: Check; earth: Check }
 }
 
 export interface Mission {
@@ -118,13 +133,15 @@ export function loadData(base = 'data/'): Promise<void> {
     const get = (f: string): Promise<any> => fetch(base + f).then((r) => (r.ok ? r.json() : Promise.reject(new Error(f))))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tap = (p: Promise<any>, part: DataPart, detail: (x: any) => Record<string, number>): Promise<any> => p.then((x) => (report(part, detail(x)), x))
-    const [sites, horizons, sub, mad, val] = await Promise.all([
+    const [sites, horizons, sub, mad, val, team] = await Promise.all([
       tap(get('sites.json'), 'sites', (x: { sites: { region: string }[] }) => ({ sites: x.sites.length, regions: new Set(x.sites.map((s) => s.region)).size })),
       tap(get('horizons.json'), 'horizons', (x: Record<string, unknown>) => ({ sites: Object.keys(x).length - 1, azimuths: 720 })),
       tap(get('subpoints.json'), 'ephem', (x: { rows: unknown[] }) => ({ hours: x.rows.length })),
       tap(get('madrid.json'), 'madrid', (x: { el: unknown[] }) => ({ hours: x.el.length })),
       get('validation.json').catch(() => null),
+      get('team.json').catch(() => null),
     ])
+    const teamOf = new Map<string, TeamSite>((team?.sites ?? []).map((x: TeamSite & { id: string }) => [x.id, x]))
     startMs = Date.parse(sub.start)
     hours = sub.rows.length
     rows = new Float64Array(hours * 5)
@@ -147,6 +164,7 @@ export function loadData(base = 'data/'): Promise<void> {
         regionName: s.regionName,
         published: s.publishedSunDays,
         oursSunDays2027: ours2027.get(s.id),
+        team: teamOf.get(s.id),
       })
     }
     DATA.ready = true

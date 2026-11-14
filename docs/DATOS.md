@@ -64,6 +64,7 @@ nuestro Sol.
 | Sitios candidatos | **Wueller et al. 2026** (Zenodo, CC BY 4.0): 130 sitios en 16 regiones de Artemis, con sus días seguidos de luz publicados | `web/scripts/build_catalogue.py` | `public/data/sites.json` |
 | Horizonte de cada sitio (720 acimuts, hasta 150 km, curvatura, 2 m de altura) | **LOLA** `LDEM_80S_80M` (80 m/px, nodo LOLA del PDS) y `ldem_16` (SVS) más allá de 80°S | `web/scripts/build_catalogue.py` | `public/data/horizons.json` |
 | Elevación de la Luna sobre Robledo de Chavela | **NASA JPL Horizons** | `web/scripts/fetch_madrid.py` | `public/data/madrid.json` |
+| Los 5 sitios que propone la web (MMA_K2023, HW09, dGR205, MMO07, NR102): horizonte fino, hipótesis, región NASA, distancia a la cresta y contraste con PGDA 69 | **Paquete del equipo** (Juan y Luna): LOLA 80 m (PGDA 90) + 5 m alrededor del sitio (PGDA 78), efemérides DE440 en `MOON_ME` | `web/scripts/import_team_package.py` | `public/data/horizons.json` (esos 5 sitios), `public/data/team.json` |
 
 El navegador calcula, para cualquier punto y hora, el acimut y la elevación
 del Sol y de la Tierra (con el paralaje de la Tierra) y los compara con el
@@ -80,6 +81,20 @@ horizonte.
   casos destacados del artículo: Malapert K2023 (31 frente a 31), CR06 y CR07
   (31 frente a 31) y PNS01 (18 frente a 18,4). Con el relieve de 1,9 km la
   diferencia mediana era de 5,1 días.
+- **Paquete del equipo frente a la web** (5 sitios, 9.505 horas comunes): las
+  posiciones del paquete (DE440, SPICE) y las de la web (JPL Horizons, DE441)
+  coinciden con un máximo de **0,0007°** en el Sol y de **0,0065°** (acimut)
+  y **0,0017°** (elevación) en la Tierra. Con los horizontes del paquete, el
+  cálculo de la web da la misma visibilidad de Sol y Tierra que el paquete en
+  el **100 % de las horas**, así que sus tablas horarias (`ephem_<id>.json`)
+  no se cargan. El equipo da los datos por confirmados.
+- **Lo que cambia con el relieve de 5 m:** en todo el periodo, Malapert K2023
+  baja de 78,5 % a 67,1 % de luz solar; NR102, de 64,8 % a 63,9 %; los otros
+  tres cambian menos de 1,5 puntos.
+- **Frente a NASA PGDA 69** (medias de 18,6 años): la luz solar queda como
+  mucho a unos 2 puntos del rango de la NASA; la Tierra sale de 1 a 8 puntos
+  por debajo (limitación conocida). La tabla está en «Fuentes de datos» de la
+  web.
 - ⚠️ **Discrepancia abierta:** una docena de sitios en los que el estudio da
   unos 2 días y nosotros unos 18 (AR02, AR03, CR02, FRA01…). Hay que
   revisarla con el relieve de 5 m (PGDA 78) o preguntando a los autores.

@@ -22,7 +22,8 @@ const MoonScene = lazy(() => import('./components/MoonScene').then((m) => ({ def
 const Surface3D = lazy(() => import('./components/Surface3D'))
 
 const MAX_SITES = 4
-// The tool proposes only the best few of the candidate sites for the chosen stay (a choice of the team).
+// The tool proposes the sites the team studied in depth (a choice of the team). Without that file,
+// the best few of all the candidate sites for the chosen stay.
 const TOP_SITES = 5
 const PLAY_STEP = 2
 const PLAY_MS = 90
@@ -268,12 +269,13 @@ export default function App() {
     [chosen, evaluate, ready],
   )
   const focused = results.find((r) => r.site.id === focus) ?? results[0]
-  // Every candidate site is evaluated for the current dates; the tool proposes the best five:
-  // verdict first, then more sunlight, shorter darkness, more contact with Earth.
+  // The sites of the team, evaluated for the current dates and listed best first: verdict, then
+  // more sunlight, shorter darkness, more contact with Earth.
   const catalogue = useMemo(
     () =>
       ready
-        ? SITES.map((s) => ({ site: s, m: cautious(s, metrics(simulate(s, mission), mission)) }))
+        ? (SITES.some((s) => s.team) ? SITES.filter((s) => s.team) : SITES)
+            .map((s) => ({ site: s, m: cautious(s, metrics(simulate(s, mission), mission)) }))
             .sort(
               (a, b) =>
                 RANK[a.m.verdict] - RANK[b.m.verdict] ||
@@ -559,7 +561,7 @@ export default function App() {
                         </span>
                       ))}
                     </p>
-                    <p className="mt-2 text-xs text-muted">{t.topSites(catalogue.length, SITES.length)}</p>
+                    <p className="mt-2 text-xs text-muted">{t.teamSites(catalogue.length, SITES.length)}</p>
                   </>
                 )}
                 <div className="mt-2 border-t border-white/10">
@@ -623,6 +625,9 @@ export default function App() {
                 <p className="mt-1 text-sm text-muted">{t.forDates(fmtDate(start), fmtDate(end))}</p>
                 {focused.site.published && focused.site.published['2027'] !== undefined && (
                   <p className="mt-2 border-l-2 border-white/25 pl-3 text-sm text-muted">{t.publishedRef(focused.site.published['2027'])}</p>
+                )}
+                {focused.site.team && (
+                  <p className="mt-2 border-l-2 border-sun/60 pl-3 text-sm text-muted">{focused.site.team.hypothesis[lang]}</p>
                 )}
                 {disagrees(focused.site) && focused.site.oursSunDays2027 !== undefined && focused.site.published?.['2027'] !== undefined && (
                   <p className="mt-2 flex gap-2 border border-warn/40 bg-warn/10 p-2.5 text-sm text-warn">
@@ -1119,6 +1124,42 @@ export default function App() {
           <li>{t.checkHorizons}</li>
           {DATA.validation && <li>{t.checkWueller(DATA.validation.sites, Math.round(DATA.validation.agreementOn10DayThreshold * 100), DATA.validation.correlation, DATA.validation.medianAbsDiffDays)}</li>}
         </ul>
+        {/* Our long-term figures against NASA's own illumination and Earth-visibility maps, site by site. */}
+        {SITES.some((s) => s.team) && (
+          <>
+            <h3 className="mt-4 font-semibold">{t.pgdaTitle}</h3>
+            <p className="mt-1 text-sm text-muted">{t.pgdaIntro}</p>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full min-w-[420px] border-collapse text-left text-sm tabular-nums">
+                <thead>
+                  <tr className="border-b border-rule text-xs text-muted">
+                    <th className="py-1.5 pr-2 font-normal">{t.pgdaSite}</th>
+                    <th className="px-2 py-1.5 font-normal">{t.sunlight}: {t.pgdaOurs}</th>
+                    <th className="px-2 py-1.5 font-normal">NASA</th>
+                    <th className="px-2 py-1.5 font-normal">{t.earthInView}: {t.pgdaOurs}</th>
+                    <th className="py-1.5 pl-2 font-normal">NASA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {SITES.filter((s) => s.team).map((s) => {
+                    const c = s.team!.pgda69
+                    const inBand = (x: { ours: number; band: [number, number] }) => x.ours >= x.band[0] - 0.5 && x.ours <= x.band[1] + 0.5
+                    return (
+                      <tr key={s.id} className="border-b border-rule/60">
+                        <td className="py-1.5 pr-2 font-semibold">{s.name}</td>
+                        <td className={`px-2 py-1.5 ${inBand(c.sun) ? '' : 'text-warn'}`}>{num(c.sun.ours, 1)} %</td>
+                        <td className="px-2 py-1.5 text-muted">{num(c.sun.nasa, 1)} % <span className="text-xs">({num(c.sun.band[0], 0)}–{num(c.sun.band[1], 0)})</span></td>
+                        <td className={`px-2 py-1.5 ${inBand(c.earth) ? '' : 'text-warn'}`}>{num(c.earth.ours, 1)} %</td>
+                        <td className="py-1.5 pl-2 text-muted">{num(c.earth.nasa, 1)} % <span className="text-xs">({num(c.earth.band[0], 0)}–{num(c.earth.band[1], 0)})</span></td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-muted">{t.pgdaNote}</p>
+          </>
+        )}
         <p className="mt-4 border-t border-rule pt-3 text-sm">{t.caveat}</p>
         <p className="mt-2 text-sm text-muted">{t.footer}</p>
       </Overlay>
