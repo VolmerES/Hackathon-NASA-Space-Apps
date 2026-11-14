@@ -31,7 +31,7 @@ En segundos y sin interpretar datos en bruto. Todo lo demás es secundario.
 │   de Moon Trek)      │  SLIP     ├────────────●──────────────────┤  +9 days                │
 │   ● Shackleton rim   ├───────────────────────────────────────────────────────────────────┤
 │   ● Connecting ridge │  ┌ Shackleton rim ──┐ ┌ Connecting ridge ┐ ┌ Malapert massif ─┐    │
-│   ● Malapert massif  │  │ 🟢 VIABLE        │ │ 🟡 MARGINAL      │ │ 🔴 NOT VIABLE    │    │
+│   ● Malapert massif  │  │ 🟢 FAVOURABLE    │ │ 🟡 TIGHT         │ │ 🔴 UNFAVOURABLE  │    │
 │   ○ Nobile rim 1     │  │ Sunlight   86 %  │ │ Sunlight   71 %  │ │ Sunlight   38 %  │    │
 │   ○ Haworth          │  │ Longest night 9h │ │ Longest night 41h│ │ Longest night 6d │    │
 │                      │  │ Battery  1.1 kWh │ │ Battery  4.9 kWh │ │ Battery  17 kWh  │    │

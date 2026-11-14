@@ -280,6 +280,23 @@ input[type="range"] {
   color: transparent;
   animation: sp-track 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both, sp-sheen 1.6s ease-in-out 1.3s both;
 }
+/* Splash name: letters in one by one from a blur while the tracking closes, then a sunlight glint. */
+@keyframes sp-track2 { from { letter-spacing: 0.46em; padding-left: 0.46em } to { letter-spacing: 0.28em; padding-left: 0.28em } }
+@keyframes sp-letter { 0% { opacity: 0; transform: translateY(0.3em) scale(1.05); filter: blur(8px) } 55% { opacity: 1 } 100% { opacity: 1; transform: none; filter: none } }
+@keyframes sp-glint { 0% { opacity: 1; -webkit-mask-position: 100% 0; mask-position: 100% 0 } 99% { opacity: 1 } 100% { opacity: 0; -webkit-mask-position: 0% 0; mask-position: 0% 0 } }
+.sp-name { letter-spacing: 0.28em; padding-left: 0.28em; animation: sp-track2 2.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both }
+.sp-l { display: inline-block; animation: sp-letter 1s cubic-bezier(0.16, 1, 0.3, 1) both }
+.sp-glint {
+  color: #f6e3a1;
+  text-shadow: 0 0 14px rgba(242, 183, 5, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(100deg, transparent 0%, transparent 44%, #000 50%, transparent 56%, transparent 100%);
+  mask-image: linear-gradient(100deg, transparent 0%, transparent 44%, #000 50%, transparent 56%, transparent 100%);
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  animation: sp-track2 2.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both, sp-glint 1.3s cubic-bezier(0.45, 0, 0.25, 1) 2.1s forwards;
+}
 /* Winged Moon in the splash: the disc settles, the wings open feather by feather, then sunlight
    reaches the south limb. Eased, no overshoot. */
 @keyframes mk-body { from { opacity: 0; transform: scale(0.85) } to { opacity: 1; transform: none } }
@@ -320,6 +337,8 @@ input[type="range"] {
   .sp-stars, .sp-moon, .sp-word, .sp-sub, .sp-meta, .sp-ui, .sp-ridge, .sp-lit, .sp-sun, .sp-glow, .sp-twinkle,
   .moon-drift, .skeleton, .toast-in, .pop-in, .sp-earth, .sp-s1, .sp-s2, .sp-leave .sp-moon { animation: none }
   .mk-body, .mk-feather, .mk-lit { animation: none }
+  .sp-name, .sp-l { animation: none }
+  .sp-glint { animation: none; display: none }
   .sp-sheen { animation: none; background: none; color: #fff }
   .sp-s1, .sp-s2 { color: transparent }
   .sp-s3 { animation: none; color: #fff }

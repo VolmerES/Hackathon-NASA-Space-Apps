@@ -103,7 +103,7 @@ tarjetas, y el jurado puede preguntar por cualquiera:
   parte** del disco; para validar hay que usar el mismo criterio.
 - **Batería:** consumo de supervivencia por defecto (valor típico de un
   módulo de alunizaje, con fuente) × noche más larga.
-- **Semáforo:** qué es viable, marginal y no viable (umbrales de % de Sol,
+- **Semáforo:** qué parece favorable, justo o desfavorable según los datos (umbrales de % de Sol,
   noche máxima y % de comunicación).
 - **Entregable:** una tabla `parámetro · valor por defecto · por qué · fuente`.
 
