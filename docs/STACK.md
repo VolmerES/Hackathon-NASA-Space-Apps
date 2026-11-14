@@ -62,7 +62,7 @@ después del [alcance](ALCANCE.md). Las versiones exactas se fijan al instalar.
 | Estilos | **Tailwind CSS** | Rápido y coherente sin diseñar desde cero |
 | Gráficas | **SVG dibujado a mano** (el panorama del cielo y la barra de la estancia). *Antes: Plotly.js, paquete básico* | Plotly se quitó al rehacer el panorama en SVG: ya no lo usaba ninguna gráfica y pesaba 471 KB comprimidos (1,16 MB de JavaScript) en la carga del móvil |
 | Mapa del polo sur | MVP: **imagen del relieve + marcadores SVG**. Si da tiempo: **OpenLayers** con teselas WMTS de Moon Trek | OpenLayers maneja bien proyecciones polares; Leaflet necesita más apaños |
-| 3D (si da tiempo) | **three.js + React Three Fiber + drei** | Ver [`INTERFAZ.md`](INTERFAZ.md) |
+| 3D | **three.js** a mano (sin React Three Fiber): la Luna, el street view y la simulación de alunizaje. Nave: módulo lunar del Apolo de **NASA 3D Resources** (`web/public/models/`, libre y sin copyright). Opcional y sin probar: relieve de **Cesium Moon** por streaming con **3DTilesRendererJS** (NASA JPL), solo si hay `VITE_CESIUM_TOKEN` | Ver [`INTERFAZ.md`](INTERFAZ.md) |
 | Estado | Estado de React + **escenario en la URL** | Sin librerías extra |
 | PWA (MVP) | `vite-plugin-pwa` | Instalable y sin conexión |
 | Textos | Inglés | Lo que ve el jurado |

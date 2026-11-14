@@ -112,6 +112,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
   const controlsRef = useRef<HTMLDivElement>(null)
   const calloutRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
+  const [credit, setCredit] = useState(false) // Cesium ion terrain on screen: their attribution is due
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const labelsRef = useRef<HTMLDivElement>(null)
   const state = useRef({ mode, sites, focusId, onPick, showLabels, sunAt })
@@ -183,12 +184,36 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     moon.add(cap)
     let loaded = 0
     let shownAt = 0
+    let cesium: { update: () => void; dispose: () => void } | null = null
     const ready = () => {
       if (++loaded < 5) return
       globe.visible = true
       cap.visible = true
       shownAt = performance.now()
       onReady?.()
+      // Optional high-detail Moon from Cesium ion: only with a token of the team's own account.
+      const token = import.meta.env.VITE_CESIUM_TOKEN as string | undefined
+      if (token && q.level > 0) {
+        import('./cesiumMoon')
+          .then(({ attachCesiumMoon }) => {
+            if (!api.current) return
+            cesium = attachCesiumMoon({
+              token,
+              parent: moon,
+              camera,
+              renderer,
+              onFirstTile: () => {
+                // Their terrain replaces our globe and cap; say whose data it is.
+                globe.visible = false
+                cap.visible = false
+                setCredit(true)
+              },
+            })
+          })
+          .catch(() => {
+            /* the Moon of the app stays */
+          })
+      }
       // Sharper maps for big screens, once the light ones are on screen.
       if (q.maps4k) {
         loader.load('moon/moon_color_4k.jpg', (tex) => {
@@ -836,6 +861,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
 
       const rise = shownAt ? Math.min(1, (now - shownAt) / (reduce ? 1 : 1400)) : 0
       renderer.toneMappingExposure = 1.15 * ease(rise)
+      cesium?.update()
       renderer.render(scene, camera)
     }
     raf = requestAnimationFrame(frame)
@@ -857,6 +883,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       for (const m of markers) m.el.remove()
       api.current = null
       heatTex?.dispose()
+      cesium?.dispose()
       renderer.dispose()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -906,6 +933,11 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             <span>{controls.recenter}</span>
           </button>
         </div>
+      )}
+      {credit && (
+        <a href="https://cesium.com/platform/cesium-ion/" target="_blank" rel="noreferrer" className="fixed bottom-1 left-2 z-[6] bg-black/60 px-2 py-0.5 text-[11px] text-white/85">
+          Moon terrain: Cesium ion (NASA LRO data)
+        </a>
       )}
       {info && (
         <div ref={calloutRef} className="moon-callout" style={{ visibility: 'hidden' }} aria-hidden={!hover}>

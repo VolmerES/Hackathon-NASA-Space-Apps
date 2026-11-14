@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { installSoftDetails } from './softDetails'
+import { readForcedQuality } from './components/quality'
 
+readForcedQuality()
 installSoftDetails()
 
 createRoot(document.getElementById('root')!).render(

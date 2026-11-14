@@ -19,6 +19,13 @@ const LEVELS: Omit<Quality, 'level' | 'gpu'>[] = [
   { rings: 300, segs: 720, shadows: 3072, pixelRatio: 1.75, maps4k: true },
 ]
 
+// Read when the page starts (main.tsx): the app rewrites the address before the Moon is loaded.
+let forced: 0 | 1 | 2 | null = null
+export function readForcedQuality() {
+  const m = /[#&]q=([012])/.exec(window.location.hash)
+  forced = m ? (Number(m[1]) as 0 | 1 | 2) : null
+}
+
 export function qualityAt(level: 0 | 1 | 2, gpu = ''): Quality {
   return { level, gpu, ...LEVELS[level] }
 }
@@ -32,8 +39,7 @@ export function measureQuality(renderer: WebGLRenderer, small: boolean): Quality
   } catch {
     // some browsers hide the GPU name; the other signals still count
   }
-  const forced = /[#&]q=([012])/.exec(window.location.hash)
-  if (forced) return qualityAt(Number(forced[1]) as 0 | 1 | 2, gpu)
+  if (forced !== null) return qualityAt(forced, gpu)
 
   const nav = navigator as Navigator & { deviceMemory?: number }
   const cores = nav.hardwareConcurrency || 4

@@ -409,6 +409,13 @@ export default function App() {
   const closeStreet = () => {
     setStreetOpen(false)
     setDiving(false)
+    setLanding(0)
+  }
+  // Landing simulation: the dive from orbit, then the lander comes down in the street view.
+  const [landing, setLanding] = useState(0)
+  const simulateLanding = () => {
+    setLanding(Date.now())
+    openStreet()
   }
 
   const share = async () => {
@@ -744,6 +751,13 @@ export default function App() {
                   </svg>
                   {t.streetView}
                 </button>
+                <button onClick={simulateLanding} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2.5 rounded-sm border border-sun/70 bg-black/30 px-4 font-semibold text-sun hover:bg-sun/10">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8 4h8l2 6H6l2-6z" />
+                    <path d="M7 10l-3 9M17 10l3 9M12 10v5M9 20h6M2.5 19h3M18.5 19h3" />
+                  </svg>
+                  {t.simulate}
+                </button>
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   {(
                     [
@@ -1066,6 +1080,11 @@ export default function App() {
       </div>
 
       <Snackbar message={toast} onDone={clearToast} />
+      {landing > 0 && diving && !streetOpen && (
+        <p className="ui-in glass pointer-events-none fixed left-1/2 top-24 z-30 -translate-x-1/2 rounded-full px-5 py-2 text-sm font-semibold text-sun" role="status">
+          {t.simApproach}
+        </p>
+      )}
       {/* Street view, full screen: the ground of the site, its Sun and Earth, and the stay to play. */}
       {streetStay.value && focused && (
         <div className={`${streetStay.leaving ? 'street-out' : 'street-in'} fixed inset-0 z-40 flex flex-col bg-black`} role="dialog" aria-modal="true" aria-label={t.streetView}>
@@ -1082,7 +1101,7 @@ export default function App() {
           <div ref={streetRef} className="relative min-h-0 flex-1">
             {streetH > 0 && (
               <Suspense fallback={<SkyLoading height={streetH} label={t.loading3d} />}>
-                <Surface3D site={focused.site} sample={cursor ?? focused.samples[0]} height={streetH} />
+                <Surface3D site={focused.site} sample={cursor ?? focused.samples[0]} height={streetH} landing={landing} />
               </Suspense>
             )}
           </div>

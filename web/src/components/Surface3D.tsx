@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { horizonAt, type Sample, type Site } from '../data/model'
+import { horizonAt, ridgeKmAt, type Sample, type Site } from '../data/model'
 import { useT } from '../i18n'
 
 // First-person view from the landing site: look around, see the terrain, the Sun and Earth.
@@ -17,6 +17,30 @@ const SKY = 3000
 const DEG = Math.PI / 180
 const CAP = 25 // degrees of colatitude covered by the polar textures
 const M_PER_DEG = (2 * Math.PI * 1737400) / 360
+// Landing simulation: a NASA lunar module comes down in front of the camera. Illustrative: the
+// figures are a plausible final descent, not a computed trajectory.
+const LAND_DIST = 27 // metres from the camera to the touchdown point
+const LAND_FROM = 80 // metres above the ground when the final descent starts
+const LAND_SECONDS = 11
+
+// The lander: Apollo Lunar Module from NASA 3D Resources (github.com/nasa/NASA-3D-Resources),
+// free and without copyright. Loaded once, only when a landing is simulated.
+let landerModel: Promise<THREE.Object3D> | null = null
+function loadLander() {
+  landerModel ??= Promise.all([import('three/examples/jsm/loaders/GLTFLoader.js'), import('three/examples/jsm/loaders/DRACOLoader.js')]).then(
+    ([{ GLTFLoader }, { DRACOLoader }]) =>
+      new Promise<THREE.Object3D>((resolve, reject) => {
+        const draco = new DRACOLoader()
+        const loader = new GLTFLoader()
+        loader.setDRACOLoader(draco)
+        loader.load('models/apollo_lunar_module.glb', (g) => resolve(g.scene), undefined, (e) => {
+          landerModel = null
+          reject(e)
+        })
+      }),
+  )
+  return landerModel
+}
 
 function direction(azDeg: number, elDeg: number) {
   const az = azDeg * DEG
@@ -184,10 +208,11 @@ function earthTexture() {
   return tex
 }
 
-export default function Surface3D({ site, sample, height = 420 }: { site: Site; sample: Sample; height?: number }) {
+export default function Surface3D({ site, sample, height = 420, landing = 0 }: { site: Site; sample: Sample; height?: number; /** Changes to a new number to play a landing. */ landing?: number }) {
   const t = useT()
   const mount = useRef<HTMLDivElement>(null)
-  const api = useRef<{ setSite: (s: Site) => void; setSample: (s: Sample) => void; lookAt: (az: number) => void } | null>(null)
+  const api = useRef<{ setSite: (s: Site) => void; setSample: (s: Sample) => void; lookAt: (az: number) => void; land: () => void } | null>(null)
+  const [hud, setHud] = useState<{ alt: number; speed: number; phase: 'load' | 'descent' | 'down' | 'failed' } | null>(null)
   const [heading, setHeading] = useState(0)
   const [failed, setFailed] = useState(false)
 
@@ -330,13 +355,68 @@ export default function Surface3D({ site, sample, height = 420 }: { site: Site; 
     let vPitch = 0
     let raf = 0
     let last = performance.now()
+    // Landing: the lander group, its engine plume and the dust it raises.
+    const lander = new THREE.Group()
+    lander.visible = false
+    scene.add(lander)
+    const plume = new THREE.Mesh(
+      new THREE.ConeGeometry(0.75, 4.5, 20, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+    )
+    plume.position.y = -1.6
+    lander.add(plume)
+    // The engine lights the underside of the lander and the ground below it.
+    const engineGlow = new THREE.PointLight(0xffd9a0, 0, 60, 1.6)
+    engineGlow.position.y = -0.5
+    lander.add(engineGlow)
+    const dust = new THREE.Mesh(
+      new THREE.RingGeometry(0.5, 1, 48),
+      new THREE.MeshBasicMaterial({ color: 0xcfc8ba, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
+    )
+    dust.rotation.x = -Math.PI / 2
+    dust.visible = false
+    scene.add(dust)
+    let land: { t: number; ground: number; lastHud: number } | null = null
+    let landed = false
+    const groundAt = (x: number, z: number) => {
+      const hit = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)).intersectObject(ground)[0]
+      return hit ? hit.point.y : 0
+    }
     const tick = (now: number) => {
       raf = 0
       const dt = Math.max(0, Math.min(0.05, (now - last) / 1000))
       last = now
+      if (land) {
+        land.t += dt
+        const p = Math.min(1, land.t / LAND_SECONDS)
+        // Fast at first, then slower and slower: the last metres take the longest.
+        const alt = LAND_FROM * Math.pow(1 - p, 2.4)
+        const speed = (LAND_FROM * 2.4 * Math.pow(1 - p, 1.4)) / LAND_SECONDS
+        lander.position.y = land.ground + alt
+        lander.rotation.y += dt * 0.12 * (1 - p)
+        plume.visible = p < 1
+        engineGlow.intensity = p < 1 ? 260 + 60 * Math.sin(now / 31) : 0
+        plume.scale.set(1 + 0.25 * Math.sin(now / 37), 0.75 + 0.5 * (1 - p) + 0.12 * Math.sin(now / 23), 1 + 0.25 * Math.sin(now / 37))
+        // Dust blown outwards over the last metres.
+        const near = Math.min(1, Math.max(0, 1 - alt / 22))
+        dust.visible = near > 0 && p < 1
+        dust.scale.setScalar(3 + near * 16 + (now % 700) / 70)
+        ;(dust.material as THREE.MeshBasicMaterial).opacity = 0.22 * near * (1 - ((now % 700) / 700) * 0.6)
+        // Keep the lander in the frame: look up at it, then down with it.
+        pitchGoal = Math.min(58, Math.max(2, (Math.atan2(alt + 2.6 - 1.7, LAND_DIST) / DEG) * 0.92))
+        if (now - land.lastHud > 90 || p >= 1) {
+          land.lastHud = now
+          setHud({ alt, speed, phase: p >= 1 ? 'down' : 'descent' })
+        }
+        if (p >= 1) {
+          land = null
+          landed = true
+          dust.visible = false
+        }
+      }
       if (!drag && (vYaw || vPitch)) {
         yawGoal += vYaw * dt
-        pitchGoal = Math.max(-10, Math.min(45, pitchGoal + vPitch * dt))
+        pitchGoal = Math.max(-10, Math.min(landed ? 58 : 45, pitchGoal + vPitch * dt))
         const d = Math.exp(-dt * 3.5)
         vYaw *= d
         vPitch *= d
@@ -354,7 +434,7 @@ export default function Surface3D({ site, sample, height = 420 }: { site: Site; 
       // Where the Sun lands on screen, for the automated checks.
       const sp = sun.position.clone().project(camera)
       cvs.dataset.sun = `${sp.x.toFixed(2)},${sp.y.toFixed(2)},${sp.z.toFixed(3)}`
-      const moving = Math.abs(yawGoal - yaw) > 0.01 || Math.abs(pitchGoal - pitch) > 0.01 || Math.abs(fovGoal - fov) > 0.01 || vYaw || vPitch
+      const moving = !!land || Math.abs(yawGoal - yaw) > 0.01 || Math.abs(pitchGoal - pitch) > 0.01 || Math.abs(fovGoal - fov) > 0.01 || vYaw || vPitch
       if (moving) raf = requestAnimationFrame(tick)
       const hd = (((yaw % 360) + 360) % 360)
       if (Math.abs(hd - shownHeading) > 2) {
@@ -476,6 +556,28 @@ export default function Surface3D({ site, sample, height = 420 }: { site: Site; 
         vYaw = vPitch = 0
         invalidate()
       },
+      land: () => {
+        setHud({ alt: LAND_FROM, speed: 0, phase: 'load' })
+        loadLander()
+          .then((model) => {
+            if (!api.current) return
+            if (!lander.children.includes(model)) lander.add(model)
+            // Straight ahead of where the camera looks, a little to the side of the Sun's glare.
+            const az = (yawGoal + 24) * DEG
+            const x = Math.sin(az) * LAND_DIST
+            const z = -Math.cos(az) * LAND_DIST
+            lander.position.set(x, 0, z)
+            lander.visible = true
+            landed = false
+            dust.position.set(x, groundAt(x, z) + 0.05, z)
+            land = { t: 0, ground: groundAt(x, z), lastHud: 0 }
+            yawGoal += 24
+            vYaw = vPitch = 0
+            fovGoal = 60
+            invalidate()
+          })
+          .catch(() => setHud({ alt: 0, speed: 0, phase: 'failed' }))
+      },
     }
 
     return () => {
@@ -507,6 +609,9 @@ export default function Surface3D({ site, sample, height = 420 }: { site: Site; 
     api.current?.lookAt(sample.sunAz)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site])
+  useEffect(() => {
+    if (landing) api.current?.land()
+  }, [landing])
 
   if (failed) {
     return (
@@ -519,7 +624,31 @@ export default function Surface3D({ site, sample, height = 420 }: { site: Site; 
   return (
     <div className="relative bg-black">
       <div ref={mount} style={{ height }} />
-      <p className="pointer-events-none absolute left-3 top-2 text-sm text-white/80">{t.looking(t.compassLong[Math.round(heading / 45) % 8])}</p>
+      <p className="pointer-events-none absolute left-3 top-2 text-sm text-white/80">
+        {t.looking(t.compassLong[Math.round(heading / 45) % 8])}
+        {ridgeKmAt(site, heading) !== null && <span className="block text-xs text-white/65">{t.reliefSeen(ridgeKmAt(site, heading)!)}</span>}
+      </p>
+      {/* Landing simulation: height above the ground, descent speed and what is happening. */}
+      {hud && (
+        <div className="ui-in glass pointer-events-none absolute right-3 top-2 w-[min(250px,calc(100%-24px))] px-3 py-2 text-sm" role="status">
+          <p className={`font-semibold ${hud.phase === 'down' ? 'text-ok' : hud.phase === 'failed' ? 'text-warn' : 'text-sun'}`}>
+            {hud.phase === 'load' ? t.simLoading : hud.phase === 'descent' ? t.simDescent : hud.phase === 'down' ? t.simDown : t.simFailed}
+          </p>
+          {(hud.phase === 'descent' || hud.phase === 'down') && (
+            <dl className="mt-1 grid grid-cols-2 gap-x-3 tabular-nums">
+              <div>
+                <dt className="text-xs text-muted">{t.simAltitude}</dt>
+                <dd className="text-lg font-bold leading-tight">{hud.alt.toFixed(hud.alt < 10 ? 1 : 0)} m</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">{t.simSpeed}</dt>
+                <dd className="text-lg font-bold leading-tight">{hud.phase === 'down' ? '0.0' : hud.speed.toFixed(1)} m/s</dd>
+              </div>
+            </dl>
+          )}
+          <p className="mt-1 text-[11px] leading-snug text-muted">{t.simNote}</p>
+        </div>
+      )}
       <div className="absolute bottom-3 right-3 flex gap-2">
         <button onClick={() => api.current?.lookAt(sample.sunAz)} className="flex min-h-11 items-center gap-2 rounded-sm border border-white/40 bg-black/60 px-3.5 text-sm font-semibold text-white backdrop-blur-md hover:bg-white/15">
           <i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />

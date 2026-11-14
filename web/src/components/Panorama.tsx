@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { horizonAt, type Sample, type Site } from '../data/model'
+import { horizonAt, ridgeKmAt, type Sample, type Site } from '../data/model'
 import { useT } from '../i18n'
 
 // 360-degree horizon panorama of a site, drawn by hand (SVG):
@@ -102,7 +102,7 @@ export function Panorama({ site, samples, cursor, height = 300 }: { site: Site; 
     return { k, dx: dAz, dy: -dEl / n }
   }, [now])
 
-  const hoverInfo = hover !== null ? { x: g.x(hover), el: horizonAt(site, hover) } : null
+  const hoverInfo = hover !== null ? { x: g.x(hover), el: horizonAt(site, hover), km: ridgeKmAt(site, hover) } : null
   const compass = t.compassShort
 
   return (
@@ -234,13 +234,18 @@ export function Panorama({ site, samples, cursor, height = 300 }: { site: Site; 
             <line x1={hoverInfo.x} x2={hoverInfo.x} y1={PAD.t} y2={PAD.t + ih} stroke="rgba(255,255,255,0.45)" strokeDasharray="2 3" />
             <circle cx={hoverInfo.x} cy={g.y(hoverInfo.el)} r="3" fill="#fff" />
             <g transform={`translate(${Math.min(hoverInfo.x + 8, PAD.l + iw - 118)},${PAD.t + 6})`}>
-              <rect width="112" height="34" rx="2" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.2)" />
+              <rect width="112" height={hoverInfo.km === null ? 34 : 47} rx="2" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.2)" />
               <text x="8" y="14" fontSize="10.5" fill="#fff" fontWeight="600">
                 Az {Math.round(hover ?? 0)}°
               </text>
               <text x="8" y="27" fontSize="10.5" fill="rgba(255,255,255,0.75)">
                 {t.horizon} {hoverInfo.el.toFixed(1)}°
               </text>
+              {hoverInfo.km !== null && (
+                <text x="8" y="40" fontSize="10.5" fill="rgba(255,255,255,0.75)">
+                  {t.reliefAt(hoverInfo.km)}
+                </text>
+              )}
             </g>
           </g>
         )}

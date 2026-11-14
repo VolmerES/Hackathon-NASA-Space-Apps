@@ -84,7 +84,9 @@ consideraciones del [enunciado](retos/lunar-landing-site-navigator.md).
 - **Estaciones concretas de la Red de Espacio Profundo:** contamos «Tierra
   visible», como el mapa de la NASA (el mismo criterio que usan ellos).
 - **Térmico** (temperaturas): fuera del reto.
-- **App móvil nativa y juego.**
+- **App móvil nativa y juego.** La «simulación de alunizaje» de la web no es
+  un juego: es una animación que solo se mira (la nave baja sola hasta el
+  sitio) y está marcada como ilustrativa. Pilotar la nave sigue fuera.
 
 ## Lo que hay que definir antes de las tecnologías
 

@@ -184,6 +184,13 @@ export function customSite(lat: number, lon: number): Site {
   }
 }
 
+/** Distance (km) to the terrain that makes the horizon toward `az`, where the team traced it. */
+export function ridgeKmAt(site: Site, az: number): number | null {
+  const r = site.team?.ridgeKm
+  if (!r) return null
+  return r[Math.round((((az % 360) + 360) % 360) / 0.5) % 720]
+}
+
 export function horizonAt(site: Site, az: number): number {
   const a = ((az % 360) + 360) % 360
   const i = a * 2
