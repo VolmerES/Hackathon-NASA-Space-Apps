@@ -4,6 +4,12 @@ import { createContext, useContext } from 'react'
 // Spanish is a full translation, switched from the header or with `l=es` in the link.
 export type Lang = 'en' | 'es'
 
+// Months covered by the hourly ephemerides, e.g. "Dec 2026 – Jan 2028".
+const span = (start: number, hours: number, loc: string) => {
+  const f = (ms: number) => new Date(ms).toLocaleDateString(loc, { month: 'short', year: 'numeric', timeZone: 'UTC' })
+  return `${f(start)} – ${f(start + (hours - 1) * 3600000)}`
+}
+
 const en = {
   locale: 'en-GB',
   title: 'Fly Me to the Moon',
@@ -12,7 +18,7 @@ const en = {
   copyLink: 'Copy link to this comparison',
   linkCopied: 'Link copied',
   demoStrong: 'Preliminary data',
-  demoRest: 'Real NASA ephemerides (JPL Horizons) and LRO LOLA relief at 1.9 km per pixel. Not yet checked at landing-site detail.',
+  demoRest: 'Real NASA data: Sun and Earth from JPL Horizons (checked to 0.007°), relief from LRO LOLA at 80 m, and 5 m around the five sites. A hackathon prototype, not for mission decisions.',
 
   whereTitle: 'Where do you want to land?',
   pickUpTo: (n: number) => `Pick up to ${n} sites to compare.`,
@@ -154,7 +160,7 @@ const en = {
   terrain: 'Terrain',
   fadedHidden: 'Faded points are hidden behind the terrain.',
   footer:
-    'Preliminary results: real NASA data (JPL Horizons, LRO LOLA at 1.9 km per pixel). Terrain closer than a few kilometres is not resolved yet; the 5 m LOLA site maps are the next step. Not for mission decisions.',
+    'Real NASA data: JPL Horizons for the Sun and Earth, LRO LOLA relief at 80 m and 5 m around the five sites. A hackathon prototype: not for mission decisions.',
 
   compassShort: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'],
   compassLong: ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'],
@@ -310,14 +316,16 @@ const en = {
   earthLabel: 'Earth',
   splashStarting: 'Starting services',
   splashReady: 'Ready',
-  svc: { ephem: 'NASA JPL Horizons ephemerides (DE441)', sites: 'Candidate sites, Wueller et al. 2026', horizons: 'LRO LOLA terrain horizons, 80 m relief', madrid: 'Madrid deep space station, DSS-63', moon: 'Moon imagery, NASA SVS (LROC, LOLA)' },
+  svc: { ephem: 'NASA JPL Horizons ephemerides (DE441)', sites: 'Artemis candidate sites, Wueller et al. 2026', team: 'Team shortlist, LOLA relief at 5 m (PGDA 78)', horizons: 'Terrain horizons from LRO LOLA, 80 m', madrid: 'Madrid deep space station, DSS-63', check: 'Check against the published study', moon: '3D Moon, NASA SVS CGI Moon Kit (LROC, LOLA)' },
   svcWait: 'connecting…',
   svcFailed: 'not available, going on without it',
-  svcEphem: (h: number) => `${h.toLocaleString('en-GB')} hourly positions`,
-  svcSites: (n: number, r: number) => `${n} sites, ${r} regions`,
+  svcEphem: (h: number, start: number) => `${h.toLocaleString('en-GB')} hours, ${span(start, h, 'en-GB')}`,
+  svcSites: (n: number, r: number) => `${n} sites in ${r} regions`,
+  svcTeam: (n: number) => `${n} sites shown, with their own horizons`,
+  svcCheck: (n: number, d: number) => `${n} sites, median gap ${d.toLocaleString('en-GB')} day${d === 1 ? '' : 's'}`,
   svcHorizons: (n: number) => `${n} sites × 720 directions`,
   svcMadrid: (h: number) => `${h.toLocaleString('en-GB')} hours of Moon elevation`,
-  svcMoon: 'colour and relief maps',
+  svcMoon: 'global maps and south polar relief',
   svcMoonStill: 'still image (no 3D on this device)',
   southPole2: 'Lunar south pole',
   splashSubs: ['JPL ephemerides', 'LRO LOLA elevation', 'Sunlight, Earth, both'],
@@ -365,7 +373,7 @@ const es: Strings = {
   copyLink: 'Copiar el enlace a esta comparación',
   linkCopied: 'Enlace copiado',
   demoStrong: 'Datos preliminares',
-  demoRest: 'Efemérides reales de la NASA (JPL Horizons) y relieve LOLA del LRO a 1,9 km por píxel. Aún sin comprobar al detalle de cada sitio.',
+  demoRest: 'Datos reales de la NASA: Sol y Tierra de JPL Horizons (comprobados a 0,007°) y relieve LOLA del LRO a 80 m, y a 5 m alrededor de los cinco sitios. Prototipo de hackathon, no sirve para decidir una misión.',
 
   whereTitle: '¿Dónde quieres alunizar?',
   pickUpTo: (n) => `Elige hasta ${n} sitios para compararlos.`,
@@ -507,7 +515,7 @@ const es: Strings = {
   terrain: 'Relieve',
   fadedHidden: 'Los puntos atenuados quedan ocultos tras el relieve.',
   footer:
-    'Resultados preliminares: datos reales de la NASA (JPL Horizons, LOLA del LRO a 1,9 km por píxel). El relieve a menos de unos kilómetros aún no se resuelve; el siguiente paso son los mapas LOLA de 5 m de cada sitio. No sirve para decidir una misión.',
+    'Datos reales de la NASA: JPL Horizons para el Sol y la Tierra, relieve LOLA del LRO a 80 m y a 5 m alrededor de los cinco sitios. Prototipo de hackathon: no sirve para decidir una misión.',
 
   compassShort: ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO', 'N'],
   compassLong: ['al norte', 'al noreste', 'al este', 'al sureste', 'al sur', 'al suroeste', 'al oeste', 'al noroeste'],
@@ -663,14 +671,16 @@ const es: Strings = {
   earthLabel: 'Tierra',
   splashStarting: 'Iniciando servicios',
   splashReady: 'Listo',
-  svc: { ephem: 'Efemérides NASA JPL Horizons (DE441)', sites: 'Sitios candidatos, Wueller et al. 2026', horizons: 'Horizontes del relieve LOLA (LRO), 80 m', madrid: 'Estación de espacio profundo de Madrid, DSS-63', moon: 'Imagen de la Luna, NASA SVS (LROC, LOLA)' },
+  svc: { ephem: 'Efemérides NASA JPL Horizons (DE441)', sites: 'Sitios candidatos de Artemis, Wueller et al. 2026', team: 'Selección del equipo, relieve LOLA a 5 m (PGDA 78)', horizons: 'Horizontes del relieve LOLA (LRO), 80 m', madrid: 'Estación de espacio profundo de Madrid, DSS-63', check: 'Comprobación con el estudio publicado', moon: 'Luna en 3D, NASA SVS CGI Moon Kit (LROC, LOLA)' },
   svcWait: 'conectando…',
   svcFailed: 'no disponible, se sigue sin él',
-  svcEphem: (h) => `${h.toLocaleString('es-ES')} posiciones horarias`,
-  svcSites: (n, r) => `${n} sitios, ${r} regiones`,
+  svcEphem: (h, start) => `${h.toLocaleString('es-ES')} horas, ${span(start, h, 'es-ES')}`,
+  svcSites: (n, r) => `${n} sitios en ${r} regiones`,
+  svcTeam: (n) => `${n} sitios en la app, con su propio horizonte`,
+  svcCheck: (n, d) => `${n} sitios, diferencia mediana de ${d.toLocaleString('es-ES')} día${d === 1 ? '' : 's'}`,
   svcHorizons: (n) => `${n} sitios × 720 direcciones`,
   svcMadrid: (h) => `${h.toLocaleString('es-ES')} horas de elevación de la Luna`,
-  svcMoon: 'mapas de color y relieve',
+  svcMoon: 'mapas globales y relieve del polo sur',
   svcMoonStill: 'imagen fija (sin 3D en este dispositivo)',
   southPole2: 'Polo sur lunar',
   splashSubs: ['Efemérides del JPL', 'Elevación de LOLA (LRO)', 'Luz, Tierra y ambos'],

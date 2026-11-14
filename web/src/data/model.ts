@@ -124,10 +124,11 @@ function friendlyName(code: string, region: string, regionName: string) {
   return `${regionName} ${rest}`.trim()
 }
 
-export type DataPart = 'ephem' | 'sites' | 'horizons' | 'madrid'
-type Progress = (part: DataPart, detail: Record<string, number>) => void
+export type DataPart = 'ephem' | 'sites' | 'team' | 'horizons' | 'madrid' | 'check'
+/** `detail` is null when an optional file is missing: the tool goes on without it. */
+type Progress = (part: DataPart, detail: Record<string, number> | null) => void
 const listeners: Progress[] = []
-const doneParts = new Map<DataPart, Record<string, number>>()
+const doneParts = new Map<DataPart, Record<string, number> | null>()
 /** Be told as each data file arrives (parts already loaded are reported at once). */
 export function onDataProgress(fn: Progress) {
   listeners.push(fn)
@@ -136,7 +137,7 @@ export function onDataProgress(fn: Progress) {
     listeners.splice(listeners.indexOf(fn), 1)
   }
 }
-const report = (part: DataPart, detail: Record<string, number>) => {
+const report = (part: DataPart, detail: Record<string, number> | null) => {
   doneParts.set(part, detail)
   listeners.forEach((fn) => fn(part, detail))
 }
@@ -151,10 +152,16 @@ export function loadData(base = 'data/'): Promise<void> {
     const [sites, horizons, sub, mad, val, team] = await Promise.all([
       tap(get('sites.json'), 'sites', (x: { sites: { region: string }[] }) => ({ sites: x.sites.length, regions: new Set(x.sites.map((s) => s.region)).size })),
       tap(get('horizons.json'), 'horizons', (x: Record<string, unknown>) => ({ sites: Object.keys(x).length - 1, azimuths: 720 })),
-      tap(get('subpoints.json'), 'ephem', (x: { rows: unknown[] }) => ({ hours: x.rows.length })),
+      tap(get('subpoints.json'), 'ephem', (x: { rows: unknown[]; start: string }) => ({ hours: x.rows.length, start: Date.parse(x.start) })),
       tap(get('madrid.json'), 'madrid', (x: { el: unknown[] }) => ({ hours: x.el.length })),
-      get('validation.json').catch(() => null),
-      get('team.json').catch(() => null),
+      get('validation.json').then(
+        (x) => (report('check', { sites: x.stats.sites, median: x.stats.medianAbsDiffDays }), x),
+        () => (report('check', null), null),
+      ),
+      get('team.json').then(
+        (x) => (report('team', { sites: x.sites.length }), x),
+        () => (report('team', null), null),
+      ),
     ])
     const teamOf = new Map<string, TeamSite>((team?.sites ?? []).map((x: TeamSite & { id: string }) => [x.id, x]))
     startMs = Date.parse(sub.start)

@@ -3,7 +3,7 @@
 // - Everything else from this site (code, NASA data, Moon textures): the saved copy at once,
 //   refreshed in the background, so a second visit starts fast and works offline.
 // Only same-origin GET requests are handled; nothing leaves the browser.
-const CACHE = 'lunar-landing-v5' // bump to drop files no longer used (v2: Plotly removed)
+const CACHE = 'lunar-landing-v6' // bump to drop files no longer used (v2: Plotly removed)
 const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/data/sites.json', '/data/horizons.json', '/data/subpoints.json', '/data/madrid.json', '/data/validation.json', '/data/team.json', '/moon/moon_fallback_wide.jpg', '/moon/moon_fallback_tall.jpg']
 
 self.addEventListener('install', (event) => {

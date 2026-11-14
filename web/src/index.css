@@ -118,6 +118,18 @@ body {
   cursor: pointer;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
+/* All the tools the same width, icons in one column: a zoom pair on top, then the layers and the
+   views as two joined groups. */
+.moon-controls { align-items: stretch; width: max-content }
+.moon-controls .moon-zoom { display: flex; justify-content: flex-end; gap: 6px }
+.moon-controls .moon-zoom button { width: 44px; padding: 0 }
+.moon-controls .moon-group { display: flex; flex-direction: column }
+.moon-controls .moon-group:empty { display: none }
+.moon-controls .moon-group button { justify-content: flex-start; gap: 10px; border-radius: 0; padding: 0 14px 0 12px }
+.moon-controls .moon-group button + button { border-top-color: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) }
+.moon-controls .moon-group button:first-child { border-top-left-radius: 4px; border-top-right-radius: 4px }
+.moon-controls .moon-group button:last-child { border-bottom-left-radius: 4px; border-bottom-right-radius: 4px }
+.moon-controls .moon-group button svg { flex: none }
 .moon-controls button:hover { background: rgba(255, 255, 255, 0.15) }
 .moon-controls button:active { transform: scale(0.96) }
 /* The heat map layer, on. */
@@ -268,6 +280,18 @@ input[type="range"] {
   color: transparent;
   animation: sp-track 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both, sp-sheen 1.6s ease-in-out 1.3s both;
 }
+/* Winged Moon in the splash: the disc settles, the wings open feather by feather, then sunlight
+   reaches the south limb. Eased, no overshoot. */
+@keyframes mk-body { from { opacity: 0; transform: scale(0.85) } to { opacity: 1; transform: none } }
+@keyframes mk-wing { from { opacity: 0; transform: rotate(24deg) scale(0.55) } to { opacity: 1; transform: none } }
+@keyframes mk-lit { from { transform: translateY(2.2px) } to { transform: none } }
+.mk-body, .mk-feather { transform-box: view-box; transform-origin: 32px 32px }
+.mk-body { animation: mk-body 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both }
+.mk-feather { animation: mk-wing 0.9s cubic-bezier(0.16, 1, 0.3, 1) both }
+.mk-f0 { animation-delay: 0.3s }
+.mk-f1 { animation-delay: 0.38s }
+.mk-f2 { animation-delay: 0.46s }
+.mk-lit { animation: mk-lit 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.85s both }
 @keyframes sp-earth { from { cy: 96px } to { cy: 58px } }
 .sp-earth { animation: sp-earth 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.55s both }
 @keyframes sp-step1 { 0%, 30% { color: #fff } 36%, 100% { color: transparent } }
@@ -295,6 +319,7 @@ input[type="range"] {
 @media (prefers-reduced-motion: reduce) {
   .sp-stars, .sp-moon, .sp-word, .sp-sub, .sp-meta, .sp-ui, .sp-ridge, .sp-lit, .sp-sun, .sp-glow, .sp-twinkle,
   .moon-drift, .skeleton, .toast-in, .pop-in, .sp-earth, .sp-s1, .sp-s2, .sp-leave .sp-moon { animation: none }
+  .mk-body, .mk-feather, .mk-lit { animation: none }
   .sp-sheen { animation: none; background: none; color: #fff }
   .sp-s1, .sp-s2 { color: transparent }
   .sp-s3 { animation: none; color: #fff }
@@ -429,6 +454,14 @@ details.soft-moving { overflow: hidden }
 /* A big panel open beside the Moon: the view buttons fold to their icons too. */
 .moon-controls.compact button { padding: 0; width: 44px }
 .moon-controls.compact button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+/* Icons only (phones, or a big panel open): the groups keep their joined look, the icon centred,
+   and the zoom pair stacks above them. */
+.moon-controls.compact .moon-group button { justify-content: center; padding: 0 }
+.moon-controls.compact .moon-zoom { flex-direction: column; align-items: flex-end }
+@media (max-width: 639px) {
+  .moon-controls .moon-group button { justify-content: center; padding: 0 }
+  .moon-controls .moon-zoom { flex-direction: column; align-items: flex-end }
+}
 
 /* Narrow phones: the header wordmark stays on one line. */
 @media (max-width: 399px) { .wordmark-tight { letter-spacing: 0.12em } }
