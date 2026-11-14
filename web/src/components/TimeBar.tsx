@@ -1,13 +1,14 @@
 // Written with Claude Code (Claude Opus 5.5); reviewed by <name>
+import type { DayPlan } from '../data/model'
 import { useT } from '../i18n'
+import { LandingCalendar } from './LandingCalendar'
 
 const HOUR = 3600000
-const toInputValue = (d: Date) => d.toISOString().slice(0, 16)
 
 // Quick date, hour and days on the surface, one line in the header. The slider moves only through
 // the stay, hour by hour: the Moon's light and shadows, and the sky chart, follow it. Behind it, the
 // hours of sunlight at the chosen site (brighter = Sun up), so the dark spells of the stay show.
-export function TimeBar({ start, min, max, stay, index, sunHours, label, onStart, onStay, onScrub }: {
+export function TimeBar({ start, min, max, stay, index, sunHours, plan, label, onStart, onStay, onScrub }: {
   /** Start of the stay (landing, plus any slip). */
   start: Date
   /** Range of the data, for the date field. */
@@ -19,6 +20,8 @@ export function TimeBar({ start, min, max, stay, index, sunHours, label, onStart
   index: number
   /** Fraction of the solar disc in view at the chosen site, hour by hour over the stay. */
   sunHours?: number[]
+  /** Landing calendar of the chosen site for this stay: colours the days and hours to choose from. */
+  plan?: DayPlan[]
   label: (d: Date) => string
   onStart: (d: Date) => void
   onStay: (days: number) => void
@@ -37,18 +40,19 @@ export function TimeBar({ start, min, max, stay, index, sunHours, label, onStart
         <circle cx="12" cy="12" r="4" />
         <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
       </svg>
+      <LandingCalendar value={start} min={min} max={max} plan={plan} onPick={onStart} />
       <input
-        type="datetime-local"
-        aria-label={t.landingDate}
-        value={toInputValue(start)}
-        min={toInputValue(min)}
-        max={toInputValue(max)}
+        type="time"
+        step={3600}
+        aria-label={t.landingHour}
+        value={start.toISOString().slice(11, 16)}
         onChange={(e) => {
-          if (!e.target.value) return
-          const ms = Math.min(max.getTime(), Math.max(min.getTime(), Date.parse(e.target.value + ':00Z')))
-          if (Number.isFinite(ms)) onStart(new Date(ms))
+          const [h, mi] = e.target.value.split(':').map(Number)
+          if (!Number.isFinite(h)) return
+          const day = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
+          onStart(new Date(Math.min(max.getTime(), Math.max(min.getTime(), day + (h * 60 + (mi || 0)) * 60000))))
         }}
-        className="h-8 w-[11.5rem] shrink-0 rounded-sm border border-white/20 bg-black/40 px-1.5 text-xs text-ink"
+        className="h-8 w-[5.5rem] shrink-0 rounded-sm border border-white/20 bg-black/40 px-1.5 text-xs text-ink"
       />
       <span className="hidden text-[11px] text-muted sm:inline">UTC</span>
       <label className="flex shrink-0 items-center gap-1 text-[11px] text-muted" title={t.daysOnSurface}>
