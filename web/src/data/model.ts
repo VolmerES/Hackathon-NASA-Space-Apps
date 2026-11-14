@@ -42,12 +42,25 @@ export interface TeamSite {
   pgda69: { sun: Check; earth: Check }
 }
 
+/** What a mission asks of its stay: the verdict thresholds. The defaults are the ones the tool
+ *  always used (inspired by Wueller et al. 2026); a mission can set its own. */
+export interface Requirements {
+  minSunPct: number
+  maxDarkH: number
+  minEarthPct: number
+}
+export const DEFAULT_REQUIREMENTS: Requirements = { minSunPct: 90, maxDarkH: 24, minEarthPct: 50 }
+
 export interface Mission {
   landing: Date
   durationDays: number
   slipDays: number
   survivalPowerW: number
   minAntennaElevDeg: number
+  /** Battery capacity (Wh). When set, a stay whose longest night needs more is not viable. */
+  batteryWh?: number
+  /** The mission's own thresholds; DEFAULT_REQUIREMENTS when absent. */
+  req?: Requirements
 }
 
 export interface Sample {
@@ -78,6 +91,8 @@ export interface Metrics {
   madridPct: number
   hoursToSunset: number | null
   hoursToEarthset: number | null
+  /** Battery left after the longest night (Wh): capacity minus survival power × hours. Null: no battery set. */
+  batteryMarginWh: number | null
   verdict: 'viable' | 'marginal' | 'not-viable'
 }
 
@@ -301,12 +316,18 @@ export function overview(site: Site, from: Date, days: number, minAntennaElevDeg
   return out
 }
 
-/** The verdict thresholds, shared by metrics() and landingCalendar(). */
-export function verdictOf(sunlightPct: number, longestNightH: number, earthLinkPct: number): Metrics['verdict'] {
-  if (sunlightPct >= 90 && longestNightH <= 24 && earthLinkPct >= 50) return 'viable'
-  if (sunlightPct >= 60 && longestNightH <= 72) return 'marginal'
+/** The verdict, shared by metrics() and landingCalendar(): viable when the stay meets the mission's
+ *  requirements; marginal within 2/3 of the sunlight and 3 times the night (60 % and 72 h with the
+ *  defaults); never viable if the battery cannot carry the longest night. */
+export function verdictOf(sunlightPct: number, longestNightH: number, earthLinkPct: number, req: Requirements = DEFAULT_REQUIREMENTS, batteryOk = true): Metrics['verdict'] {
+  if (!batteryOk) return 'not-viable'
+  if (sunlightPct >= req.minSunPct && longestNightH <= req.maxDarkH && earthLinkPct >= req.minEarthPct) return 'viable'
+  if (sunlightPct >= (req.minSunPct * 2) / 3 && longestNightH <= req.maxDarkH * 3) return 'marginal'
   return 'not-viable'
 }
+
+/** Does a battery of batteryWh carry survivalPowerW through a night of nightH hours? (No battery set: yes.) */
+export const batteryCarries = (nightH: number, survivalPowerW: number, batteryWh?: number) => !batteryWh || survivalPowerW * nightH <= batteryWh
 
 /** One calendar day: the verdict of landing at each UTC hour (null: the stay runs past the data). */
 export interface DayPlan {
@@ -318,7 +339,7 @@ export interface DayPlan {
 // stay that starts then (same thresholds as metrics()), and only if that hour is a landing window,
 // with the Sun and Earth both in view (power and direct contact during the descent). Otherwise that
 // hour is 'not-viable'. Sliding sums over one hourly pass: about 10,000 samples per site.
-export function landingCalendar(site: Site, durationDays: number, minAntennaElevDeg: number): DayPlan[] {
+export function landingCalendar(site: Site, durationDays: number, minAntennaElevDeg: number, req: Requirements = DEFAULT_REQUIREMENTS, survivalPowerW = 0, batteryWh?: number): DayPlan[] {
   if (!DATA.ready) return []
   const n = hours
   const lit = new Uint8Array(n)
@@ -340,14 +361,14 @@ export function landingCalendar(site: Site, durationDays: number, minAntennaElev
     if (!lit[i] || !earth[i]) return 'not-viable'
     const cnt = w + 1
     const sunPct = (100 * (pl[i + w + 1] - pl[i])) / cnt
-    if (sunPct < 60) return 'not-viable'
+    if (sunPct < (req.minSunPct * 2) / 3) return 'not-viable'
     let longest = 0
     let run = 0
     for (let k = i; k <= i + w; k++) {
       run = lit[k] ? 0 : run + 1
       if (run > longest) longest = run
     }
-    return verdictOf(sunPct, longest, (100 * (pe[i + w + 1] - pe[i])) / cnt)
+    return verdictOf(sunPct, longest, (100 * (pe[i + w + 1] - pe[i])) / cnt, req, batteryCarries(longest, survivalPowerW, batteryWh))
   }
   const out: DayPlan[] = []
   for (let d = 0; d * 24 < n; d++) {
@@ -384,7 +405,8 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
   // Thresholds, stated in the app: a crewed or robotic stay needs (almost) continuous sunlight for
   // power and regular direct contact with Earth (Wueller et al. 2026 ask for continuous sunlight
   // over the whole Artemis III stay, with margin).
-  const verdict = verdictOf(sunlightPct, longest, earthLinkPct)
+  const verdict = verdictOf(sunlightPct, longest, earthLinkPct, mission.req, batteryCarries(longest, mission.survivalPowerW, mission.batteryWh))
+  const batteryMarginWh = mission.batteryWh ? mission.batteryWh - mission.survivalPowerW * longest : null
 
-  return { sunlightPct, longestNightH: longest, batteryKWh, earthLinkPct, opsPct: (100 * ops) / n, madridPct: (100 * samples.filter((s) => s.madridLink).length) / n, hoursToSunset, hoursToEarthset, verdict }
+  return { sunlightPct, longestNightH: longest, batteryKWh, earthLinkPct, opsPct: (100 * ops) / n, madridPct: (100 * samples.filter((s) => s.madridLink).length) / n, hoursToSunset, hoursToEarthset, batteryMarginWh, verdict }
 }

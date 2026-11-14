@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA, MADRID_DSN, SITES, clampToData, customSite, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { DATA, DEFAULT_REQUIREMENTS, MADRID_DSN, SITES, clampToData, customSite, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
@@ -12,6 +12,8 @@ import { useBoxHeight, useStay } from './hooks'
 import { CloseButton, FloatPanel, HamburgerMenu, Overlay, Snackbar } from './components/Ui'
 import { Splash, SKIP as SKIP_SPLASH } from './components/Splash'
 import { TimeBar } from './components/TimeBar'
+import { Missions, type Evaluated } from './components/Missions'
+import { applyMission, kindOf, loadMissions, saveMissions, uid, type MissionDef, type SavedScenario } from './missions'
 import { Logo } from './components/Logo'
 import { StayHeatmap } from './components/StayHeatmap'
 import { MoonFallback } from './components/MoonFallback'
@@ -57,7 +59,8 @@ function formatters(t: Strings) {
     const sun = m.longestNightH === 0 ? t.reasonSunAll : t.reasonDark(duration(m.longestNightH))
     const e = m.earthLinkPct
     const earth = e >= 99 ? t.reasonEarthAll : e <= 1 ? t.reasonEarthNone : t.reasonEarthPart(num(e))
-    return `${sun}; ${earth}.`
+    const battery = m.batteryMarginWh !== null && m.batteryMarginWh < 0 ? ` ${t.reasonBattery}` : ''
+    return `${sun}; ${earth}.${battery}`
   }
   const siteName = (s: Site) => (s.ideal ? t.customName(s.lat.toFixed(2), s.lon.toFixed(2)) : s.name)
   return { num, date, dateTime, duration, reason, siteName }
@@ -172,6 +175,16 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const clearToast = useCallback(() => setToast(null), [])
   const [sourcesOpen, setSourcesOpen] = useState(false)
+  // Missions of this browser, and the one being planned with (its requirements drive every verdict).
+  const [missions, setMissions] = useState<MissionDef[]>(() => loadMissions())
+  const [activeId, setActiveId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('ll-active-mission')
+    } catch {
+      return null
+    }
+  })
+  const [missionsOpen, setMissionsOpen] = useState(false)
   const [panel, setPanel] = useState<Panel | null>(() => {
     const p = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('p')
     return p === 'sky' || p === 'when' || p === 'compare' ? p : null
@@ -384,10 +397,72 @@ export default function App() {
   // published study disagree (same caution as the verdicts).
   const plan = useMemo(() => {
     if (!ready || !focused) return undefined
-    const p = landingCalendar(focused.site, mission.durationDays, mission.minAntennaElevDeg)
+    const p = landingCalendar(focused.site, mission.durationDays, mission.minAntennaElevDeg, mission.req, mission.survivalPowerW, mission.batteryWh)
     return disagrees(focused.site) ? p.map((d) => ({ ...d, hours: d.hours.map((v) => (v === 'viable' ? 'marginal' : v)) })) : p
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, focused?.site.id, mission.durationDays, mission.minAntennaElevDeg])
+  }, [ready, focused?.site.id, mission.durationDays, mission.minAntennaElevDeg, mission.req, mission.survivalPowerW, mission.batteryWh])
+
+  // Missions: open one (its requirements, and a saved scenario if given), save the current view as a
+  // scenario, and evaluate any scenario with the current data.
+  const active = missions.find((x) => x.id === activeId) ?? null
+  const req = mission.req ?? DEFAULT_REQUIREMENTS
+  const storeMissions = (list: MissionDef[]) => {
+    setMissions(list)
+    saveMissions(list)
+  }
+  const activate = (id: string | null) => {
+    setActiveId(id)
+    try {
+      if (id) localStorage.setItem('ll-active-mission', id)
+      else localStorage.removeItem('ll-active-mission')
+    } catch {
+      // storage unavailable: the choice lasts for this visit
+    }
+  }
+  const openMission = (m: MissionDef, sc?: SavedScenario) => {
+    activate(m.id)
+    setMission((cur) => {
+      const base = applyMission(m, cur)
+      return sc ? { ...base, landing: new Date(sc.landing), slipDays: sc.slipDays } : base
+    })
+    if (sc) {
+      setChosen(sc.sites)
+      setFocus(sc.focus)
+      setPicking(false)
+    }
+    setMissionsOpen(false)
+    setToast(t.ms.opened(m.name))
+  }
+  const saveMissionDef = (m: MissionDef) => {
+    storeMissions(missions.some((x) => x.id === m.id) ? missions.map((x) => (x.id === m.id ? m : x)) : [m, ...missions])
+    if (activeId === m.id) setMission((cur) => applyMission(m, cur))
+  }
+  const deleteMission = (id: string) => {
+    storeMissions(missions.filter((x) => x.id !== id))
+    if (activeId === id) {
+      activate(null)
+      setMission((cur) => ({ ...cur, req: undefined, batteryWh: undefined }))
+    }
+  }
+  const deleteScenario = (mid: string, sid: string) => storeMissions(missions.map((x) => (x.id === mid ? { ...x, scenarios: x.scenarios.filter((sc) => sc.id !== sid) } : x)))
+  const saveScenario = () => {
+    if (!active || !focused) return
+    const base = { sites: chosen.length ? chosen : [focused.site.id], focus: focused.site.id, landing: mission.landing.toISOString(), slipDays: mission.slipDays }
+    const kind = kindOf(base, active.scenarios[0])
+    const sc: SavedScenario = { id: uid(), name: `${t.ms.kinds[kind]} · ${fmtDate(start)}`, kind, ...base }
+    storeMissions(missions.map((x) => (x.id === active.id ? { ...x, scenarios: [...x.scenarios, sc], updated: new Date().toISOString() } : x)))
+    setToast(t.ms.saved(sc.name))
+  }
+  const evaluateScenario = (m: MissionDef, sc: SavedScenario): Evaluated => {
+    if (!ready) return null
+    const site = resolveSite(sc.focus)
+    const landing = new Date(sc.landing)
+    const from = landing.getTime() + sc.slipDays * 86400000
+    if (!site || Number.isNaN(from) || from < DATA.start.getTime() || from + m.durationDays * 86400000 > DATA.end.getTime()) return null
+    const mp = applyMission(m, { ...mission, landing, slipDays: sc.slipDays })
+    return { site: siteName(site), when: fmtDate(new Date(from)), m: cautious(site, metrics(simulate(site, mp), mp)) }
+  }
+
   const scrub = (i: number) => {
     setPlaying(false)
     if (focused) setPlayIdx(i)
@@ -516,6 +591,7 @@ export default function App() {
                   </div>
                   <div className="border-t border-white/10 pt-1">
                     {[
+                      { label: t.ms.title, onSelect: () => setMissionsOpen(true) },
                       { label: t.copyLink, onSelect: share, hidden: !chosen.length },
                       { label: focused ? t.downloadCsv(siteName(focused.site)) : '', onSelect: downloadCsv, hidden: !focused },
                       { label: t.dataSources, onSelect: () => setSourcesOpen(true) },
@@ -622,12 +698,27 @@ export default function App() {
                 <p className="text-xs text-muted">
                   {focused.site.lat.toFixed(2)}°, {focused.site.lon.toFixed(2)}°
                 </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 border border-white/10 bg-black/30 px-2.5 py-2 text-xs">
+                  {active ? (
+                    <>
+                      <span className="text-muted">{t.ms.missionLabel}</span>
+                      <button type="button" onClick={() => setMissionsOpen(true)} className="min-w-0 truncate font-semibold text-ink underline-offset-4 hover:underline">{active.name}</button>
+                      <button type="button" onClick={saveScenario} className="ml-auto min-h-9 rounded-sm border border-sun/70 px-2.5 font-semibold text-sun hover:bg-sun/10">{t.ms.saveScenario}</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-muted">{t.ms.noActive}</span>
+                      <button type="button" onClick={() => setMissionsOpen(true)} className="ml-auto min-h-9 rounded-sm border border-white/30 px-2.5 hover:bg-white/10">{t.ms.newOrOpen}</button>
+                    </>
+                  )}
+                </div>
 
                 <div className={`mt-4 flex items-center gap-3 ${VERDICT_CLS[focused.m.verdict]}`}>
                   <VerdictIcon v={focused.m.verdict} size={34} />
                   <p className="text-2xl font-bold leading-tight">{t.verdictLong[focused.m.verdict]}</p>
                 </div>
                 <p className="mt-2 text-ink">{reason(focused.m)}</p>
+                {active && <p className="mt-1 text-xs text-muted">{t.ms.judgedBy(active.name)}</p>}
                 {focused.site.ideal && <p className="mt-1 text-sm text-warn">{t.noTerrain}</p>}
                 <p className="mt-1 text-sm text-muted">{t.forDates(fmtDate(start), fmtDate(end))}</p>
                 {focused.site.published && focused.site.published['2027'] !== undefined && (
@@ -655,8 +746,8 @@ export default function App() {
                         value: `${num(focused.m.sunlightPct)} %`,
                         fill: focused.m.sunlightPct / 100,
                         bar: 'bg-sun',
-                        tone: focused.m.sunlightPct >= 90 ? 'ok' : focused.m.sunlightPct >= 60 ? 'warn' : 'bad',
-                        ticks: [0.6, 0.9],
+                        tone: focused.m.sunlightPct >= req.minSunPct ? 'ok' : focused.m.sunlightPct >= (req.minSunPct * 2) / 3 ? 'warn' : 'bad',
+                        ticks: [(req.minSunPct * 2) / 300, req.minSunPct / 100],
                         was: slipped && Math.round(focused.m.sunlightPct) !== Math.round(focused.base.sunlightPct) ? t.was(`${num(focused.base.sunlightPct)} %`) : '',
                       },
                       {
@@ -665,8 +756,8 @@ export default function App() {
                         value: `${num(focused.m.earthLinkPct)} %`,
                         fill: focused.m.earthLinkPct / 100,
                         bar: 'bg-earth',
-                        tone: focused.m.earthLinkPct >= 50 ? 'ok' : 'warn',
-                        ticks: [0.5],
+                        tone: focused.m.earthLinkPct >= req.minEarthPct ? 'ok' : 'warn',
+                        ticks: [req.minEarthPct / 100],
                         was: slipped && Math.round(focused.m.earthLinkPct) !== Math.round(focused.base.earthLinkPct) ? t.was(`${num(focused.base.earthLinkPct)} %`) : '',
                       },
                       {
@@ -683,12 +774,26 @@ export default function App() {
                         sub: t.ofStay(num((100 * focused.m.longestNightH) / stayH)),
                         label: t.longestDarkness,
                         value: fmtDuration(focused.m.longestNightH),
-                        fill: Math.min(focused.m.longestNightH / 96, 1),
-                        bar: focused.m.longestNightH <= 24 ? 'bg-ok' : focused.m.longestNightH <= 72 ? 'bg-warn' : 'bg-bad',
-                        tone: focused.m.longestNightH <= 24 ? 'ok' : focused.m.longestNightH <= 72 ? 'warn' : 'bad',
-                        ticks: [24 / 96, 72 / 96],
+                        fill: Math.min(focused.m.longestNightH / (req.maxDarkH * 4 || 96), 1),
+                        bar: focused.m.longestNightH <= req.maxDarkH ? 'bg-ok' : focused.m.longestNightH <= req.maxDarkH * 3 ? 'bg-warn' : 'bg-bad',
+                        tone: focused.m.longestNightH <= req.maxDarkH ? 'ok' : focused.m.longestNightH <= req.maxDarkH * 3 ? 'warn' : 'bad',
+                        ticks: req.maxDarkH > 0 ? [0.25, 0.75] : [],
                         was: slipped && focused.m.longestNightH !== focused.base.longestNightH ? t.was(fmtDuration(focused.base.longestNightH).toLowerCase()) : '',
                       },
+                      ...(focused.m.batteryMarginWh !== null && mission.batteryWh
+                        ? [
+                            {
+                              sub: t.ms.batteryNeed(num(mission.survivalPowerW * focused.m.longestNightH)),
+                              label: t.ms.batteryLeft,
+                              value: `${num(focused.m.batteryMarginWh)} Wh`,
+                              fill: Math.max(0, focused.m.batteryMarginWh) / mission.batteryWh,
+                              bar: focused.m.batteryMarginWh >= 0 ? 'bg-ok' : 'bg-bad',
+                              tone: focused.m.batteryMarginWh >= 0 ? 'ok' : 'bad',
+                              ticks: [],
+                              was: '',
+                            } as const,
+                          ]
+                        : []),
                     ] as const
                   ).map(({ label, value, sub, fill, bar, tone, ticks, was }) => (
                     <div key={label} className="border border-white/10 bg-black/30 p-2.5">
@@ -1130,6 +1235,9 @@ export default function App() {
         </div>
       )}
 
+      <Overlay open={missionsOpen} title={t.ms.title} onClose={() => setMissionsOpen(false)}>
+        <Missions missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} />
+      </Overlay>
       <Overlay open={sourcesOpen} title={t.dataSources} onClose={() => setSourcesOpen(false)}>
         <p className="text-muted">{t.sourcesIntro}</p>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm">

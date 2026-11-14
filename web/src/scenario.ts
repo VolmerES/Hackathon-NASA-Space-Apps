@@ -1,4 +1,4 @@
-import type { Mission } from './data/model'
+import { DEFAULT_REQUIREMENTS, type Mission } from './data/model'
 
 // The whole scenario lives in the URL hash, so a planner can share it as a link.
 export interface Scenario {
@@ -45,6 +45,15 @@ export function readScenario(hash: string): Scenario {
       slipDays: num(p.get('slip'), 0, -30, 60),
       survivalPowerW: num(p.get('w'), d.mission.survivalPowerW, 0, 100000),
       minAntennaElevDeg: num(p.get('e'), d.mission.minAntennaElevDeg, 0, 30),
+      // Mission requirements and battery travel in the link too, so it reproduces the same verdict.
+      batteryWh: p.has('b') ? num(p.get('b'), 0, 0, 1e7) || undefined : undefined,
+      req: p.has('rs') || p.has('rd') || p.has('re')
+        ? {
+            minSunPct: num(p.get('rs'), DEFAULT_REQUIREMENTS.minSunPct, 0, 100),
+            maxDarkH: num(p.get('rd'), DEFAULT_REQUIREMENTS.maxDarkH, 0, 2000),
+            minEarthPct: num(p.get('re'), DEFAULT_REQUIREMENTS.minEarthPct, 0, 100),
+          }
+        : undefined,
     },
   }
 }
@@ -59,6 +68,13 @@ export function writeScenario(s: Scenario): string {
     w: String(s.mission.survivalPowerW),
     e: String(s.mission.minAntennaElevDeg),
   })
+  if (s.mission.batteryWh) p.set('b', String(s.mission.batteryWh))
+  const r = s.mission.req
+  if (r && (r.minSunPct !== DEFAULT_REQUIREMENTS.minSunPct || r.maxDarkH !== DEFAULT_REQUIREMENTS.maxDarkH || r.minEarthPct !== DEFAULT_REQUIREMENTS.minEarthPct)) {
+    p.set('rs', String(r.minSunPct))
+    p.set('rd', String(r.maxDarkH))
+    p.set('re', String(r.minEarthPct))
+  }
   if (s.mode === 'explore') p.set('m', 'explore')
   return '#' + p.toString()
 }

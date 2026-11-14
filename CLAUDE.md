@@ -60,6 +60,13 @@ respuesta → paneles opcionales). Las piezas grandes están en
 `web/src/components/` (`MoonScene` y `Surface3D` con three.js, `Panorama`).
 El escenario va en la URL (`scenario.ts`).
 
+**Misiones** (`web/src/missions.ts`, `components/Missions.tsx`): misiones y escenarios guardados
+solo en el navegador (`localStorage`), sin servidor. Ojo con los nombres: `Mission` en `model.ts`
+son los parámetros de la estancia con los que corre el modelo (fecha, días, potencia, batería,
+requisitos); `MissionDef` es la misión que los rellena. Los requisitos de la misión son los umbrales
+de `verdictOf()`, así que veredicto, calendario y ranking los siguen. Las simulaciones no se guardan:
+se recalculan siempre.
+
 **Es bilingüe** (`web/src/i18n.tsx`): inglés por defecto, español con `l=es`.
 Cualquier texto nuevo de la interfaz lleva las dos versiones.
 
