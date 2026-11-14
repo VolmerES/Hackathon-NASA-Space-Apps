@@ -24,6 +24,7 @@ col8 = (col[..., :3].astype(np.float32) / 65535.0 * 255.0 + 0.5).clip(0, 255).as
 img = Image.fromarray(col8, 'RGB')
 img.save(out / 'moon_color_4k.jpg', quality=84, optimize=True, progressive=True)
 img.resize((2048, 1024), Image.LANCZOS).save(out / 'moon_color_2k.jpg', quality=84, optimize=True, progressive=True)
+img.resize((1024, 512), Image.LANCZOS).save(out / 'moon_color_1k.jpg', quality=85, optimize=True)  # phones
 
 # Elevation: uint16 half-metres above a 1727.4 km sphere -> metres relative to 1737.4 km.
 dem = tifffile.imread(src / "ldem_16_uint.tif").astype(np.float32) * 0.5 - 10000.0
@@ -49,6 +50,7 @@ def normal_map(exaggerate: float) -> np.ndarray:
 nm = Image.fromarray(normal_map(4.0), 'RGB')
 nm.resize((4096, 2048), Image.LANCZOS).save(out / 'moon_normal_4k.jpg', quality=90, optimize=True)
 nm.resize((2048, 1024), Image.LANCZOS).save(out / 'moon_normal_2k.jpg', quality=90, optimize=True)
+nm.resize((1024, 512), Image.LANCZOS).save(out / 'moon_normal_1k.jpg', quality=85, optimize=True)  # phones
 
 for f in sorted(out.iterdir()):
     print(f.name, round(f.stat().st_size / 1e6, 2), 'MB')

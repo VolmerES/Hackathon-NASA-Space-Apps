@@ -29,3 +29,28 @@ export function useBoxHeight<T extends HTMLElement>() {
   }, [])
   return [ref, h] as const
 }
+
+/** Keeps the last value on screen a moment after it goes away, so panels can fade out instead
+ *  of vanishing. `leaving` is true during that moment. No delay with reduced motion. */
+export function useStay<T>(value: T | null | undefined | false, ms = 380) {
+  const [kept, setKept] = useState<T | null>(value || null)
+  const [leaving, setLeaving] = useState(false)
+  useEffect(() => {
+    if (value) {
+      setKept(value)
+      setLeaving(false)
+      return
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setKept(null)
+      return
+    }
+    setLeaving(true)
+    const id = window.setTimeout(() => {
+      setKept(null)
+      setLeaving(false)
+    }, ms)
+    return () => window.clearTimeout(id)
+  }, [value, ms])
+  return { value: value || kept, leaving: !value && leaving }
+}

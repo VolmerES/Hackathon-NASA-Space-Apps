@@ -13,7 +13,6 @@
     "@fontsource-variable/archivo": "^5.2.8",
     "@fontsource-variable/public-sans": "^5.3.0",
     "@tailwindcss/vite": "^4.3.5",
-    "plotly.js-basic-dist-min": "^4.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tailwindcss": "^4.3.5",
@@ -21,7 +20,6 @@
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
-    "@types/plotly.js": "^3.0.15",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.187.0",

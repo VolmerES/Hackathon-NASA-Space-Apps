@@ -37,6 +37,9 @@ const SPIN = 0.018 // rad/s, idle rotation
 const HOLD_MS = 6000 // after a pick, stay put this long before turning again
 const ZOOM_MIN = 0.45 // closest: almost standing over the site
 const ZOOM_MAX = 9 // farthest: the whole Moon in view
+// Closing in, the camera tips toward the horizon and rolls on its axis so the ground sits at the
+// bottom of the screen and the sky above, as if standing on the Moon.
+const STAND_TILT = 75 * DEG
 const TILT_MIN = 6 * DEG // looking straight down on the pole
 const TILT_MAX = 84 * DEG // grazing, the horizon in view
 
@@ -236,14 +239,16 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       ready()
     }, undefined, () => onFail())
     const fail = () => onFail()
-    loader.load('moon/moon_color_2k.jpg', (tex) => {
+    // Phones and weak computers see the whole globe small: lighter maps for it (the pole has its own).
+    const globeRes = small || q.level === 0 ? '1k' : '2k'
+    loader.load(`moon/moon_color_${globeRes}.jpg`, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
       mat.map = tex
       mat.needsUpdate = true
       ready()
     }, undefined, fail)
-    loader.load('moon/moon_normal_2k.jpg', (tex) => {
+    loader.load(`moon/moon_normal_${globeRes}.jpg`, (tex) => {
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
       mat.normalMap = tex
       mat.normalScale = new THREE.Vector2(1.6, -1.6)
@@ -342,6 +347,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     // Free view: zoom (wheel, pinch, buttons) and tilt (vertical drag) on top of the spin.
     let zoom = 1
     let zoomGoal = 1
+    let roll = 0 // 0: polar view, north up; 1: standing, ground at the bottom
     let tiltCur = TILT
     let tiltGoal = TILT
     const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z))
@@ -418,8 +424,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       setHoverId(null)
       // Closer in, slower turns, so the ground under the finger does not race away.
       const gain = Math.min(1.5, Math.sqrt(zoom))
-      spinDrag = drag.spin + ((e.clientX - drag.x) / Math.max(320, window.innerWidth * 0.5)) * Math.PI * gain
-      tiltGoal = clampTilt(drag.tilt - ((e.clientY - drag.y) / Math.max(320, window.innerHeight * 0.6)) * Math.PI * 0.6)
+      // With the view rolled over, screen directions turn round: keep "grab the ground and move it".
+      const flip = roll > 0.5 ? -1 : 1
+      spinDrag = drag.spin + flip * ((e.clientX - drag.x) / Math.max(320, window.innerWidth * 0.5)) * Math.PI * gain
+      tiltGoal = clampTilt(drag.tilt - flip * ((e.clientY - drag.y) / Math.max(320, window.innerHeight * 0.6)) * Math.PI * 0.6)
       const t = performance.now()
       track.push({ t, s: spinDrag, a: tiltGoal })
       while (track.length > 2 && t - track[0].t > 100) track.shift()
@@ -611,13 +619,18 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       const viewDist = appDist * zoom
       // Far out, orbit the whole Moon instead of a point on its surface.
       const far = THREE.MathUtils.smoothstep(viewDist, 1.1, 3.2)
-      const tilt = THREE.MathUtils.lerp(92 * DEG, tiltCur, k)
+      const near = 1 - THREE.MathUtils.smoothstep(zoom, ZOOM_MIN, 1) // 0 at the usual distance, 1 closest
+      const tiltView = THREE.MathUtils.lerp(tiltCur, Math.max(tiltCur, STAND_TILT), near)
+      const tilt = THREE.MathUtils.lerp(92 * DEG, tiltView, k)
       const dist = THREE.MathUtils.lerp(5.4, viewDist, k)
       target.set(0, 0, 0).lerp(appTarget, k * (1 - far))
       camDir.set(0, -Math.cos(tilt), Math.sin(tilt)).normalize()
       camera.position.copy(target).addScaledVector(camDir, dist)
       camera.up.set(0, 1, 0)
       camera.lookAt(target)
+      // Roll on the view axis as the camera nears the horizon (never in the intro, nor from afar).
+      roll = THREE.MathUtils.smoothstep(tilt, 45 * DEG, 72 * DEG) * THREE.MathUtils.smoothstep(k, 0.85, 1) * (1 - far)
+      if (roll > 0) camera.rotateZ(Math.PI * roll)
 
       let fx = w / 2
       let fy = h * 1.12
