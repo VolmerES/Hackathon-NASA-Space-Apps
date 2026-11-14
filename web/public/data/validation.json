@@ -1,0 +1,664 @@
+{
+ "reference": "Wueller et al. (2026), SunDays27 (max consecutive sunlit days, midsummer 2027; 60 m/px relief, 12 h steps)",
+ "ours": "JPL Horizons sub-solar point + LOLA 80 m horizon, 1 h steps",
+ "stats": {
+  "sites": 130,
+  "summerHours": 744,
+  "medianAbsDiffDays": 1.0,
+  "meanDiffDays": 4.4,
+  "correlation": 0.79,
+  "agreementOn10DayThreshold": 0.68
+ },
+ "sites": [
+  {
+   "id": "mma01",
+   "published": 7,
+   "ours": 8.1
+  },
+  {
+   "id": "mma-k2023",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "mma02",
+   "published": 6,
+   "ours": 7.6
+  },
+  {
+   "id": "mma03",
+   "published": 30,
+   "ours": 31.0
+  },
+  {
+   "id": "mmo01",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "mmo02",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "mmo03",
+   "published": 8,
+   "ours": 9.0
+  },
+  {
+   "id": "mmo04",
+   "published": 8,
+   "ours": 8.8
+  },
+  {
+   "id": "mmo05",
+   "published": 9,
+   "ours": 8.9
+  },
+  {
+   "id": "mmo06",
+   "published": 7,
+   "ours": 8.6
+  },
+  {
+   "id": "nr101",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "nr102",
+   "published": 10,
+   "ours": 15.1
+  },
+  {
+   "id": "nr103",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "nr104",
+   "published": 6,
+   "ours": 12.4
+  },
+  {
+   "id": "nr105",
+   "published": 3,
+   "ours": 16.2
+  },
+  {
+   "id": "nr106",
+   "published": 6,
+   "ours": 14.5
+  },
+  {
+   "id": "nr107",
+   "published": 3,
+   "ours": 16.0
+  },
+  {
+   "id": "nr108",
+   "published": 2,
+   "ours": 15.7
+  },
+  {
+   "id": "nr109",
+   "published": 5,
+   "ours": 13.0
+  },
+  {
+   "id": "nr201",
+   "published": 2,
+   "ours": 13.8
+  },
+  {
+   "id": "nr202",
+   "published": 2,
+   "ours": 15.8
+  },
+  {
+   "id": "nr203",
+   "published": 3,
+   "ours": 13.5
+  },
+  {
+   "id": "nr204",
+   "published": 3,
+   "ours": 11.5
+  },
+  {
+   "id": "nr205",
+   "published": 3,
+   "ours": 15.9
+  },
+  {
+   "id": "nr206",
+   "published": 3,
+   "ours": 15.8
+  },
+  {
+   "id": "nr2-k2023",
+   "published": 2,
+   "ours": 15.7
+  },
+  {
+   "id": "nr207",
+   "published": 3,
+   "ours": 15.6
+  },
+  {
+   "id": "ar01",
+   "published": 2,
+   "ours": 14.2
+  },
+  {
+   "id": "ar02",
+   "published": 2,
+   "ours": 17.8
+  },
+  {
+   "id": "ar03",
+   "published": 2,
+   "ours": 18.0
+  },
+  {
+   "id": "ar04",
+   "published": 2,
+   "ours": 14.9
+  },
+  {
+   "id": "ar05",
+   "published": 2,
+   "ours": 17.5
+  },
+  {
+   "id": "ar06",
+   "published": 3,
+   "ours": 14.3
+  },
+  {
+   "id": "ar07",
+   "published": 3,
+   "ours": 16.9
+  },
+  {
+   "id": "ar08",
+   "published": 2,
+   "ours": 17.6
+  },
+  {
+   "id": "fra01",
+   "published": 2,
+   "ours": 21.1
+  },
+  {
+   "id": "fra02",
+   "published": 2,
+   "ours": 20.8
+  },
+  {
+   "id": "fra03",
+   "published": 10,
+   "ours": 10.6
+  },
+  {
+   "id": "pns01",
+   "published": 18,
+   "ours": 18.4
+  },
+  {
+   "id": "pns02",
+   "published": 4,
+   "ours": 14.3
+  },
+  {
+   "id": "007",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "pns03",
+   "published": 22,
+   "ours": 22.1
+  },
+  {
+   "id": "pns04",
+   "published": 12,
+   "ours": 11.5
+  },
+  {
+   "id": "cr01",
+   "published": 17,
+   "ours": 16.9
+  },
+  {
+   "id": "cr02",
+   "published": 4,
+   "ours": 21.2
+  },
+  {
+   "id": "cr03",
+   "published": 8,
+   "ours": 10.4
+  },
+  {
+   "id": "cr04",
+   "published": 1,
+   "ours": 11.2
+  },
+  {
+   "id": "cre01",
+   "published": 30,
+   "ours": 31.0
+  },
+  {
+   "id": "cre02",
+   "published": 20,
+   "ours": 20.1
+  },
+  {
+   "id": "dgr201",
+   "published": 20,
+   "ours": 20.5
+  },
+  {
+   "id": "dgr101",
+   "published": 18,
+   "ours": 18.1
+  },
+  {
+   "id": "011",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "dgr102",
+   "published": 2,
+   "ours": 10.6
+  },
+  {
+   "id": "dgr103",
+   "published": 11,
+   "ours": 10.8
+  },
+  {
+   "id": "dgr104",
+   "published": 9,
+   "ours": 9.8
+  },
+  {
+   "id": "dgr202",
+   "published": 15,
+   "ours": 14.7
+  },
+  {
+   "id": "dgr203",
+   "published": 18,
+   "ours": 18.5
+  },
+  {
+   "id": "dgr204",
+   "published": 19,
+   "ours": 18.8
+  },
+  {
+   "id": "dgkm01",
+   "published": 21,
+   "ours": 20.8
+  },
+  {
+   "id": "dgkm-k2023",
+   "published": 23,
+   "ours": 22.0
+  },
+  {
+   "id": "dgkm02",
+   "published": 25,
+   "ours": 24.4
+  },
+  {
+   "id": "dgkm03",
+   "published": 16,
+   "ours": 16.6
+  },
+  {
+   "id": "hw01",
+   "published": 25,
+   "ours": 25.3
+  },
+  {
+   "id": "hw02",
+   "published": 13,
+   "ours": 13.0
+  },
+  {
+   "id": "hw03",
+   "published": 13,
+   "ours": 13.8
+  },
+  {
+   "id": "hw04",
+   "published": 3,
+   "ours": 19.2
+  },
+  {
+   "id": "hw05",
+   "published": 14,
+   "ours": 14.4
+  },
+  {
+   "id": "hw06",
+   "published": 30,
+   "ours": 31.0
+  },
+  {
+   "id": "hw-k2023",
+   "published": 30,
+   "ours": 31.0
+  },
+  {
+   "id": "hw07",
+   "published": 30,
+   "ours": 31.0
+  },
+  {
+   "id": "hw08",
+   "published": 15,
+   "ours": 15.2
+  },
+  {
+   "id": "cre03",
+   "published": 18,
+   "ours": 18.8
+  },
+  {
+   "id": "pns05",
+   "published": 18,
+   "ours": 18.3
+  },
+  {
+   "id": "cre04",
+   "published": 19,
+   "ours": 19.1
+  },
+  {
+   "id": "cr05",
+   "published": 18,
+   "ours": 18.3
+  },
+  {
+   "id": "cr06",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "cr07",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "001",
+   "published": 31,
+   "ours": 31.0
+  },
+  {
+   "id": "pcb01",
+   "published": 15,
+   "ours": 13.4
+  },
+  {
+   "id": "pcb02",
+   "published": 8,
+   "ours": 7.9
+  },
+  {
+   "id": "pcb03",
+   "published": 13,
+   "ours": 13.3
+  },
+  {
+   "id": "pcb04",
+   "published": 14,
+   "ours": 14.3
+  },
+  {
+   "id": "pcb05",
+   "published": 15,
+   "ours": 15.7
+  },
+  {
+   "id": "sp01",
+   "published": 19,
+   "ours": 19.0
+  },
+  {
+   "id": "sp02",
+   "published": 3,
+   "ours": 9.5
+  },
+  {
+   "id": "sp03",
+   "published": 10,
+   "ours": 10.8
+  },
+  {
+   "id": "sp04",
+   "published": 12,
+   "ours": 11.8
+  },
+  {
+   "id": "sp05",
+   "published": 13,
+   "ours": 13.9
+  },
+  {
+   "id": "sp06",
+   "published": 20,
+   "ours": 21.8
+  },
+  {
+   "id": "sp07",
+   "published": 21,
+   "ours": 21.9
+  },
+  {
+   "id": "sp08",
+   "published": 11,
+   "ours": 11.7
+  },
+  {
+   "id": "sp09",
+   "published": 20,
+   "ours": 20.0
+  },
+  {
+   "id": "sp10",
+   "published": 17,
+   "ours": 17.0
+  },
+  {
+   "id": "sp11",
+   "published": 18,
+   "ours": 18.2
+  },
+  {
+   "id": "dgr2-k2023",
+   "published": 20,
+   "ours": 19.9
+  },
+  {
+   "id": "ar09",
+   "published": 4,
+   "ours": 11.2
+  },
+  {
+   "id": "ar10",
+   "published": 1,
+   "ours": 12.1
+  },
+  {
+   "id": "cr08",
+   "published": 7,
+   "ours": 7.5
+  },
+  {
+   "id": "cre05",
+   "published": 10,
+   "ours": 10.2
+  },
+  {
+   "id": "cre06",
+   "published": 2,
+   "ours": 8.2
+  },
+  {
+   "id": "dgkm04",
+   "published": 2,
+   "ours": 9.6
+  },
+  {
+   "id": "dgkm05",
+   "published": 9,
+   "ours": 9.9
+  },
+  {
+   "id": "dgkm06",
+   "published": 7,
+   "ours": 7.1
+  },
+  {
+   "id": "dgr105",
+   "published": 6,
+   "ours": 6.5
+  },
+  {
+   "id": "dgr205",
+   "published": 8,
+   "ours": 12.1
+  },
+  {
+   "id": "dgr206",
+   "published": 11,
+   "ours": 9.1
+  },
+  {
+   "id": "fra04",
+   "published": 8,
+   "ours": 8.2
+  },
+  {
+   "id": "fra05",
+   "published": 7,
+   "ours": 7.7
+  },
+  {
+   "id": "fra06",
+   "published": 2,
+   "ours": 9.5
+  },
+  {
+   "id": "fra07",
+   "published": 12,
+   "ours": 12.4
+  },
+  {
+   "id": "fra08",
+   "published": 7,
+   "ours": 12.6
+  },
+  {
+   "id": "hw09",
+   "published": 11,
+   "ours": 11.4
+  },
+  {
+   "id": "hw10",
+   "published": 1,
+   "ours": 6.2
+  },
+  {
+   "id": "mma04",
+   "published": 10,
+   "ours": 10.3
+  },
+  {
+   "id": "mmo07",
+   "published": 0,
+   "ours": 6.9
+  },
+  {
+   "id": "mmo08",
+   "published": 0,
+   "ours": 9.7
+  },
+  {
+   "id": "mmo09",
+   "published": 0,
+   "ours": 24.6
+  },
+  {
+   "id": "nr208",
+   "published": 3,
+   "ours": 12.1
+  },
+  {
+   "id": "mmo10",
+   "published": 0,
+   "ours": 12.5
+  },
+  {
+   "id": "mmp01",
+   "published": 6,
+   "ours": 9.3
+  },
+  {
+   "id": "mmp02",
+   "published": 6,
+   "ours": 10.4
+  },
+  {
+   "id": "mmp03",
+   "published": 1,
+   "ours": 8.2
+  },
+  {
+   "id": "mmp04",
+   "published": 8,
+   "ours": 9.0
+  },
+  {
+   "id": "mmp05",
+   "published": 3,
+   "ours": 9.2
+  },
+  {
+   "id": "mmp06",
+   "published": 3,
+   "ours": 8.2
+  },
+  {
+   "id": "mmp07",
+   "published": 4,
+   "ours": 8.9
+  },
+  {
+   "id": "mmp08",
+   "published": 5,
+   "ours": 10.7
+  },
+  {
+   "id": "mmp09",
+   "published": 4,
+   "ours": 8.7
+  },
+  {
+   "id": "mmp10",
+   "published": 7,
+   "ours": 9.8
+  },
+  {
+   "id": "mmp11",
+   "published": 6,
+   "ours": 11.2
+  }
+ ]
+}

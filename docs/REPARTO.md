@@ -17,6 +17,10 @@ comprueba, los errores de la IA pasan sin que nadie los vea.
 | **Juan y Luna** | Parámetros, sus propios datos de Horizons, predicciones de sentido físico, ejecutar e interpretar el notebook, visto bueno en los puntos de control, tabla de validación, escenario, textos y pitch |
 | **Angela** | La web, desde el principio con datos de prueba según el contrato de datos |
 
+Luna propone el mismo reparto con más detalle (Juan: física, Horizons y la capa
+DSN de Madrid; Luna: `sites.json`, fuentes LOLA, narrativa y validación). Está
+en [`PROPUESTA-LUNA.md`](PROPUESTA-LUNA.md).
+
 ⚠️ **Juan Bautista es el cuello de botella.** Respetar los puntos de decisión
 del plan y el orden de recorte del alcance.
 

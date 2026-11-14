@@ -5,8 +5,10 @@ Fuente de verdad del hackathon. Sale de tres fuentes:
 - **Las diapositivas** de la presentación del evento local (fotos del
   13‑nov‑2026 en [`briefing/`](briefing/)).
 - **Las dos guías oficiales para *local leads***, «Judging & Awards» y
-  «Project Submission Guide» (en [`organizacion/`](organizacion/), fuera de
-  git porque son «LOCAL LEADS ONLY»). **Si algo choca con las diapositivas,
+  «Project Submission Guide» (en [`organizacion/`](organizacion/); esas dos
+  versiones están fuera de git porque son «LOCAL LEADS ONLY». Las versiones
+  públicas de la web, en español, sí están en el repo, igual que las FAQ y la
+  guía de formación de equipos). **Si algo choca con las diapositivas,
   mandan las guías.**
 - La información pública de NASA Space Apps.
 
@@ -58,6 +60,8 @@ Y además:
 | ✅ | **Los 14 retos** con nivel y tema; enunciados y datos de 13 ([`RETOS.md`](RETOS.md)). Falta «Abandoned but not Forgotten» |
 | ✅ | Equipo: Juan, Luna (aeronáutica), Angela Barrio y Juan Bautista (software) |
 | ✅ | **Reto decidido (14‑nov): Lunar Landing Site Navigator** ([enunciado](retos/lunar-landing-site-navigator.md)). Plan B: Space Mission Design Game. Comparación en [`RETOS.md`](RETOS.md#los-tres-candidatos-del-equipo) |
+| ✅ | **Fusión de equipos (14‑nov):** «TARDIS» (Angela y Juan Bautista) y «Piratas del Match» (Juan y Luna) pasan a ser un solo equipo de cuatro |
+| ⬜ | Nombre del equipo fusionado y qué página de equipo se queda |
 | ⬜ | Team Owner |
 | ✅ | Ganadores de 2018–2025 y qué tienen en común ([`GANADORES.md`](GANADORES.md)) |
 
@@ -90,6 +94,10 @@ Evento local: **Madrid**. Cuatro personas, dentro del máximo de 6:
 
 Hay **dos Juanes**: en estos documentos, «Juan» es el de aeronáutica y «Juan Bautista», el de software.
 
+**Viene de fusionar dos equipos (14‑nov):** «TARDIS», el de software (Angela
+y Juan Bautista), y «Piratas del Match», el de aeronáutica (Juan y Luna). ⚠️
+Falta decidir el nombre y con qué página de equipo se sigue.
+
 | Quién | Perfil |
 |---|---|
 | Juan | Ingeniería aeronáutica, 4.º curso |
@@ -113,6 +121,11 @@ Antes del sábado a las 9:30:
 
 - [ ] Los cuatro con cuenta en spaceappschallenge.org, registrados en el
   evento de **Madrid** y **confirmados** (no en lista de espera).
+- [ ] **Fusión:** elegir con qué página de equipo se sigue (TARDIS o Piratas
+  del Match) y su nombre. Los dos del otro equipo salen de él y piden unirse.
+  Cada persona solo puede estar en un equipo. ⚠️ Si se borra la página que
+  sobra, se borra lo que tenga escrito en *Project* y *Details*: copiarlo
+  antes.
 - [ ] Decidir quién es el **Team Owner** y crear el equipo.
 - [ ] Los otros tres piden unirse y el Team Owner los acepta.
 - [ ] Contacto del equipo en la pestaña *About*.
@@ -347,6 +360,24 @@ alcance pero bien terminado, web interactiva o juego, y una presentación muy
 cuidada. Madrid ha dado un ganador global, **Galaxy Quest (2018, Best Use of
 Science)**, un juego de ciencia ciudadana con imágenes del Hubble: es el
 ejemplo que pusieron en las diapositivas.
+
+## Global Offers: recursos gratis para participantes
+
+Llegaron por mensaje del GO Team al empezar el hackathon (cuenta de Space Apps,
+página *Messages*). Son **opcionales**; alguna pide tarjeta para verificar, pero
+no hay que comprar nada.
+
+| Oferta | Qué da | ¿Nos sirve? |
+|---|---|---|
+| GoDaddy | Dominio y un año de hosting | No: ya está `nasaspaceapps.volmer.es` |
+| Google Cloud | GCP, Firebase, Google Maps API | No hace falta: la web es estática |
+| Meteomatics | API de datos meteorológicos y climáticos | No: son datos de la Tierra |
+| Microsoft | Azure, Planetary Computer, Copilot, GitHub Copilot, Teams | Poco: Planetary Computer es de la Tierra. GitHub Copilot, si alguien lo quiere |
+| Miro | Pizarra colaborativa y plantillas de Space Apps | **Sí**, para el pitch y el reparto entre los cuatro |
+
+Las guías de participante (*Project Submission Guide*, *Judging and Awards
+Guide*), los vídeos «Navigating the Hackathon», las FAQ y **Space Apps Connect**
+(avisos y preguntas a Local Leads y expertos) están en la web oficial.
 
 ## Estrategia: IA y planes de recuperación (propuesta de Claude, pendiente del equipo)
 

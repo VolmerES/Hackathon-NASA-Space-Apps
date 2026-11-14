@@ -34,6 +34,7 @@ docs/
   REPARTO.md      Qué hace cada uno, con entregables y horas
   ALCANCE.md      Qué entra en el MVP, qué si da tiempo y qué se queda fuera
   STACK.md        Plataforma (web), tecnologías, estructura del repo y contrato de datos
+  PROPUESTA-LUNA.md  Documento de Luna: métricas horarias, 14 meses, estación de Madrid
   PLAN.md         Cómo lo resolvemos: método, tecnologías, entregables, reparto y calendario
   HACKATHON.md    Diario: cómo avanzó
   IA.md           Registro de uso de IA, obligatorio en Space Apps

@@ -56,6 +56,34 @@ como textura en el 3D:** llevan las sombras del momento en que se tomaron y
 chocarían con nuestra iluminación calculada. Relieve gris iluminado solo por
 nuestro Sol.
 
+## Lo que usa la web ahora (datos reales, 14‑nov)
+
+| Qué | Fuente | Script | Fichero en la web |
+|---|---|---|---|
+| Puntos subsolar y subterrestre y distancia Tierra‑Luna, cada hora del 1‑dic‑2026 al 1‑feb‑2028 | **NASA JPL Horizons** (DE441), observador en el geocentro, objetivo la Luna, cantidades 14, 15 y 20 | `web/scripts/fetch_subpoints.py` | `public/data/subpoints.json` |
+| Sitios candidatos | **Wueller et al. 2026** (Zenodo, CC BY 4.0): 130 sitios en 16 regiones de Artemis, con sus días seguidos de luz publicados | `web/scripts/build_catalogue.py` | `public/data/sites.json` |
+| Horizonte de cada sitio (720 acimuts, hasta 150 km, curvatura, 2 m de altura) | **LOLA** `LDEM_80S_80M` (80 m/px, nodo LOLA del PDS) y `ldem_16` (SVS) más allá de 80°S | `web/scripts/build_catalogue.py` | `public/data/horizons.json` |
+| Elevación de la Luna sobre Robledo de Chavela | **NASA JPL Horizons** | `web/scripts/fetch_madrid.py` | `public/data/madrid.json` |
+
+El navegador calcula, para cualquier punto y hora, el acimut y la elevación
+del Sol y de la Tierra (con el paralaje de la Tierra) y los compara con el
+horizonte.
+
+**Validación:**
+- **Frente a JPL Horizons sitio a sitio** (`fetch_horizons.py`, seis sitios,
+  10.249 horas): error máximo de **0,0065°**. El criterio del MVP era menos
+  de 0,1°. Las series de referencia están en `web/data-raw/horizons-per-site/`.
+- **Frente a Wueller et al. 2026,** días seguidos de luz en el verano austral
+  de 2027 (latitud subsolar ≤ −1,5°, del 14‑oct al 14‑nov) en los 130
+  sitios: diferencia mediana de **1,0 días**, correlación **0,79** y mismo
+  resultado en el umbral de 10 días en el **68 %**. Coinciden exactos los
+  casos destacados del artículo: Malapert K2023 (31 frente a 31), CR06 y CR07
+  (31 frente a 31) y PNS01 (18 frente a 18,4). Con el relieve de 1,9 km la
+  diferencia mediana era de 5,1 días.
+- ⚠️ **Discrepancia abierta:** una docena de sitios en los que el estudio da
+  unos 2 días y nosotros unos 18 (AR02, AR03, CR02, FRA01…). Hay que
+  revisarla con el relieve de 5 m (PGDA 78) o preguntando a los autores.
+
 ## El hallazgo: productos de la NASA que encajan de lleno
 
 Del laboratorio de Geodesia Planetaria de Goddard (**PGDA**), el equipo de LOLA.
@@ -105,6 +133,147 @@ NASA** y resuelven las dos piezas más difíciles del plan.
 - ⚠️ Faltan por localizar en esa página los enlaces a los **mapas de elevación
   regionales** (240, 120 y 60 m/píxel), que necesitamos para el horizonte
   lejano.
+
+### 2 bis. Wueller et al. (2026): 130 sitios candidatos y su iluminación
+
+Lo encontró Luna. Artículo de acceso abierto (CC BY 4.0):
+
+> Wueller, L., Berger, L. M., Christopher, H., Sugimoto, K., Thaker, A. D.,
+> Carton, L., Jo, W., Lee, S., Pedrelli, R., Sanchez, P., y Kring, D. A.
+> (2026). *Assessing Potential Landing Sites With Favorable Illumination and
+> Accessible, Potentially Volatile‐Rich Permanently Shadowed Regions Within
+> Artemis Candidate Landing Regions.* JGR Planets, 131(3), e2025JE009434.
+> <https://doi.org/10.1029/2025JE009434>
+
+Lo que dice el resumen:
+
+- **130 sitios candidatos** dentro de las regiones de Artemis que cumplen los
+  requisitos del Human Landing System y tienen una región en sombra
+  permanente (PSR) a **2 km o menos**, el radio al que llegan los astronautas
+  a pie, sin rover.
+- Iluminación modelada en los **veranos de 2025 a 2032**, con la condición de
+  que el sitio tenga **luz durante 6,5 días**, la duración prevista de las
+  primeras misiones de Artemis en superficie.
+- **La iluminación cambia mucho entre regiones y entre años:** según el año
+  del lanzamiento, los sitios disponibles son otros. Es justo lo que enseña
+  nuestra vista de 14 meses.
+- Además estima el agua atrapada en esas PSR (temperaturas de Diviner y edad
+  de los cráteres); el 85 % de los cráteres con PSR cerca de los sitios
+  tendría menos de 1500 millones de años. Para nosotros es contexto, no
+  entra en el cálculo.
+
+**Sus datos, en Zenodo** (CC BY 4.0, [10.5281/zenodo.17084058](https://doi.org/10.5281/zenodo.17084058)):
+
+| Fichero | Tamaño | Qué tiene | Para qué nos sirve |
+|---|---|---|---|
+| `Landing_Sites.zip` | 11,9 MB | Shapefile georreferenciado de los sitios candidatos y ráster de la zona que cumple los requisitos del HLS | **Lista real de sitios para `sites.json`** (tarea de Luna) |
+| `Illumination_Modeling.zip` | 10,7 MB | Rásteres de iluminación de las 16 regiones candidatas de Artemis, veranos de 2025 a 2032 | **Segunda referencia para validar**, además de PGDA 69 |
+| `PSR_Volatile_Estimates.zip` | 44 KB | PSR accesibles en CR, CRE, dGR1 y PNS con su estimación de volátiles | Contexto, si da tiempo |
+| `Diffusion_Modeling_Crater_Ages_Soderblom.xlsx` | 20 KB | Edades de los cráteres con PSR | Contexto |
+
+**Cómo lo calculan** (texto completo en
+[`referencias/wueller-2026-artemis-landing-sites-es.pdf`](referencias/wueller-2026-artemis-landing-sites-es.pdf),
+traducción automática del navegador; secciones 2.3, 4 y apéndice A):
+
+| Qué | Ellos | Qué nos dice |
+|---|---|---|
+| Herramienta | **Lunar Quickmap TerrainShadows** (ACT), la misma Quickmap que nombra el reto | Podemos citarla y comparar con ella |
+| Relieve | 60 m/píxel para la iluminación; LDEM de LOLA a 20 m/píxel para las pendientes | Nuestro 5 m cerca y 60–240 m lejos está a la par o mejor |
+| Distancia de sombra | **150 km**: el terreno lejano tapa el Sol (desniveles de hasta 10 km) | Confirma lo que dice Luna sobre las montañas lejanas |
+| Altura del observador | **2 m** sobre el suelo, la de los primeros paneles solares verticales (Ross et al., 2023) | ⚠️ Añadir esa altura a nuestro cálculo del horizonte |
+| Paso de tiempo | 12 h | Nuestro paso horario es más fino |
+| Efemérides | **JPL DE441** | Mismas efemérides que SPICE |
+| Verano austral | Latitud subsolar ≤ −1,5° (Mahanti et al., 2024) | Criterio para marcar las mejores épocas |
+| Comunicación | Calculan Sol y, a la vez, **Sol + Tierra** (enlace directo con la Tierra, DTE) | Es nuestra métrica «Sun and Earth together» |
+| **Umbral de viabilidad** | **≥ 10 días seguidos de luz** para Artemis III (6,5 días en superficie más margen) | **Umbral con fuente para el veredicto** de la web, en lugar de uno inventado |
+| Pendiente del HLS | < 8° (ideal < 5°) y a más de 100 m de pendientes mayores (precisión de alunizaje de 100 m, 3σ) | Filtro de sitios, si añadimos sitios propios |
+
+**Resultados que sirven de referencia:**
+
+- **Varía con el año:** en el verano de 2028 ningún sitio de Amundsen Rim
+  da luz para 6,5 días; en 2030, casi todos. Mons Malapert (MMP) tiene luz
+  suficiente en 2025, 2029 y 2032, pero no en 2026, 2027 ni 2031.
+- **Sitios estables:** CR06, CR07 y 001, en el centro de Connecting Ridge,
+  tienen **≥ 16 días seguidos de luz todos los años de 2025 a 2032**. También
+  son estables las cimas, como MMA_K2023 en Mons Malapert y MMO01 y MMO02 en
+  Mons Mouton.
+- **La Tierra limita poco:** de los 130 sitios, 97 están disponibles en 2032
+  y 44 en 2031; si además se exige ver la Tierra, 86 y 34.
+- **Su recomendación** es elegir y ordenar **varios sitios según la fecha del
+  lanzamiento**, con sitios de reserva para ventanas posteriores. Es lo que
+  hace nuestra herramienta: sirve para el pitch.
+
+**Lo que falta:**
+
+- **Las tablas del PDF están incompletas:** la impresión trae solo las 13
+  primeras filas de A1 (coordenadas) y de A2 (días seguidos de luz por año).
+  La lista entera de los 130 sitios está en `Landing_Sites.zip` de Zenodo
+  (11,9 MB). ⚠️ Sin descargar.
+- **Validar contra sus días seguidos de luz** de esos 13 sitios, que ya
+  están en el PDF, y contra los rásteres de `Illumination_Modeling.zip`.
+- **Las regiones:** el artículo usa **16 regiones candidatas** de Artemis.
+  En nuestros documentos aparecen 9 y 13, así que hay que aclararlo.
+- **Citar el artículo y el dataset** en la página del proyecto si usamos sus
+  datos.
+
+### 2 ter. Kernels genéricos de SPICE (NAIF)
+
+Página «Generic Kernels» de NAIF, aportada por Luna
+([`referencias/naif-generic-kernels-es.pdf`](referencias/naif-generic-kernels-es.pdf);
+original en <https://naif.jpl.nasa.gov/naif/data_generic.html>). Son los
+kernels que no dependen de ninguna misión, justo los que usa nuestro cálculo:
+
+| Tipo | Qué es | Para qué lo usamos |
+|---|---|---|
+| SPK | Efemérides de planetas y satélites | Posición del Sol, la Tierra y la Luna (DE440/DE441) |
+| PCK | Constantes planetarias, con **versiones binarias especiales para la Tierra y la Luna** | Orientación precisa de la Luna (libración) |
+| LSK | Segundos intercalares | Convertir UTC a la escala de tiempo de SPICE |
+| FK | **Marcos de referencia de la Luna** | El sistema MOON_ME (medio Tierra), el de los mapas de LOLA |
+| SPK + FK de **estaciones terrestres** | Posición topocéntrica de algunas estaciones | **La capa de Madrid**: la elevación de la Luna vista desde Robledo (DSS‑63) sale de SPICE, sin coordenadas copiadas a mano |
+| DSK | Formas digitales de cuerpos pequeños | No lo necesitamos |
+
+La página avisa de que hay que entender de dónde sale cada kernel genérico
+antes de usarlo.
+
+**Los ficheros concretos** (índice de `generic_kernels/` consultado el 14‑nov;
+sin descargar todavía):
+
+| Para qué | Fichero | Tamaño |
+|---|---|---|
+| Efemérides | `spk/planets/de440.bsp` (o `de440s.bsp`, más pequeño) | 114 MB (31 MB) |
+| Orientación de la Luna | `pck/moon_pa_de440_200625.bpc` | 12 MB |
+| Marco lunar MOON_ME | `fk/satellites/moon_de440_250416.tf` (el readme lo empareja con el `.bpc` de arriba) | 19 KB |
+| Constantes | `pck/pck00011.tpc` y `pck/gm_de440.tpc` | 128 KB y 12 KB |
+| Segundos intercalares | `lsk/naif0012.tls` | 5 KB |
+| Estaciones terrestres | `spk/stations/earthstns_itrf93_260814.bsp` + `fk/stations/earth_topo_260814.tf`. **Incluye DSS‑63 (Madrid)**: lo dicen los comentarios del fichero (`earthstns_itrf93_260814.cmt`) | 26 KB y 68 KB |
+| Orientación de la Tierra (para la elevación desde Madrid) | `pck/earth_latest_high_prec.bpc` | 4,9 MB |
+
+Avisos de los readme: usar las versiones `260814` de los kernels de estaciones,
+porque las `260717` tenían un error en DSS‑33. El readme de `pck/` cita
+`moon_de440_220930.tf`, pero el fichero que existe y que cita el de `fk/` es
+`moon_de440_250416.tf`. También hay ya una DE442 (2025), pero nos quedamos
+con DE440 porque es la que emparejan los kernels lunares.
+
+### 2 quater. La Luna de la interfaz: CGI Moon Kit (NASA SVS)
+
+La Luna 3D que hay detrás de la web usa imágenes reales de la NASA:
+**CGI Moon Kit** del NASA Scientific Visualization Studio
+(<https://svs.gsfc.nasa.gov/4720/>). Crédito obligatorio: «NASA's Scientific
+Visualization Studio».
+
+| Fichero original | Qué es | Qué sale |
+|---|---|---|
+| `lroc_color_16bit_srgb_4k.tif` (59 MB) | Mosaico de color de LROC (LRO), versión 2025 | `web/public/moon/moon_color_{2k,4k}.jpg` |
+| `ldem_16_uint.tif` (31,7 MB) | Relieve LOLA, 16 px/grado, medios metros sobre 1727,4 km | Mapas de normales `moon_normal_{2k,4k}.jpg` y el casquete polar |
+
+- Scripts: `web/scripts/moon_textures.py` (esfera) y
+  `web/scripts/moon_polar_cap.py` (casquete polar sur en proyección
+  azimutal equidistante hasta 25° del polo, sin el estiramiento del mapa
+  equirectangular en el polo).
+- Según la página, los mapas de color están «optimizados para la estética,
+  no para la ciencia». Por eso **solo se usan para dibujar**: ninguna cifra
+  de la herramienta sale de ellos.
+- Los ficheros originales no van al repo: se bajan de la URL de arriba.
 
 ### 3. Otros, por si hacen falta
 

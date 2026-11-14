@@ -91,6 +91,7 @@ consideraciones del [enunciado](retos/lunar-landing-site-navigator.md).
 1. **Este alcance**, cerrado entre los cuatro.
 2. **La lista de sitios** con coordenadas (Juan y Luna, [`REPARTO.md`](REPARTO.md)).
 3. **El rango de fechas** y el paso de tiempo: propuesta 2026–2028 cada 10 min.
+   Luna propone **cada hora durante 14 meses** ([`PROPUESTA-LUNA.md`](PROPUESTA-LUNA.md)).
 4. **El modelo de ingeniería** y los umbrales del semáforo (Luna).
 5. **El contrato de datos:** la forma exacta de los JSON que genera Python y lee
    la web. **Es lo más urgente**: con él, Angela trabaja desde las 10:30 con

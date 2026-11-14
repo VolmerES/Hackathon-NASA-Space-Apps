@@ -51,7 +51,27 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 
 ### 14‑nov · sábado
 
-*(rellenar durante el día)*
+| Qué | Qué hizo la IA | Qué hizo el equipo | Comprobado |
+|---|---|---|---|
+| Propuesta de Luna (`PROPUESTA-LUNA.md`) | La pasó a Markdown, la cruzó con el plan y señaló las diferencias | **El documento y las ideas son de Luna** (métricas horarias, 14 meses, aviso de límites, capa de Madrid) | — |
+| Web bilingüe | Tradujo la interfaz al español con selector de idioma; inglés por defecto | **Juan Bautista pidió entregas en inglés y todo también en español** | ⚠️ Revisar la traducción |
+| Web: métricas de Luna | Programó «Sun and Earth together», el aviso de límites, la vista de 14 meses, el CSV horario y la capa de Robledo (con datos de demostración) | Ideas de Luna | Compila; capturas revisadas. ⚠️ Umbral de 10° sin confirmar |
+| Despliegue | Contenedor nginx en el VPS detrás de Caddy, y registro DNS en Hostinger | Juan Bautista lo pidió | Ver `TAREAS.md` |
+| Luna 3D con datos de la NASA | Descargó la CGI Moon Kit (SVS), generó las texturas y el casquete polar con LOLA, y programó la escena con three.js: splash, acercamiento al polo y sitios marcados sobre la Luna | **Juan Bautista dio la idea** de una Luna realista girando de fondo, la transición por ampliación y marcar los sitios al elegirlos | Capturas revisadas. Solo es imagen: no da cifras |
+| Flujo guiado | Rediseñó la interfaz para que primero se busque un sitio, luego se vea la respuesta y solo si se quiere se abran los paneles del cielo, las mejores fechas y la comparación | **La idea es de Juan Bautista** («que un tonto pueda usarlo») | Capturas revisadas en escritorio y móvil |
+| Logo e identidad | Diseñó el símbolo (borde lunar con el Sol rasante), el logotipo y el favicon | Juan Bautista lo pidió | — |
+| Datos reales | Consultó JPL Horizons, descargó y leyó el shapefile de Wueller (Zenodo) y el relieve LOLA de 80 m (PDS), trazó los horizontes y conectó todo a la web | Juan Bautista pidió que la respuesta fuera de verdad | Frente a Horizons: 0,0065°. Frente a Wueller: diferencia mediana de 1 día. ⚠️ Pendiente de que Juan y Luna lo revisen |
+| Splash con servicios reales, mapa de calor, street view, alternativa sin 3D | Programados y probados en un navegador real automatizado, también con WebGL desactivado | Ideas de Juan Bautista | Pruebas automáticas sin errores en escritorio y móvil |
+| Porcentajes con barra en la ficha del resultado (luz, Tierra, ambos, oscuridad) | Programado y probado en escritorio y móvil | Petición de Juan Bautista | Capturas sin errores; umbrales marcados en cada barra |
+| Ficha flotante al pasar el ratón por un sitio de la Luna 3D (línea guía, veredicto, luz, Tierra, oscuridad) | Programada y probada en escritorio pasando el ratón por puntos y etiquetas | Idea de Juan Bautista | Se abre y se cierra bien, sin errores en consola |
+| Luna más libre: zoom con rueda, pellizco y botones, giro vertical, vista de la Luna entera y botón «Polo sur» | Programado y probado en escritorio y con toques de dos dedos en móvil emulado | Idea de Juan Bautista | Zoom, giro y vuelta al polo funcionan, sin errores en consola |
+| Gráfica 2D del cielo (curvas del Sol y la Tierra sobre el relieve) fija bajo la Luna al elegir un sitio; en móvil, dentro de la ficha | Programado y probado en escritorio y móvil emulado | Idea de Juan Bautista | Capturas sin errores |
+| Favicon, iconos de app, manifiesto instalable con capturas y accesos directos, vista previa para redes, datos estructurados, robots y sitemap, cabeceras de seguridad, caché corregida y modo sin conexión | Iconos y vista previa generados por código a partir del logo; capturas reales de la app | Petición de Juan Bautista | Cabeceras comprobadas en el servidor; la web abre sin red tras una visita |
+| Todo plegable con botones flotantes (ficha, curvas del cielo, «¿Cuándo?») y botón de cerrar/plegar único, grande y con borde | Programado y probado en escritorio y móvil emulado | Petición de Juan Bautista | Pliega y despliega bien; panel del móvil opaco |
+| Botones «Cambiar de sitio» y «Volver» con el mismo estilo que cerrar: 44 px, borde y flecha | Programado y probado en escritorio | Petición de Juan Bautista | Capturas sin errores |
+| Resumen por región en la lista («Sirven 2 de sus 5 sitios») con botón al mejor sitio | Programado tras la primera prueba en un Android real (el autor dudó con Malapert) y probado en móvil emulado | Primera prueba real: Juan Bautista, Android | El botón lleva a Malapert Massif 03, «Puedes alunizar aquí» |
+| Street view nuevo: picado de la cámara sobre la Luna 3D hasta el sitio y vista a pantalla completa con relieve real (LOLA) y textura del polo (LROC), Sol con halo, Tierra con su fase real, zoom y arrastre suave | Programado y probado en navegador (Malapert K2023: Sol visible sobre un horizonte negativo, Tierra con fase) | Petición de Juan Bautista | Corregidos el horizonte negativo, una costura al norte y un intervalo de tiempo negativo |
+| Gráfica 2D rehecha a mano en SVG (cielo con estrellas, relieve con grano, recorridos con brillo, iconos de Sol y Tierra con fase, guía al pasar el ratón) e inercia en el giro de la Luna con ratón y dedo | Programado y probado en escritorio y móvil emulado | Petición de Juan Bautista | Capturas sin errores; giro con inercia medido |
 
 ### 15‑nov · domingo
 

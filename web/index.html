@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Lunar Landing — can you land there?</title>
+    <meta name="description" content="Pick a landing site at the Moon's south pole and see, from NASA data, whether it gets sunlight for power and a direct line to Earth during your stay. 130 Artemis candidate sites, in English and Spanish." />
+    <meta name="application-name" content="Lunar Landing" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://nasaspaceapps.volmer.es/" />
+
+    <!-- Icons -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Installed on a phone home screen -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Lunar Landing" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Link previews (Open Graph, X/Twitter) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lunar Landing" />
+    <meta property="og:url" content="https://nasaspaceapps.volmer.es/" />
+    <meta property="og:title" content="Lunar Landing — can you land there?" />
+    <meta property="og:description" content="Sunlight and contact with Earth for 130 candidate sites at the Moon's south pole, from NASA data. Made for the NASA International Space Apps Challenge 2026." />
+    <meta property="og:image" content="https://nasaspaceapps.volmer.es/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Lunar Landing: the app's mark and the question 'Can you land there?' next to the lunar surface" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lunar Landing — can you land there?" />
+    <meta name="twitter:description" content="Sunlight and contact with Earth for 130 candidate sites at the Moon's south pole, from NASA data." />
+    <meta name="twitter:image" content="https://nasaspaceapps.volmer.es/og-image.png" />
+    <meta name="twitter:image:alt" content="Lunar Landing: the app's mark and the question 'Can you land there?' next to the lunar surface" />
+
+    <!-- What this is, for search engines -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Lunar Landing",
+        "url": "https://nasaspaceapps.volmer.es/",
+        "description": "Pick a landing site at the Moon's south pole and see whether it gets sunlight and a direct line to Earth during your stay.",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any (web browser)",
+        "inLanguage": ["en", "es"],
+        "isAccessibleForFree": true,
+        "image": "https://nasaspaceapps.volmer.es/og-image.png",
+        "screenshot": "https://nasaspaceapps.volmer.es/screenshot-wide.png",
+        "about": { "@type": "Place", "name": "Lunar south pole" },
+        "citation": [
+          "https://doi.org/10.1029/2025JE009434",
+          "https://doi.org/10.5281/zenodo.17084058",
+          "https://ssd.jpl.nasa.gov/horizons/",
+          "https://svs.gsfc.nasa.gov/4720"
+        ],
+        "isPartOf": { "@type": "Event", "name": "NASA International Space Apps Challenge 2026", "url": "https://www.spaceappschallenge.org/" }
+      }
+    </script>
+  </head>
+  <body>
+    <noscript>
+      <p style="font-family: system-ui, sans-serif; color: #eef0f3; background: #000; margin: 0; padding: 24px">
+        Lunar Landing needs JavaScript to compute sunlight and Earth contact on the Moon. Please turn it on.
+        <br />Lunar Landing necesita JavaScript para calcular la luz y el contacto con la Tierra en la Luna. Actívalo, por favor.
+      </p>
+    </noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

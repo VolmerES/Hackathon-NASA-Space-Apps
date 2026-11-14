@@ -1,0 +1,286 @@
+@import "@fontsource-variable/public-sans";
+@import "@fontsource-variable/archivo/wdth.css";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Public Sans Variable", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Archivo Variable", "Public Sans Variable", Arial, sans-serif;
+
+  /* Dark, mission-console palette: the app sits over the live Moon. */
+  --color-ink: #eef0f3;
+  --color-muted: #a3acb8;
+  --color-rule: #2a3039;
+  --color-paper: #0b0d10;
+  --color-wash: #161a20;
+
+  --color-nasa-blue: #4c8dff;
+  --color-nasa-red: #ff5a6a;
+
+  --color-sun: #f2b705;
+  --color-earth: #4f97ea;
+  --color-regolith: #8a8d91;
+
+  --color-ok: #3fcf8e;
+  --color-warn: #f2a93b;
+  --color-bad: #ff5a6a;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: #000;
+  color: var(--color-ink);
+}
+
+/* Frosted panel over the Moon. */
+.glass {
+  background: rgba(10, 12, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+/* Full-screen panels on a phone: solid, so nothing from behind shows through. */
+@media (max-width: 1023.98px) {
+  .glass.solid-phone { background: #05070a; backdrop-filter: none; -webkit-backdrop-filter: none }
+}
+
+/* Site labels laid over the 3D Moon. */
+.moon-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: -14px 0 0 14px;
+  padding: 6px 10px;
+  min-height: 32px;
+  font: 600 13px/1 var(--font-sans);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.25s, background 0.2s, color 0.2s;
+  backdrop-filter: blur(6px);
+}
+.moon-label:hover { background: rgba(255, 255, 255, 0.15) }
+.moon-label[data-on="true"] { color: #000; background: #f2b705; border-color: #f2b705 }
+@media (pointer: coarse) { .moon-label { min-height: 40px; padding: 10px 12px } }
+
+/* View controls over the Moon: zoom in, zoom out, back to the south pole. Anchored bottom-right of the free frame. */
+.moon-controls {
+  position: fixed;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  transform: translate(-100%, -100%);
+  transition: opacity 0.4s;
+}
+.moon-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  height: 44px;
+  white-space: nowrap;
+  padding: 0 12px;
+  color: #fff;
+  font: 600 13px/1 var(--font-sans);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.moon-controls button:hover { background: rgba(255, 255, 255, 0.15) }
+.moon-controls button:active { transform: scale(0.96) }
+/* Once the view has moved away, the way back stands out in Sun yellow. */
+.moon-controls[data-moved="true"] .moon-recenter { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
+
+/* Hover callout: a leader line from the dot to a small HUD card, like a destination on a star map. */
+.moon-callout {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.moon-callout-lead {
+  position: absolute;
+  left: -4px;
+  top: -60px;
+  width: 68px;
+  height: 64px;
+  overflow: visible;
+  transform-origin: 4px 60px;
+}
+.moon-callout[data-side="left"] .moon-callout-lead { transform: scaleX(-1) }
+.moon-callout[data-drop="down"] .moon-callout-lead { transform: scaleY(-1) }
+.moon-callout[data-side="left"][data-drop="down"] .moon-callout-lead { transform: scale(-1, -1) }
+.moon-callout-lead path { stroke-dasharray: 1; stroke-dashoffset: 0; animation: callout-draw 0.22s ease-out both }
+.moon-callout-card {
+  position: absolute;
+  left: 64px;
+  top: -44px;
+  transform: translateY(-100%);
+  width: 248px;
+  padding: 12px 14px 11px;
+  color: var(--color-ink);
+  background: rgba(8, 10, 14, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  animation: callout-open 0.2s 0.12s ease-out both;
+}
+.moon-callout[data-side="left"] .moon-callout-card { left: auto; right: 64px }
+.moon-callout[data-drop="down"] .moon-callout-card { transform: none; top: 44px }
+/* Corner brackets in Sun yellow. */
+.moon-callout-card::before,
+.moon-callout-card::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 0 solid var(--color-sun);
+}
+.moon-callout-card::before { left: -1px; top: -1px; border-left-width: 2px; border-top-width: 2px }
+.moon-callout-card::after { right: -1px; bottom: -1px; border-right-width: 2px; border-bottom-width: 2px }
+@keyframes callout-draw { from { stroke-dashoffset: 1 } }
+@keyframes callout-open { from { opacity: 0; clip-path: inset(0 100% 0 0) } to { opacity: 1; clip-path: inset(0 0 0 0) } }
+@media (prefers-reduced-motion: reduce) {
+  .moon-callout-lead path, .moon-callout-card { animation: none }
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-nasa-blue);
+  outline-offset: 2px;
+}
+
+input[type="range"] {
+  accent-color: var(--color-nasa-blue);
+}
+
+/* Wordmark: wide, tracked capitals. */
+.wordmark {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+}
+
+/* Splash and loading motion: short, eased, no bounce. Off when the system asks for less motion. */
+@property --sp-pct {
+  syntax: "<integer>";
+  initial-value: 0;
+  inherits: false;
+}
+@keyframes sp-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sp-rise { from { opacity: 0; transform: translateY(80px) } to { opacity: 1; transform: none } }
+@keyframes sp-track { from { opacity: 0; letter-spacing: 0.7em } to { opacity: 1; letter-spacing: 0.28em } }
+@keyframes sp-up { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+@keyframes sp-draw { from { stroke-dashoffset: 1100 } to { stroke-dashoffset: 0 } }
+@keyframes sp-lit { from { width: 0 } to { width: 1000px } }
+@keyframes sp-sun { from { cx: 0 } to { cx: 1000px } }
+@keyframes sp-count { from { --sp-pct: 0 } to { --sp-pct: 100 } }
+@keyframes sp-glow { 0%, 100% { opacity: 0.55 } 50% { opacity: 1 } }
+@keyframes sp-twinkle { 0%, 100% { opacity: 0.25 } 50% { opacity: 0.9 } }
+@keyframes sp-out { to { opacity: 0; visibility: hidden } }
+@keyframes sheen { from { background-position: -480px 0 } to { background-position: 480px 0 } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98) } to { opacity: 1; transform: none } }
+
+.sp-stars { animation: sp-fade 1.6s ease-out both }
+.sp-moon { animation: sp-rise 1.8s cubic-bezier(0.16, 1, 0.3, 1) both }
+.sp-word { animation: sp-track 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both }
+.sp-sub { animation: sp-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both }
+.sp-meta { animation: sp-fade 0.8s ease-out 0.5s both }
+.sp-ui { animation: sp-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both }
+.sp-ridge { stroke-dasharray: 1100; animation: sp-draw 1.2s cubic-bezier(0.65, 0, 0.35, 1) 0.9s both }
+.sp-lit { animation: sp-lit 1.4s cubic-bezier(0.45, 0, 0.25, 1) 1.2s both }
+.sp-sun { animation: sp-sun 1.4s cubic-bezier(0.45, 0, 0.25, 1) 1.2s both, sp-fade 0.4s ease-out 1.1s both }
+.sp-pct { animation: sp-count 1.4s cubic-bezier(0.45, 0, 0.25, 1) 1.2s both; counter-reset: sp var(--sp-pct) }
+.sp-pct::before { content: counter(sp) }
+.sp-glow { animation: sp-glow 2.4s ease-in-out infinite }
+.sp-twinkle { animation: sp-twinkle 3.2s ease-in-out infinite }
+.sp-leave { animation: sp-out 0.55s cubic-bezier(0.7, 0, 0.84, 0) both }
+@keyframes sp-push { to { transform: scale(1.06) translateY(-1.5%) } }
+.sp-leave .sp-moon { animation: sp-push 0.55s cubic-bezier(0.7, 0, 0.84, 0) both }
+@keyframes sp-sheen { from { background-position: 100% 0 } to { background-position: 0% 0 } }
+.sp-sheen {
+  background: linear-gradient(100deg, #fff 0%, #fff 40%, #f6e3a1 50%, #fff 60%, #fff 100%) 100% 0 / 250% 100% no-repeat;
+  white-space: nowrap;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sp-track 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both, sp-sheen 1.6s ease-in-out 1.3s both;
+}
+@keyframes sp-earth { from { cy: 96px } to { cy: 58px } }
+.sp-earth { animation: sp-earth 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.55s both }
+@keyframes sp-step1 { 0%, 30% { color: #fff } 36%, 100% { color: transparent } }
+@keyframes sp-step2 { 0%, 30% { color: transparent } 36%, 64% { color: #fff } 70%, 100% { color: transparent } }
+@keyframes sp-step3 { 0%, 64% { color: transparent } 70%, 100% { color: #fff } }
+.sp-s1 { animation: sp-step1 1.4s linear 1.2s both }
+@keyframes sp-g1 { 0% { color: #f2b705 } 33%, 100% { color: #fff } }
+@keyframes sp-g2 { 0%, 33% { color: #8a929c } 34%, 66% { color: #f2b705 } 67%, 100% { color: #fff } }
+@keyframes sp-g3 { 0%, 66% { color: #8a929c } 67%, 100% { color: #f2b705 } }
+.sp-g1 { animation: sp-g1 1.4s linear 1.2s both }
+.sp-g2 { animation: sp-g2 1.4s linear 1.2s both }
+.sp-g3 { animation: sp-g3 1.4s linear 1.2s both }
+.sp-s2 { animation: sp-step2 1.4s linear 1.2s both }
+.sp-s3 { animation: sp-step3 1.4s linear 1.2s both }
+.skeleton {
+  background: linear-gradient(90deg, #eceef1 0, #f6f7f9 50%, #eceef1 100%);
+  background-size: 960px 100%;
+  animation: sheen 1.6s linear infinite;
+}
+.toast-in { animation: toast-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both }
+.pop-in { animation: pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both }
+@keyframes moon-drift { from { transform: scale(1) translateY(0) } to { transform: scale(1.07) translateY(-1.5%) } }
+.moon-drift { transform-origin: 50% 100%; animation: moon-drift 40s ease-in-out infinite alternate }
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-stars, .sp-moon, .sp-word, .sp-sub, .sp-meta, .sp-ui, .sp-ridge, .sp-lit, .sp-sun, .sp-glow, .sp-twinkle,
+  .moon-drift, .skeleton, .toast-in, .pop-in, .sp-earth, .sp-s1, .sp-s2, .sp-leave .sp-moon { animation: none }
+  .sp-sheen { animation: none; background: none; color: #fff }
+  .sp-s1, .sp-s2 { color: transparent }
+  .sp-s3 { animation: none; color: #fff }
+  .sp-pct { animation: none; --sp-pct: 100 }
+  .sp-lit { width: 1000px }
+  .sp-sun { cx: 1000px }
+}
+
+/* Splash progress markers (HTML over the ridge, so circles stay round at any width). */
+@keyframes sp-left { from { left: 0% } to { left: 100% } }
+@keyframes sp-earthrise { from { top: 64%; opacity: 0 } to { top: 30%; opacity: 1 } }
+.sp-sunx { left: 0; animation: sp-left 1.4s cubic-bezier(0.45, 0, 0.25, 1) 1.2s both, sp-fade 0.4s ease-out 1.1s both }
+.sp-earthx { top: 30%; animation: sp-earthrise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.55s both }
+@media (prefers-reduced-motion: reduce) {
+  .sp-sunx { animation: none; left: 100% }
+  .sp-earthx { animation: none }
+}
+
+/* Street view opens after the dive: a short fade from black. */
+.street-in { animation: street-in 0.6s ease-out both }
+@keyframes street-in { from { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .street-in { animation: none } }

@@ -1,0 +1,12 @@
+# Lunar Landing Site Navigator: static site behind the host's Caddy.
+# Caddy (nasaspaceapps.volmer.es) -> 127.0.0.1:8390 -> this container.
+services:
+  web:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8390:80"
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    mem_limit: 64m

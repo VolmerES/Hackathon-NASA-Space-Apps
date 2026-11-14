@@ -1,0 +1,30 @@
+{
+  "id": "/",
+  "name": "Lunar Landing",
+  "short_name": "Lunar Landing",
+  "description": "Pick a landing site at the Moon's south pole and see, from NASA data, whether it gets sunlight and a direct line to Earth during your stay.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": ["education", "science", "navigation"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshot-wide.png", "sizes": "1440x900", "type": "image/png", "form_factor": "wide", "label": "Malapert Massif K2023 on the 3D Moon: you can land here, with sunlight, Earth contact and the sky in 2D" },
+    { "src": "/screenshot-narrow.png", "sizes": "780x1688", "type": "image/png", "form_factor": "narrow", "label": "On a phone: the answer for a landing site, in Spanish" }
+  ],
+  "shortcuts": [
+    { "name": "Malapert Massif K2023", "short_name": "Malapert", "description": "Open the answer for Malapert Massif K2023", "url": "/#s=mma-k2023", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "En español", "short_name": "Español", "description": "Abrir Lunar Landing en español", "url": "/#l=es", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
