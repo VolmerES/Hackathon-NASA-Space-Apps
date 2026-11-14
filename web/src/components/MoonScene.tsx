@@ -245,7 +245,9 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const showHd = () => {
       const on = hdOn && hdTiles
       cesium?.setVisible(on)
-      globe.visible = cap.visible = !on && shownAt > 0
+      // In HD the tiles replace the globe; the polar cap stays (see cesiumMoon.ts).
+      globe.visible = !on && shownAt > 0
+      cap.visible = shownAt > 0
       setCredit(on)
     }
     const setHd = (on: boolean) => {
@@ -401,7 +403,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
 
     // Shadows only over the polar cap, where the camera lives.
     renderer.shadowMap.enabled = q.shadows > 0
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = THREE.PCFShadowMap
     sun.castShadow = q.shadows > 0
     sun.shadow.mapSize.set(Math.max(512, q.shadows), Math.max(512, q.shadows))
     sun.shadow.camera.left = sun.shadow.camera.bottom = -0.47

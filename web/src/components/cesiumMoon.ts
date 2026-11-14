@@ -1,7 +1,7 @@
 // Optional high-detail Moon from Cesium ion. Tested with a real token: the tiles load and line up
 // with the site markers (same craters under them as on our own Moon). It is an option the viewer
 // turns on (HD button). Its picture keeps its own painted relief; our Sun of the chosen date sets
-// where it is day and night, and the heat map is laid over it.
+// where it is day and night. The south polar cap stays our own (real shadows of the date).
 //
 // "Cesium Moon Terrain" (ion asset 2684829) is a 3D Tiles set of the Moon built from NASA LRO data
 // (LOLA, LROC), with terrain down to 5 m near the poles. It is streamed from Cesium ion, needs an
@@ -27,6 +27,11 @@ export type CesiumMoon = { update: () => void; dispose: () => void; setVisible: 
 // picture keeps its own relief, and our Sun only says where it is day: the real Sun of the chosen
 // date against each point of the lunar sphere, with a soft terminator. The sunlight heat map is laid
 // over it the same way as on our own Moon.
+//
+// Around the south pole their picture is a mosaic of photos taken with the Sun at different places:
+// black blocks and straight seams of painted shadow that never match the chosen date. There the
+// scene keeps its own polar cap (LOLA relief lit by the real Sun of the date, with its shadows),
+// and these tiles are not drawn under it; the cap's edge fades into them.
 const shared = {
   heatMap: { value: null as THREE.Texture | null },
   heatOn: { value: 0 },
@@ -48,10 +53,13 @@ function dayMaterial(old: THREE.Material): THREE.Material {
         '#include <color_fragment>',
         `#include <color_fragment>
         vec3 p = normalize(vMoonPos);
+        // The south polar cap is left to the scene's own relief (see below): nothing is drawn under it.
+        if (degrees(acos(clamp(-p.y, -1.0, 1.0))) < capDeg - 5.2) discard;
         // Day and night from the Sun's height over this point's horizon: full light once it is a
         // few degrees up, a faint glow (earthshine) at night.
         float sunUp = dot(p, normalize(sunDir));
-        diffuseColor.rgb *= mix(0.03, 1.0, smoothstep(-0.015, 0.06, sunUp));
+        // Their picture is darker and greyer than the scene's own Moon: lifted and warmed to match it.
+        diffuseColor.rgb *= vec3(1.55, 1.5, 1.42) * mix(0.03, 1.0, smoothstep(-0.015, 0.06, sunUp));
         if (heatOn > 0.5) {
           float colat = degrees(acos(clamp(-p.y, -1.0, 1.0)));
           if (colat < capDeg) {
@@ -92,8 +100,8 @@ export function attachCesiumMoon(o: { token: string; parent: THREE.Object3D; cam
       const mesh = c as THREE.Mesh
       if (!mesh.isMesh) return
       mesh.material = Array.isArray(mesh.material) ? mesh.material.map(dayMaterial) : dayMaterial(mesh.material)
-      // They cast shadows on our polar cap; they do not receive them (their shadows are in the picture).
-      mesh.castShadow = true
+      // No shadows either way: theirs are in the picture, and our polar cap casts its own.
+      mesh.castShadow = false
       mesh.receiveShadow = false
     })
     if (!first) return

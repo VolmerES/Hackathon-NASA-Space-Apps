@@ -72,12 +72,23 @@ export function createFranky(el: HTMLElement, w: number, h: number, init: Partia
   const pq = new THREE.Quaternion()
   const fwd = new THREE.Vector3()
   const UP = new THREE.Vector3(0, 1, 0)
+  const Z_AXIS = new THREE.Vector3(0, 0, 1)
   // Eased state, following the pose.
   let x = pose.x
   let facing = pose.facing
   let roll = 0
   let wave = 0
   let waveClock = 0
+  // Motion with weight: the speed he really moves at, the lean it gives him, a nod when he brakes,
+  // a little hop when he starts to wave, and springs so turns and stops overshoot and settle.
+  let vx = 0
+  let facingV = 0
+  let lean = 0
+  let leanV = 0
+  let hop = 0
+  let hopV = 0
+  let wasWaving = false
+  let blinkLook = 0
 
   const side = new THREE.Vector3()
   const q2 = new THREE.Quaternion()
@@ -122,13 +133,35 @@ export function createFranky(el: HTMLElement, w: number, h: number, init: Partia
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
       const k = reduce ? 1 : 1 - Math.exp(-dt * 6)
-      x += (pose.x - x) * (reduce ? 1 : 1 - Math.exp(-dt * 2.4))
+      const t = now / 1000
+      // Rolling to a new place: he picks up speed, cruises and brakes (a critically damped spring),
+      // instead of jumping to full speed.
+      const accel = reduce ? 0 : (pose.x - x) * 10.2 - vx * 6.4
+      if (reduce) x = pose.x
+      else {
+        vx += accel * dt
+        x += vx * dt
+      }
+      // Turning: a spring, so he swings round, goes a touch too far and comes back.
       let d = pose.facing - facing
       d = Math.atan2(Math.sin(d), Math.cos(d))
-      facing += d * k
+      if (reduce) facing = pose.facing
+      else {
+        facingV += (d * 60 - facingV * 11) * dt
+        facing += facingV * dt
+      }
       roll += ((pose.rolling ? 1 : 0) - roll) * k
       wave += ((pose.waving ? 1 : 0) - wave) * (reduce ? 1 : 1 - Math.exp(-dt * 5))
       waveClock += dt
+      // Leaning: back when he speeds up, forward when he brakes (a spring: he rocks once on stopping).
+      const leanGoal = reduce ? 0 : Math.max(-0.2, Math.min(0.2, -accel * Math.sign(Math.sin(facing) || 1) * 0.03)) + 0.05 * roll
+      leanV += ((leanGoal - lean) * 90 - leanV * 9) * dt
+      lean += leanV * dt
+      // A happy little hop as the wave starts.
+      if (pose.waving && !wasWaving && !reduce) hopV = 0.6
+      wasWaving = pose.waving
+      hopV -= (hop * 120 + hopV * 9) * dt
+      hop = Math.max(-0.02, hop + hopV * dt)
       if (DEBUG) {
         const fix = (window as unknown as { __fpose?: { wave: number; clock: number; facing?: number } }).__fpose
         if (fix) {
@@ -137,22 +170,33 @@ export function createFranky(el: HTMLElement, w: number, h: number, init: Partia
           if (fix.facing !== undefined) facing = fix.facing
         }
       }
+      const idle = 1 - roll
+      const moving = Math.min(1, Math.abs(vx) / 1.2)
       root.position.x = x
-      root.position.y = 0.014 * Math.sin(now / 1000 * 11) * roll // bumps on the regolith
+      // Bumps on the regolith while rolling (faster: more of them), a slow breath while standing.
+      root.position.y = 0.012 * Math.sin(t * 13) * roll * (0.4 + 0.6 * moving) + 0.006 * Math.sin(t * 1.7) * idle + hop
+      root.rotation.set(0, 0, 0)
       root.rotation.y = facing
-      root.rotation.z = -0.07 * roll * Math.sign(Math.sin(facing) || 1) // leaning into the motion
+      // The lean is about the axis across his way: forwards or backwards along the screen's x.
+      const dirX = Math.sin(facing)
+      root.rotateOnWorldAxis(Z_AXIS, -lean * Math.sign(dirX || 1) * Math.abs(dirX))
+      // Standing: a slight sway, so he is never a statue.
+      root.rotateOnWorldAxis(Z_AXIS, 0.012 * Math.sin(t * 1.1) * idle)
       root.updateMatrixWorld(true)
       root.getWorldDirection(fwd)
       // Wave: the upper arm out to the side, a little back (clear of the big helmet), the forearm up,
       // and forearm and hand swinging outwards, never towards the head.
       const P = (DEBUG && (window as unknown as { __fparams?: typeof WAVE }).__fparams) || WAVE
-      const swing = P.swing * (0.5 + 0.5 * Math.sin(waveClock * 9)) * wave
+      const swing = P.swing * (0.5 + 0.5 * Math.sin(waveClock * 8.5)) * wave
       side.crossVectors(fwd, UP).normalize()
       turn2('Bone_018', fwd, P.lift * wave, side, P.forward * wave)
       turn('Bone_017', fwd, (P.elbow - swing) * wave)
       turn('Bone_016', fwd, -swing * P.hand * wave)
-      // Alive while idle: the head looks around a little.
-      turn('Bone_021', UP, 0.12 * Math.sin(now / 1000 * 0.9) * (1 - roll))
+      // The head: looks around while idle (two slow rhythms, so it never repeats), tips towards the
+      // waving hand, and looks ahead into the turn while he swings round.
+      blinkLook += (Math.max(-0.35, Math.min(0.35, facingV * 0.12)) - blinkLook) * k
+      const look = (0.1 * Math.sin(t * 0.9) + 0.05 * Math.sin(t * 0.37 + 1)) * idle + blinkLook
+      turn2('Bone_021', UP, look, fwd, -0.13 * wave + 0.03 * Math.sin(t * 2.3) * moving)
       renderer.render(scene, camera)
     }
     raf = requestAnimationFrame(frame)

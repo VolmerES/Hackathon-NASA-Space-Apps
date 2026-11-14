@@ -1546,7 +1546,7 @@ export default function App() {
           {/* Free area: the 3D Moon frames the south pole here. */}
           <div className={`pointer-events-none absolute inset-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'sm:left-[380px]' : ''}`}>
             <div ref={frameRef} className="relative min-h-0 flex-1">
-              {splashDone && moonOk && !panel && !lightOn && mode === 'guided' && <p className={`absolute inset-x-0 hidden text-center text-xs text-white/60 lg:block ${focused && !picking && !skyOpen && !skyStay.value ? 'bottom-[76px]' : 'bottom-2'}`}>{t.dragHint}</p>}
+              {splashDone && moonOk && !panel && !lightOn && mode === 'guided' && !focused && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
               {/* Desktop: the sky curves button, centred at the very bottom of the Moon's area. */}
                 {focused && !picking && panel !== 'sky' && !skyOpen && !skyStay.value && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-3 hidden justify-center lg:flex">

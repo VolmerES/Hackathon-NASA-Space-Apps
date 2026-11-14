@@ -20,11 +20,12 @@ const DEG = Math.PI / 180
 const CAP = 25 // degrees of colatitude covered by the polar textures
 const M_PER_DEG = (2 * Math.PI * 1737400) / 360
 // Landing: a NASA lunar module comes down in front of the camera, following the real height and
-// descent rate of Apollo 11 over its last 750 feet (20 July 1969), as Buzz Aldrin read them out.
-// Source: NASA Apollo Lunar Surface Journal, apollojournals.org/alsj/a11/a11.landing.html, from
-// 102:43:01 to "Contact light" at 102:45:40. Played faster (A11_SPEEDUP). Only the vertical profile:
-// the forward drift of Apollo 11 (up to 58 ft/s) is left out, so the lander stays in view.
-const LAND_DIST = 27 // metres from the camera to the touchdown point
+// descent rate and forward speed of Apollo 11 over its last 750 feet (20 July 1969), as Buzz Aldrin
+// read them out. Source: NASA Apollo Lunar Surface Journal, apollojournals.org/alsj/a11/a11.landing.html,
+// from 102:43:01 to "Contact light" at 102:45:40. Played faster (A11_SPEEDUP). The lander comes in
+// from about 1.2 km away (the forward speed, added up) and the camera follows it down.
+const LAND_DIST = 38 // metres from the camera to the touchdown point
+const G_MOON = 1.62 // m/s2
 const FT = 0.3048
 // [seconds after 102:43:01, height (ft), descent rate (ft/s) or null when not called out]
 const A11: [number, number, number | null][] = [
@@ -35,6 +36,28 @@ const A11: [number, number, number | null][] = [
 ]
 const A11_SPEEDUP = 8
 const A11_END = A11[A11.length - 1][0]
+// [seconds after 102:43:01, forward speed (ft/s)] as called out. Ours, not called out: the 58 ft/s
+// of the first callout held before it, 1 ft/s for "drifting forward just a little bit" (102:45:32)
+// and 0 at contact.
+const A11_FWD: [number, number][] = [
+  [0, 58], [25, 58], [45, 47], [66, 19], [75, 13], [82, 11], [92, 9], [104, 9], [113, 6], [144, 4], [151, 1], [159, 0],
+]
+// Distance still to fly (ft) at each callout: the speed added up to contact, straight lines between callouts.
+const A11_LEFT = A11_FWD.map((_, i) => {
+  let d = 0
+  for (let k = i; k < A11_FWD.length - 1; k++) d += ((A11_FWD[k][1] + A11_FWD[k + 1][1]) / 2) * (A11_FWD[k + 1][0] - A11_FWD[k][0])
+  return d
+})
+/** Forward speed (m/s), distance left to the touchdown point (m) and braking (m/s2) at clock second s. */
+function a11Forward(s: number) {
+  let i = 1
+  while (i < A11_FWD.length - 1 && A11_FWD[i][0] < s) i++
+  const [t0, v0] = A11_FWD[i - 1]
+  const [t1, v1] = A11_FWD[i]
+  const u = Math.min(t1, Math.max(t0, s))
+  const v = v0 + ((v1 - v0) * (u - t0)) / (t1 - t0)
+  return { v: v * FT, left: (A11_LEFT[i] + ((v + v1) / 2) * (t1 - u)) * FT, brake: ((v0 - v1) / (t1 - t0)) * FT }
+}
 function a11At(s: number) {
   let i = 1
   while (i < A11.length - 1 && A11[i][0] < s) i++
@@ -175,6 +198,57 @@ function glowTexture() {
   return tex
 }
 
+// The engine plume: in a vacuum it is faint and spreads wide. Bright at the nozzle, gone by the end.
+function plumeTexture() {
+  const c = document.createElement('canvas')
+  c.width = 8
+  c.height = 128
+  const g = c.getContext('2d')!
+  const grad = g.createLinearGradient(0, 0, 0, 128) // top of the canvas = the nozzle
+  grad.addColorStop(0, 'rgba(255,255,255,1)')
+  grad.addColorStop(0.12, 'rgba(255,236,205,0.6)')
+  grad.addColorStop(0.45, 'rgba(255,214,170,0.16)')
+  grad.addColorStop(1, 'rgba(255,200,150,0)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 8, 128)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+// The lander's long shadow: dark along the middle, soft at the edges, fading out at the far end.
+function shadowTexture() {
+  const c = document.createElement('canvas')
+  c.width = 32
+  c.height = 128
+  const g = c.getContext('2d')!
+  const img = g.createImageData(32, 128)
+  for (let y = 0; y < 128; y++) {
+    for (let x = 0; x < 32; x++) {
+      const across = 1 - Math.abs((x + 0.5) / 16 - 1)
+      const along = 1 - y / 127
+      const a = Math.min(1, across * 2.2) * Math.min(1, along * 1.6) * Math.min(1, (y + 1) / 5)
+      img.data[(y * 32 + x) * 4 + 3] = 255 * a * a * (3 - 2 * a)
+    }
+  }
+  g.putImageData(img, 0, 0)
+  return new THREE.CanvasTexture(c)
+}
+
+// A soft round grain for the dust.
+function dustTexture() {
+  const c = document.createElement('canvas')
+  c.width = c.height = 64
+  const g = c.getContext('2d')!
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+  grad.addColorStop(0, 'rgba(255,255,255,1)')
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.35)')
+  grad.addColorStop(1, 'rgba(255,255,255,0)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 64, 64)
+  return new THREE.CanvasTexture(c)
+}
+
 // Earth seen from the Moon: oceans, land, ice and clouds, generated (no photo is shipped).
 function earthTexture() {
   const W = 512
@@ -269,8 +343,8 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     setOpen((o) => (o[k] === isOpen ? o : { ...o, [k]: isOpen }))
   }
   const mount = useRef<HTMLDivElement>(null)
-  const api = useRef<{ setSite: (s: Site, g: Ground | null) => void; setSample: (s: Sample) => void; lookAt: (az: number) => void; land: () => void } | null>(null)
-  const [hud, setHud] = useState<{ alt: number; speed: number; clock: number; phase: 'load' | 'descent' | 'down' | 'failed' } | null>(null)
+  const api = useRef<{ setSite: (s: Site, g: Ground | null) => void; setSample: (s: Sample) => void; lookAt: (az: number) => void; land: (sunAz: number) => void } | null>(null)
+  const [hud, setHud] = useState<{ alt: number; speed: number; fwd: number; clock: number; phase: 'load' | 'descent' | 'down' | 'failed' } | null>(null)
   const [heading, setHeading] = useState(0)
   const [failed, setFailed] = useState(false)
 
@@ -308,7 +382,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     // the chosen hour. At the site itself light and shadow match the LOLA horizon; elsewhere in the
     // bowl the ground is shaped from that horizon, so the shadows there are indicative.
     renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = THREE.PCFShadowMap
     sunLight.castShadow = true
     const reach = RIDGE * 1.8
     Object.assign(sunLight.shadow.camera, { left: -reach, right: reach, top: reach, bottom: -reach, near: 10, far: 6000 })
@@ -316,6 +390,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     sunLight.shadow.mapSize.set(window.innerWidth < 768 ? 2048 : 4096, window.innerWidth < 768 ? 2048 : 4096)
     sunLight.shadow.bias = -0.0004
     sunLight.shadow.normalBias = 2
+    sunLight.shadow.radius = 2.5 // a grazing Sun: soften the edges, or they break into streaks
 
     const loader = new THREE.TextureLoader()
     const groundMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 })
@@ -417,31 +492,127 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     const lander = new THREE.Group()
     lander.visible = false
     scene.add(lander)
+    // The engine: a faint plume (it spreads in the vacuum), a bright point at the nozzle, and its light
+    // on the underside of the lander and on the ground below.
+    const plumeMap = plumeTexture()
     const plume = new THREE.Mesh(
-      new THREE.ConeGeometry(0.75, 4.5, 20, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+      new THREE.ConeGeometry(1.5, 6, 24, 1, true),
+      new THREE.MeshBasicMaterial({ map: plumeMap, color: 0xffe2c0, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
     )
-    plume.position.y = -1.6
+    plume.position.y = -2.4
     lander.add(plume)
-    // The engine lights the underside of the lander and the ground below it.
+    const nozzle = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0xffe6c8, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }))
+    nozzle.position.y = 0.4
+    lander.add(nozzle)
     const engineGlow = new THREE.PointLight(0xffd9a0, 0, 60, 1.6)
     engineGlow.position.y = -0.5
     lander.add(engineGlow)
-    const dust = new THREE.Mesh(
-      new THREE.RingGeometry(0.5, 1, 48),
-      new THREE.MeshBasicMaterial({ color: 0xcfc8ba, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
-    )
-    dust.rotation.x = -Math.PI / 2
+    // Dust: the engine blows it away in flat, straight sheets (no air to make it billow), and every
+    // grain falls back at once when the engine stops.
+    const DUST = 1800
+    const dustPos = new Float32Array(DUST * 3)
+    const dustCol = new Float32Array(DUST * 3)
+    const dustSeed = new Float32Array(DUST * 4) // angle, speed, rise, birth (fraction of the cycle)
+    for (let i = 0; i < DUST; i++) {
+      dustSeed[i * 4] = rnd() * Math.PI * 2
+      dustSeed[i * 4 + 1] = 9 + rnd() * 22
+      dustSeed[i * 4 + 2] = 0.02 + rnd() * rnd() * 0.16
+      dustSeed[i * 4 + 3] = rnd()
+    }
+    const dustGeo = new THREE.BufferGeometry()
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3))
+    dustGeo.setAttribute('color', new THREE.BufferAttribute(dustCol, 3))
+    const dustMap = dustTexture()
+    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ map: dustMap, size: 0.5, sizeAttenuation: true, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }))
+    dust.frustumCulled = false
     dust.visible = false
     scene.add(dust)
+    // The lander's own shadow. The Sun grazes the pole, so it runs for tens of metres; the terrain shadow
+    // map (about 1 m per texel) is too coarse for it, so it is a soft dark ribbon laid on the ground,
+    // away from the Sun, as long as a 7 m lander casts at that Sun height (140 m at most).
+    const SH_SEG = 28
+    const shadowGeo = new THREE.BufferGeometry()
+    const shPos = new Float32Array((SH_SEG + 1) * 6)
+    const shUv = new Float32Array((SH_SEG + 1) * 4)
+    const shIdx: number[] = []
+    for (let i = 0; i <= SH_SEG; i++) shUv.set([0, 1 - i / SH_SEG, 1, 1 - i / SH_SEG], i * 4)
+    for (let i = 0; i < SH_SEG; i++) shIdx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 2, i * 2 + 1, i * 2 + 3)
+    shadowGeo.setAttribute('position', new THREE.BufferAttribute(shPos, 3))
+    shadowGeo.setAttribute('uv', new THREE.BufferAttribute(shUv, 2))
+    shadowGeo.setIndex(shIdx)
+    const shadowMap = shadowTexture()
+    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, map: shadowMap, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })
+    const landerShadow = new THREE.Mesh(shadowGeo, shadowMat)
+    landerShadow.frustumCulled = false
+    landerShadow.visible = false
+    scene.add(landerShadow)
+    let sunAzNow = 0
+    let sunElNow = 5
+    let shadowShown = 0 // 0..1: comes in as the lander reaches the ground
+    const placeShadow = () => {
+      if (!landAt) return
+      const az = (sunAzNow + 180) * DEG
+      const dx = Math.sin(az)
+      const dz = -Math.cos(az)
+      const len = Math.min(140, 7 / Math.tan(Math.max(1.2, sunElNow) * DEG))
+      for (let i = 0; i <= SH_SEG; i++) {
+        const f = i / SH_SEG
+        const d = -3 + f * f * (len + 3) // closer steps near the lander, where the ground is seen best
+        const w = 5.2 * (1 - 0.4 * f)
+        for (let k = 0; k < 2; k++) {
+          const sgn = k ? 1 : -1
+          const x = landAt.x + dx * d - dz * w * sgn
+          const z = landAt.z + dz * d + dx * w * sgn
+          shPos.set([x, groundAt(x, z) + 0.05, z], (i * 2 + k) * 3)
+        }
+      }
+      shadowGeo.attributes.position.needsUpdate = true
+    }
+    const showShadow = () => {
+      shadowMat.opacity = 0.78 * shadowShown * sunShine
+      landerShadow.visible = shadowMat.opacity > 0.01
+    }
+    let dustClock = 0
+    let dustPower = 0 // 0..1, how hard the engine blows; eases out after the engine stops
+    let sunShine = 1
+    const DUST_LIFE = 1.3
+    const stepDust = (dt: number, blow: number) => {
+      dustClock += dt
+      dustPower += (blow - dustPower) * (1 - Math.exp(-dt * (blow > dustPower ? 6 : 2.2)))
+      dust.visible = dustPower > 0.01
+      if (!dust.visible) return
+      const lit = 0.25 + 0.75 * sunShine
+      for (let i = 0; i < DUST; i++) {
+        const age = (dustClock / DUST_LIFE + dustSeed[i * 4 + 3]) % 1
+        const tt = age * DUST_LIFE
+        const r = 1.2 + dustSeed[i * 4 + 1] * tt * (0.5 + 0.5 * dustPower)
+        const a = dustSeed[i * 4]
+        dustPos[i * 3] = Math.cos(a) * r
+        dustPos[i * 3 + 1] = 0.15 + Math.max(0, dustSeed[i * 4 + 1] * dustSeed[i * 4 + 2] * tt - 0.5 * G_MOON * tt * tt)
+        dustPos[i * 3 + 2] = Math.sin(a) * r
+        const k = dustPower * lit * 0.34 * Math.min(1, age * 8) * (1 - age) * (1 - age)
+        dustCol[i * 3] = 0.86 * k
+        dustCol[i * 3 + 1] = 0.82 * k
+        dustCol[i * 3 + 2] = 0.74 * k
+      }
+      dustGeo.attributes.position.needsUpdate = true
+      dustGeo.attributes.color.needsUpdate = true
+    }
     let land: { t: number; ground: number; lastHud: number } | null = null
     let landAt: { x: number; z: number } | null = null
+    // The way the lander flies in (unit vector on the ground) and the axis it leans back about to brake.
+    const fly = new THREE.Vector3(0, 0, 1)
+    const leanAxis = new THREE.Vector3(1, 0, 0)
+    const leanQ = new THREE.Quaternion()
+    let lean = 0
+    let settleT = -1 // seconds since touchdown while the legs settle; -1: at rest
     // The lander comes down upright and, as its pads touch, settles to the slope of the ground.
     const slopeQ = new THREE.Quaternion()
     const yawQ = new THREE.Quaternion()
     const UP = new THREE.Vector3(0, 1, 0)
     let landYaw = 0
     let landed = false
+    let shake = 0
     const groundAt = (x: number, z: number) => {
       const hit = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)).intersectObject(ground)[0]
       return hit ? hit.point.y : 0
@@ -454,13 +625,14 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       if (!landAt) return
       const { x, z } = landAt
       const g = groundAt(x, z)
-      dust.position.set(x, g + 0.05, z)
+      dust.position.set(x, g, z)
       const d = 4.5
       const n = new THREE.Vector3(groundAt(x - d, z) - groundAt(x + d, z), 2 * d, groundAt(x, z - d) - groundAt(x, z + d)).normalize()
       slopeQ.setFromUnitVectors(UP, n)
-      const lean = 2 * Math.acos(Math.min(1, Math.abs(slopeQ.w)))
-      if (lean > 25 * DEG) slopeQ.identity().slerp(new THREE.Quaternion().setFromUnitVectors(UP, n), (25 * DEG) / lean)
+      const tilt = 2 * Math.acos(Math.min(1, Math.abs(slopeQ.w)))
+      if (tilt > 25 * DEG) slopeQ.identity().slerp(new THREE.Quaternion().setFromUnitVectors(UP, n), (25 * DEG) / tilt)
       if (land) land.ground = g
+      placeShadow()
       if (landed) {
         lander.position.y = g
         lander.quaternion.copy(slopeQ).multiply(yawQ.setFromAxisAngle(UP, landYaw))
@@ -470,36 +642,74 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       raf = 0
       const dt = Math.max(0, Math.min(0.05, (now - last) / 1000))
       last = now
-      if (land) {
+      if (land && landAt) {
         land.t += dt
         const clock = Math.min(A11_END, land.t * A11_SPEEDUP) // seconds of the real descent
         const p = clock / A11_END
         const { alt, rate: speed } = a11At(clock)
-        lander.position.y = land.ground + alt
-        landYaw += dt * 0.12 * (1 - p)
+        const f = a11Forward(clock)
+        // Still that far from the touchdown point, back along the way it flies.
+        const lx = landAt.x - fly.x * f.left
+        const lz = landAt.z - fly.z * f.left
+        // Height over the touchdown point; far out, never under the ground it flies over.
+        const ly = f.left > 12 ? Math.max(land.ground + alt, groundAt(lx, lz) + Math.min(alt, 12)) : land.ground + alt
+        lander.position.set(lx, ly, lz)
+        // It leans back to brake: the engine has to hold it up (lunar gravity) and slow it down.
+        lean += (Math.atan2(f.brake, G_MOON) - lean) * (1 - Math.exp(-dt * 3))
         const settle = THREE.MathUtils.smoothstep(1 - alt / 1.4, 0, 1)
-        lander.quaternion.identity().slerp(slopeQ, settle).multiply(yawQ.setFromAxisAngle(UP, landYaw))
-        plume.visible = p < 1
-        engineGlow.intensity = p < 1 ? 260 + 60 * Math.sin(now / 31) : 0
-        plume.scale.set(1 + 0.25 * Math.sin(now / 37), 0.75 + 0.5 * (1 - p) + 0.12 * Math.sin(now / 23), 1 + 0.25 * Math.sin(now / 37))
-        // Dust blown outwards over the last metres.
-        const near = Math.min(1, Math.max(0, 1 - alt / 22))
-        dust.visible = near > 0 && p < 1
+        leanQ.setFromAxisAngle(leanAxis, lean)
+        lander.quaternion.copy(leanQ).slerp(slopeQ, settle).multiply(yawQ.setFromAxisAngle(UP, landYaw))
+        const on = p < 1
+        plume.visible = nozzle.visible = on
+        const flick = Math.sin(now / 31) + 0.5 * Math.sin(now / 13)
+        engineGlow.intensity = on ? 260 + 50 * flick : 0
+        plume.scale.set(1 + 0.12 * Math.sin(now / 37), 1 + 0.08 * flick, 1 + 0.12 * Math.sin(now / 37))
+        nozzle.scale.setScalar(2.6 + 0.3 * flick)
+        // Dust from 40 ft down ("picking up some dust", 102:45:17), harder the lower it gets.
+        const near = Math.min(1, Math.max(0, 1 - alt / (45 * FT)))
+        stepDust(dt, on ? near : 0)
         // The engine: a steady burn, louder over the last metres as it holds the lander up.
-        sfx.setEngine(p < 1 ? 0.55 + 0.45 * near : 0)
-        dust.scale.setScalar(3 + near * 16 + (now % 700) / 70)
-        ;(dust.material as THREE.MeshBasicMaterial).opacity = 0.22 * near * (1 - ((now % 700) / 700) * 0.6)
-        // Keep the lander in the frame: look up at it, then down with it.
-        pitchGoal = Math.min(76, Math.max(2, (Math.atan2(alt + 2.6 - 1.7, LAND_DIST) / DEG) * 0.92))
-        if (now - land.lastHud > 90 || p >= 1) {
+        sfx.setEngine(on ? 0.55 + 0.45 * near : 0)
+        // The camera follows: far out, close in on the lander; near the ground, the lander and the
+        // ground it comes down to both in the frame.
+        const dist = Math.hypot(lx, lz)
+        const top = Math.atan2(ly + 5 - 1.7, dist) / DEG
+        const foot = Math.atan2(land.ground - 1.7, Math.max(LAND_DIST, dist)) / DEG
+        let az = Math.atan2(lx, -lz) / DEG
+        while (az - yawGoal > 180) az -= 360
+        while (az - yawGoal < -180) az += 360
+        yawGoal = az
+        const far = THREE.MathUtils.smoothstep(f.left, 50, 380)
+        const mid = Math.atan2(ly + 2 - 1.7, dist) / DEG
+        const size = (Math.atan2(9, Math.hypot(dist, ly)) / DEG) * 9 // the lander about a ninth of the view
+        pitchGoal = Math.max(-8, Math.min(80, (foot + (top - foot) * 0.58) * (1 - far) + mid * far))
+        fovGoal = Math.max(5, Math.min(58, ((top - foot) * 1.7 + 7) * (1 - far) + Math.max(5, size) * far))
+        shadowShown = THREE.MathUtils.smoothstep(1 - alt / 30, 0, 1)
+        showShadow()
+        shake = on ? 0.05 * near : 0.5
+        if (now - land.lastHud > 90 || !on) {
           land.lastHud = now
-          setHud({ alt, speed, clock, phase: p >= 1 ? 'down' : 'descent' })
+          setHud({ alt, speed, fwd: f.v, clock, phase: on ? 'descent' : 'down' })
         }
-        if (p >= 1) {
+        if (!on) {
           sfx.touchdown()
           land = null
           landed = true
+          settleT = 0
+        }
+      } else if (settleT >= 0 && landAt) {
+        // Touchdown: the legs take the blow and settle, the last dust falls back.
+        settleT += dt
+        stepDust(dt, 0)
+        const g = groundAt(landAt.x, landAt.z)
+        lander.position.y = g - 0.09 * Math.sin(settleT * 13) * Math.exp(-settleT * 5)
+        shake = 0.5 * Math.exp(-settleT * 6)
+        if (settleT > 2.2) {
+          settleT = -1
+          shake = 0
+          lander.position.y = g
           dust.visible = false
+          fovGoal = 42
         }
       }
       if (!drag && (vYaw || vPitch)) {
@@ -517,12 +727,15 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       fov += (fovGoal - fov) * (1 - Math.exp(-dt * 12))
       camera.fov = fov
       camera.updateProjectionMatrix()
-      camera.rotation.set(pitch * DEG, -yaw * DEG, 0)
+      // The engine shakes the view a little near the ground; the touchdown gives it a jolt.
+      const jx = shake ? shake * Math.sin(now / 17) * Math.sin(now / 5.3) : 0
+      const jy = shake ? shake * 0.6 * Math.sin(now / 11) * Math.sin(now / 7.1) : 0
+      camera.rotation.set((pitch + jx) * DEG, -(yaw + jy) * DEG, 0)
       renderer.render(scene, camera)
       // Where the Sun lands on screen, for the automated checks.
       const sp = sun.position.clone().project(camera)
       cvs.dataset.sun = `${sp.x.toFixed(2)},${sp.y.toFixed(2)},${sp.z.toFixed(3)}`
-      const moving = !!land || Math.abs(yawGoal - yaw) > 0.01 || Math.abs(pitchGoal - pitch) > 0.01 || Math.abs(fovGoal - fov) > 0.01 || vYaw || vPitch
+      const moving = !!land || settleT >= 0 || Math.abs(yawGoal - yaw) > 0.01 || Math.abs(pitchGoal - pitch) > 0.01 || Math.abs(fovGoal - fov) > 0.01 || vYaw || vPitch
       if (moving) raf = requestAnimationFrame(tick)
       const hd = (((yaw % 360) + 360) % 360)
       if (Math.abs(hd - shownHeading) > 2) {
@@ -632,6 +845,13 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         sun.position.copy(d).multiplyScalar(SKY)
         sunLight.position.copy(d).multiplyScalar(3000)
         sunLight.intensity = 4.5 * s.sunVisible
+        sunShine = s.sunVisible
+        sunAzNow = s.sunAz
+        sunElNow = s.sunEl
+        if (landAt) {
+          placeShadow()
+          showShadow()
+        }
         earth.position.copy(direction(s.earthAz, s.earthEl)).multiplyScalar(SKY)
         earthMat.uniforms.sunDir.value.copy(d)
         invalidate()
@@ -645,30 +865,44 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         vYaw = vPitch = 0
         invalidate()
       },
-      land: () => {
-        setHud({ alt: A11[0][1] * FT, speed: 0, clock: 0, phase: 'load' })
+      land: (sunAz) => {
+        setHud({ alt: A11[0][1] * FT, speed: 0, fwd: 0, clock: 0, phase: 'load' })
         loadLander()
           .then((model) => {
             if (!api.current) return
-            if (!lander.children.includes(model)) lander.add(model)
-            // Straight ahead of where the camera looks, a little to the side of the Sun's glare.
-            const az = (yawGoal + 24) * DEG
+            if (!lander.children.includes(model)) {
+              model.traverse((o) => {
+                const m = o as THREE.Mesh
+                if (m.isMesh) m.castShadow = m.receiveShadow = true
+              })
+              lander.add(model)
+            }
+            // Touch down with the Sun to one side, so the lander is lit and its long shadow lies
+            // across the view; on the side the camera is already nearer to.
+            const off = ((((yawGoal - sunAz) % 360) + 540) % 360) - 180 < 0 ? -105 : 105
+            const az = (sunAz + off) * DEG
             const x = Math.sin(az) * LAND_DIST
             const z = -Math.cos(az) * LAND_DIST
-            lander.position.set(x, 0, z)
+            // It flies in from beyond the touchdown point, a little further round from the Sun.
+            const from = (sunAz + off * 1.27) * DEG
+            fly.set(-Math.sin(from), 0, Math.cos(from))
+            leanAxis.crossVectors(fly, UP).normalize()
+            lean = 0
             lander.visible = true
             landed = false
+            settleT = -1
             landAt = { x, z }
-            landYaw = 0
+            landYaw = Math.atan2(fly.x, fly.z)
             lander.quaternion.identity()
             land = { t: 0, ground: 0, lastHud: 0 }
+            dustPower = 0
+            shadowShown = 0
+            showShadow()
             placeLander()
-            yawGoal += 24
             vYaw = vPitch = 0
-            fovGoal = 60
             invalidate()
           })
-          .catch(() => setHud({ alt: 0, speed: 0, clock: 0, phase: 'failed' }))
+          .catch(() => setHud({ alt: 0, speed: 0, fwd: 0, clock: 0, phase: 'failed' }))
       },
     }
 
@@ -682,6 +916,11 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       groundMat.map?.dispose()
       groundMat.normalMap?.dispose()
       glow.dispose()
+      plumeMap.dispose()
+      dustMap.dispose()
+      dustGeo.dispose()
+      shadowGeo.dispose()
+      shadowMap.dispose()
       earthMat.uniforms.map.value.dispose()
       starGeo.dispose()
       renderer.dispose()
@@ -713,7 +952,8 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site])
   useEffect(() => {
-    if (landing) api.current?.land()
+    if (landing) api.current?.land(sample.sunAz)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [landing])
 
   if (failed) {
@@ -743,14 +983,18 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
             <Chevron open={hudOpen} />
           </summary>
           {(hud.phase === 'descent' || hud.phase === 'down') && (
-            <dl className="mt-1 grid grid-cols-2 gap-x-3 tabular-nums">
+            <dl className="mt-1 grid grid-cols-3 gap-x-2 tabular-nums">
               <div>
                 <dt className="text-xs text-muted">{t.simAltitude}</dt>
-                <dd className="text-lg font-bold leading-tight">{hud.alt.toFixed(hud.alt < 10 ? 1 : 0)} m</dd>
+                <dd className="text-lg font-bold leading-tight">{hud.alt.toFixed(hud.alt < 10 ? 1 : 0)} <span className="text-xs font-normal">m</span></dd>
               </div>
               <div>
                 <dt className="text-xs text-muted">{t.simSpeed}</dt>
-                <dd className="text-lg font-bold leading-tight">{hud.phase === 'down' ? '0.0' : hud.speed.toFixed(1)} m/s</dd>
+                <dd className="text-lg font-bold leading-tight">{hud.phase === 'down' ? '0.0' : hud.speed.toFixed(1)} <span className="text-xs font-normal">m/s</span></dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">{t.simForward}</dt>
+                <dd className="text-lg font-bold leading-tight">{hud.phase === 'down' ? '0.0' : hud.fwd.toFixed(1)} <span className="text-xs font-normal">m/s</span></dd>
               </div>
             </dl>
           )}
