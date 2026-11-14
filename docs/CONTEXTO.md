@@ -225,6 +225,32 @@ cinco valen igual. Definiciones de la guía, resumidas:
 La guía insiste: muchos equipos cuidan los cuatro primeros y descuidan la
 presentación. Recomienda tener a alguien de *storytelling* y diseño en el equipo.
 
+### El jurado local (Madrid)
+
+Seis personas, según la página «Jurado – NASA Space Apps Challenge Madrid 2026»
+que publicó la organización el 14‑nov (impresa a PDF; no se sube porque lleva
+fotos). ⚠️ **Probablemente nos toque Miguel Ángel**, según el equipo; no está
+confirmado por la organización.
+
+| Quién | Qué hace | Qué le puede llamar la atención de nuestro proyecto |
+|---|---|---|
+| **Miguel Ángel Molina** ⚠️ probable | Strategy & BD Manager de **Segmento Terreno y Operaciones en GMV**, adjunto al Director General. Ingeniero aeronáutico (ETSIA‑UPM), PADE en IESE. 38 años en GMV: software, ingeniería de sistemas, proyectos, división y unidad de negocio | La **visibilidad de la Tierra y la estación de Madrid (Robledo)**: ventanas de comunicación y planificación de operaciones. Que los datos sean de verdad (JPL Horizons, LOLA) y se puedan comprobar. Para quién es la herramienta y quién la usaría. Más rigor operativo que efectos visuales |
+| Cristina García Bajo | Ingeniera industrial. Desarrollo de negocio de **almacenamiento en baterías (BESS)** e infraestructura de red. Fue ingeniera eléctrica en Danfoss e investigó sistemas de potencia. Dirige «Las Lentejas del COIIM» | El **cálculo de batería**: noche más larga, energía necesaria, profundidad de descarga y rendimiento |
+| Alejandro Cañada | Investigador en Speridlabs (**world models**). Máster en IA/ML por el Imperial College. Ganó el PhysioNet Challenge 2026. Fundó Unigow, nacida en un hackathon | El asistente con IA: que actúe con herramientas sobre los cálculos de la web y no invente cifras |
+| Belén Jiménez García | Ingeniera de Telecomunicación, máster en IA. **Lead Fullstack Engineer en FOSSA Systems** (segmento terreno, plataformas de control, IoT por satélite) | La ingeniería del software y la usabilidad: todo en el navegador, funciona sin conexión, rápido |
+| Cristina Ruiz Fernández | Ingeniera aeroespacial, **propulsión**. TU Delft (cum laude), tesis en el MIT. Airbus D&S en Bremen (Starlab, **Artemis**). Ahora en IENAI SPACE y doctorado en la UC3M | Los sitios Artemis y el descenso. Que la simulación del alunizaje diga claramente que es el perfil del Apolo 11, no una trayectoria calculada |
+| Jaime Martín Lozano | Ingeniero aeroespacial y de software. Misiones de la ESA (Proba‑3, Gaia, SMILE, ExoMars, BepiColombo, JUICE): sistemas, **operaciones** y software de segmento terreno. Dirige Find a Space Job; trabaja en XploreAI | Operaciones de misión y la validación frente a Horizons |
+
+**Lectura (propuesta de Claude, pendiente del equipo):** el jurado es de
+ingeniería y operaciones espaciales, sin perfiles de diseño o marketing. Pesará
+más el rigor que el espectáculo. Para el pitch conviene:
+
+- abrir con un uso operativo concreto: elegir sitio y fecha con luz para la
+  energía y Tierra a la vista para hablar con Madrid;
+- enseñar que las cifras se pueden comprobar (kit de `docs/verificacion/`);
+- decir los límites antes de que los pregunten: visibilidad no es enlace
+  radio, la malla es de 200 m, y los resultados son sugerencias.
+
 ### Premios globales 2026
 
 Definiciones de la guía (las diapositivas las resumen):
@@ -416,6 +442,8 @@ Pocos y por orden de daño si fallan:
 
 ## Fuentes
 
+- Jurado local: página «Jurado – NASA Space Apps Challenge Madrid 2026» de la
+  organización (14‑nov‑2026), impresa a PDF; fuera de git porque lleva fotos
 - Diapositivas del evento local, fotografiadas el 13‑nov‑2026: [`briefing/`](briefing/)
 - Guías para *local leads* «Judging & Awards» y «Project Submission Guide»
   (2026), también en español: [`organizacion/`](organizacion/), no se publican
