@@ -455,6 +455,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let sticky = false // opened by a finger: stays until a tap elsewhere
     let overCallout = false
     let hoverVia: 'dot' | 'label' = 'dot' // where the mouse found the site: the callout opens next to it
+    let hoverPt = { x: 0, y: 0 } // the mouse when it found the site on a label (the Moon holds still meanwhile)
     let dropTimer = 0
     const setHoverId = (id: string | null, byTouch = false) => {
       window.clearTimeout(dropTimer)
@@ -510,6 +511,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         el.addEventListener('pointerenter', (e) => {
           if (e.pointerType === 'mouse') {
             hoverVia = 'label'
+            hoverPt = { x: e.clientX, y: e.clientY }
             setHoverId(s.id)
           }
         })
@@ -1160,9 +1162,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           let ax = hm.sx
           let ay = hm.sy
           if (fromLabel) {
-            side = hm.box.x + hm.box.w > w - 300 ? 'left' : 'right'
-            ax = side === 'right' ? hm.box.x + hm.box.w : hm.box.x
-            ay = hm.box.y + hm.box.h / 2
+            // Right where the mouse is on the label.
+            ax = hoverPt.x
+            ay = hoverPt.y
+            side = ax > w - 300 ? 'left' : 'right'
           }
           const key = `${Math.round(ax)},${Math.round(ay)}`
           if (co.dataset.pos !== key) {
@@ -1174,7 +1177,13 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             co.dataset.side = 'center'
             co.style.setProperty('--card-left', `${Math.round(Math.min(w - 256, Math.max(8, hm.sx - 124)) - hm.sx)}px`)
           } else co.dataset.side = side
-          co.dataset.drop = ay < 330 ? 'down' : 'up'
+          // Up or down, wherever the card fits (never under the header or off the bottom).
+          const cardH = (co.querySelector('.moon-callout-card') as HTMLElement | null)?.offsetHeight || 280
+          const top = frameBox ? frameBox.top : 0
+          const bottom = frameBox ? frameBox.bottom : h
+          const roomUp = ay - top
+          const roomDown = bottom - ay
+          co.dataset.drop = roomUp >= cardH + 30 ? 'up' : roomDown >= cardH + 30 ? 'down' : roomUp > roomDown ? 'up' : 'down'
           co.style.visibility = 'visible'
         } else co.style.visibility = 'hidden'
       }
