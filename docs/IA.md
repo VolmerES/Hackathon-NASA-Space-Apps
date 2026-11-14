@@ -120,6 +120,7 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 | Botones de la Luna compactos con un panel abierto | Con «See the sky», «Best dates» o «Compare» abierto, los botones del mapa solo muestran el icono, a la derecha de la zona de la Luna (el nombre, en el `title`) | **Petición de Angela**, con una captura | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | Etiquetas de los sitios más limpias | Pastillas redondeadas, semitransparentes y más pequeñas; cada etiqueta busca un hueco libre alrededor de su punto (derecha, izquierda, arriba y abajo) en vez de apilarse hacia abajo, conserva su hueco mientras siga libre, y una línea fina la une a su punto si queda lejos; la del sitio elegido se coloca primero | **Petición de Angela**, con una captura | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | Ficha flotante al alcance del ratón | La ficha que sale al pasar por un sitio aparece mucho más cerca del punto (línea guía la mitad de larga), con un puente invisible entre el punto y la ficha que la mantiene abierta por el camino, y 0,9 s de margen antes de cerrarse; el punto sigue libre para elegir el sitio con un clic | **Angela lo detectó**: la ficha se cerraba antes de poder pulsarla | Compila. ⚠️ Sin probar con el ratón |
+| Ficha flotante junto a la etiqueta | Si se llega a un sitio por su etiqueta (apartada de su punto, como Nobile), la ficha sale pegada a la etiqueta y no al punto | **Angela lo detectó** con Nobile | Compila. ⚠️ Sin probar con el ratón |
 
 ### 15‑nov · domingo
 

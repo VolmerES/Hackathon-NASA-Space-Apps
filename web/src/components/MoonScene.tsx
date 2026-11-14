@@ -447,13 +447,14 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const sideUp = new THREE.Vector3()
 
     // Site markers: a ring flat on the surface; the label is HTML so it is readable and tappable.
-    type Marker = { id: string; ring: THREE.Mesh; dot: THREE.Mesh; local: THREE.Vector3; el: HTMLButtonElement; lead: HTMLDivElement; spot: number; color: THREE.Color; sx: number; sy: number; vis: boolean }
+    type Marker = { id: string; ring: THREE.Mesh; dot: THREE.Mesh; local: THREE.Vector3; el: HTMLButtonElement; lead: HTMLDivElement; spot: number; box: { x: number; y: number; w: number; h: number }; color: THREE.Color; sx: number; sy: number; vis: boolean }
     let markers: Marker[] = []
     let hoverHold = 0
     // Site under the mouse: shows the callout and holds the Moon still.
     let hoverId: string | null = null
     let sticky = false // opened by a finger: stays until a tap elsewhere
     let overCallout = false
+    let hoverVia: 'dot' | 'label' = 'dot' // where the mouse found the site: the callout opens next to it
     let dropTimer = 0
     const setHoverId = (id: string | null, byTouch = false) => {
       window.clearTimeout(dropTimer)
@@ -507,7 +508,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         el.addEventListener('pointermove', hold)
         el.addEventListener('pointerdown', hold)
         el.addEventListener('pointerenter', (e) => {
-          if (e.pointerType === 'mouse') setHoverId(s.id)
+          if (e.pointerType === 'mouse') {
+            hoverVia = 'label'
+            setHoverId(s.id)
+          }
         })
         el.addEventListener('pointerleave', dropHoverSoon)
         el.addEventListener('click', (e) => {
@@ -520,7 +524,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         lead.className = 'moon-lead'
         lead.style.opacity = '0'
         labels.insertBefore(lead, labels.firstChild)
-        return { id: s.id, ring, dot, local, el, lead, spot: 0, color: new THREE.Color(s.color ?? '#ffffff'), sx: 0, sy: 0, vis: false }
+        return { id: s.id, ring, dot, local, el, lead, spot: 0, box: { x: 0, y: 0, w: 0, h: 0 }, color: new THREE.Color(s.color ?? '#ffffff'), sx: 0, sy: 0, vis: false }
       })
     }
 
@@ -657,7 +661,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
           const d = Math.hypot(m.sx - e.clientX, m.sy - e.clientY)
           if (d < 22 && (!best || d < best.d)) best = { id: m.id, d }
         }
-        if (best) setHoverId(best.id)
+        if (best) {
+          hoverVia = 'dot'
+          setHoverId(best.id)
+        }
         else dropHoverSoon()
         canvas.style.cursor = best ? 'pointer' : ''
         return
@@ -1107,6 +1114,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         m.lead.style.opacity = leadOn ? (on ? '0.9' : '0.55') : '0'
         m.lead.dataset.on = on ? 'true' : 'false'
         // Move labels by whole pixels only, so a label under the finger stays put.
+        m.box = { x: lx, y: ly, w: lw, h: lh }
         const nx = Math.round(lx)
         const ny = Math.round(ly)
         const key = `${nx},${ny}`
@@ -1141,21 +1149,32 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       }
       earthEl.style.opacity = earthShown ? '1' : '0'
 
-      // Callout: anchored on the hovered dot, opening to the side with more room.
+      // Callout: next to where the mouse found the site (its dot, or its label when the label sits away
+      // from the dot), opening to the side with more room.
       const co = calloutRef.current
       if (co) {
         const hm = hoverId ? markers.find((x) => x.id === hoverId) : undefined
         if (hm && hm.vis) {
-          const key = `${Math.round(hm.sx)},${Math.round(hm.sy)}`
+          const fromLabel = hoverVia === 'label' && !small && hm.box.w > 0
+          let side: 'left' | 'right' = hm.sx > w - 360 ? 'left' : 'right'
+          let ax = hm.sx
+          let ay = hm.sy
+          if (fromLabel) {
+            side = hm.box.x + hm.box.w > w - 300 ? 'left' : 'right'
+            ax = side === 'right' ? hm.box.x + hm.box.w : hm.box.x
+            ay = hm.box.y + hm.box.h / 2
+          }
+          const key = `${Math.round(ax)},${Math.round(ay)}`
           if (co.dataset.pos !== key) {
             co.dataset.pos = key
-            co.style.transform = `translate(${Math.round(hm.sx)}px, ${Math.round(hm.sy)}px)`
+            co.style.transform = `translate(${Math.round(ax)}px, ${Math.round(ay)}px)`
           }
+          co.dataset.anchor = fromLabel ? 'label' : 'dot'
           if (small) {
             co.dataset.side = 'center'
             co.style.setProperty('--card-left', `${Math.round(Math.min(w - 256, Math.max(8, hm.sx - 124)) - hm.sx)}px`)
-          } else co.dataset.side = hm.sx > w - 360 ? 'left' : 'right'
-          co.dataset.drop = hm.sy < 330 ? 'down' : 'up'
+          } else co.dataset.side = side
+          co.dataset.drop = ay < 330 ? 'down' : 'up'
           co.style.visibility = 'visible'
         } else co.style.visibility = 'hidden'
       }
