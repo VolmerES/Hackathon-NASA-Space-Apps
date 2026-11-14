@@ -1312,7 +1312,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       <canvas ref={canvasRef} className="fixed inset-0 z-0 h-full w-full touch-none" aria-hidden="true" />
       <div ref={labelsRef} className="pointer-events-none fixed inset-0 z-[5] overflow-hidden" />
       {controls && (
-        <div ref={controlsRef} className={`moon-controls${compactControls ? ' compact' : ''}`} style={{ opacity: 0 }}>
+        <div ref={controlsRef} data-franky="moon-tools" className={`moon-controls${compactControls ? ' compact' : ''}`} style={{ opacity: 0 }}>
           <div className="moon-zoom">
           <button type="button" onClick={() => api.current?.zoomBy(1 / 1.6)} aria-label={controls.zoomIn} title={controls.zoomIn}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>

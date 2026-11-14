@@ -18,7 +18,9 @@ import { applyMission, kindOf, loadMissions, saveMissions, uid, type MissionDef,
 import { Logo } from './components/Logo'
 import { StayHeatmap } from './components/StayHeatmap'
 import { MoonFallback } from './components/MoonFallback'
-import { Assistant, type AssistantTools } from './components/Assistant'
+import { Assistant, type AssistantConfirm, type AssistantTools } from './components/Assistant'
+import { FrankyBot, spotlight } from './components/FrankyBot'
+import { FrankyTour, type TourStep } from './components/FrankyTour'
 
 // three.js for the 3D view from the surface is loaded only when that view is opened.
 // three.js lives in its own file: the page and the opening screen do not wait for it.
@@ -737,6 +739,142 @@ export default function App() {
       return { opened: s.id }
     },
   }
+  // What is on screen and what is still missing, for Franky to explain and to guide.
+  assistantTools.get_screen = () => ({
+    site_on_screen: focused ? { id: focused.site.id, name: siteName(focused.site), verdict: t.verdictLong[focused.m.verdict] } : null,
+    site_card_open: cardOpen,
+    choosing_a_site: picking,
+    open_panel: panel,
+    sunlight_map_on: lightOn,
+    street_view_open: streetOpen,
+    landing: start.toISOString().slice(0, 16) + 'Z',
+    days: mission.durationDays,
+    missing: [
+      ...(!focused ? ['no site chosen yet: pick one of the five (button "sites")'] : []),
+      ...(!mission.batteryWh ? ['battery not set (battery_wh): without it, the tool cannot say whether the battery lasts the longest night'] : []),
+      ...(!mission.survivalPowerW ? ['survival power not set (survival_power_w): the power the lander needs at night'] : []),
+    ],
+    pointable: ['sites', 'timebar', 'verdict', 'tiles', 'actions', 'sky', 'when', 'compare', 'options', 'moon-tools', 'franky'],
+  })
+  assistantTools.open_panel = (a) => {
+    const what = String(a.panel ?? '')
+    if (what === 'sites') {
+      setPicking(true)
+      setCardOpen(true)
+    } else if (what === 'card') {
+      if (!focused) return { error: 'no site chosen yet' }
+      setPicking(false)
+      setCardOpen(true)
+    } else if (what === 'sky' || what === 'when' || what === 'compare') {
+      if (!focused) return { error: 'choose a site first' }
+      setPanel(what)
+    } else if (what === 'missions') setMissionsOpen(true)
+    else if (what === 'sources') setSourcesOpen(true)
+    else if (what === 'options') {
+      if (!focused) return { error: 'choose a site first' }
+      setPicking(false)
+      setCardOpen(true)
+      window.setTimeout(() => spotlight('options'), 350)
+    } else if (what === 'sunlight_map') setLightOn(true)
+    else return { error: 'unknown panel' }
+    return { opened: what }
+  }
+  assistantTools.point_at = (a) => {
+    const key = String(a.target ?? '')
+    if (['verdict', 'tiles', 'actions', 'options'].includes(key) && focused) {
+      setPicking(false)
+      setCardOpen(true)
+    }
+    window.setTimeout(() => spotlight(key), 350)
+    return { pointing_at: key }
+  }
+  assistantTools.set_values = (a) => {
+    const done: Record<string, unknown> = {}
+    const d = dayOf(a.start)
+    if (d) {
+      setStart(d)
+      done.start = d.toISOString().slice(0, 16) + 'Z'
+    }
+    const num = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi ? v : null)
+    const days = num(a.days, 1, 60)
+    if (days !== null) setMissionValue('durationDays', (done.days = Math.round(days)) as number)
+    const bat = num(a.battery_wh, 0, 1e7)
+    if (bat !== null) setMissionValue('batteryWh', (done.battery_wh = bat) as number)
+    const pw = num(a.survival_power_w, 0, 1e6)
+    if (pw !== null) setMissionValue('survivalPowerW', (done.survival_power_w = pw) as number)
+    const ant = num(a.antenna_min_elevation_deg, 0, 30)
+    if (ant !== null) setMissionValue('minAntennaElevDeg', (done.antenna_min_elevation_deg = ant) as number)
+    return Object.keys(done).length ? { applied: done } : { error: 'no valid value to apply' }
+  }
+  const assistantConfirm: AssistantConfirm = {
+    set_values: (a) =>
+      [
+        typeof a.start === 'string' ? `${t.assistant.fields.start}: ${a.start.slice(0, 10)}` : '',
+        typeof a.days === 'number' ? `${t.assistant.fields.days}: ${a.days}` : '',
+        typeof a.battery_wh === 'number' ? `${t.assistant.fields.battery}: ${a.battery_wh} Wh` : '',
+        typeof a.survival_power_w === 'number' ? `${t.assistant.fields.power}: ${a.survival_power_w} W` : '',
+        typeof a.antenna_min_elevation_deg === 'number' ? `${t.assistant.fields.antenna}: ${a.antenna_min_elevation_deg}°` : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+  }
+
+  // The guided tour: the first time the tool opens (not from a shared link), and from the menu or Franky.
+  const [tourOn, setTourOn] = useState(false)
+  useEffect(() => {
+    if (!splashDone || !ready || hasLink) return
+    let seen = false
+    try {
+      seen = localStorage.getItem('fmttm-tour-v1') === 'done'
+    } catch {
+      /* private mode: show it */
+    }
+    if (!seen) {
+      const id = window.setTimeout(() => setTourOn(true), 900)
+      return () => window.clearTimeout(id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splashDone, ready])
+  const endTour = () => {
+    setTourOn(false)
+    try {
+      localStorage.setItem('fmttm-tour-v1', 'done')
+    } catch {
+      /* nothing to keep */
+    }
+  }
+  const tourSteps: TourStep[] = [
+    { title: t.tour.s0t, text: t.tour.s0 },
+    { target: 'sites', title: t.tour.s1t, text: t.tour.s1, before: () => setCardOpen(false) },
+    { target: 'timebar', title: t.tour.s2t, text: t.tour.s2 },
+    {
+      target: 'verdict',
+      title: t.tour.s3t,
+      text: t.tour.s3,
+      before: () => {
+        if (!focused && catalogue[0]) pick(catalogue[0].site.id)
+        setPicking(false)
+        setCardOpen(true)
+      },
+    },
+    { target: 'tiles', title: t.tour.s4t, text: t.tour.s4 },
+    { target: 'actions', title: t.tour.s5t, text: t.tour.s5 },
+    { target: 'moon-tools', title: t.tour.s6t, text: t.tour.s6, before: () => setCardOpen(false) },
+    { target: 'franky', title: t.tour.s7t, text: t.tour.s7 },
+  ]
+
+  // Start again: the tool as on a first visit, with everything this browser kept for it removed.
+  const [resetAsk, setResetAsk] = useState(false)
+  const resetAll = () => {
+    try {
+      localStorage.clear()
+      sessionStorage.clear()
+    } catch {
+      /* nothing kept */
+    }
+    window.location.replace(window.location.pathname)
+  }
+
   const assistantContext = () =>
     `${focused ? `site ${focused.site.id} (${siteName(focused.site)}), ` : 'no site chosen, '}landing ${start.toISOString().slice(0, 16)}Z, ${mission.durationDays} days`
 
@@ -852,14 +990,14 @@ export default function App() {
           </div>
           {/* Quick date and hour: the Moon's light and shadows follow it. A second line on phones. */}
           {splashDone && ready && (
-            <div className="order-last min-w-0 basis-full lg:order-none lg:ml-auto lg:max-w-2xl lg:flex-1 lg:basis-auto">
+            <div data-franky="timebar" className="order-last min-w-0 basis-full lg:order-none lg:ml-auto lg:max-w-2xl lg:flex-1 lg:basis-auto">
               <TimeBar start={start} min={DATA.start} max={DATA.end} stay={mission.durationDays} index={focused ? (playIdx ?? 0) : freeHour} sunHours={focused?.samples.map((x) => x.sunVisible)} plan={plan} label={fmtDateTime} onStart={setStart} onStay={(n) => setMissionValue('durationDays', n)} onScrub={scrub} />
             </div>
           )}
           {/* Settings and actions: a gear in the top right corner. */}
           <div className="ml-auto flex items-center gap-2 lg:ml-0">
-              <button type="button" onClick={() => setAssistantOpen((o) => !o)} aria-pressed={assistantOpen} title={t.assistant.open} className={`flex h-11 items-center gap-2 rounded-sm border px-3 text-sm font-semibold ${assistantOpen ? 'border-sun bg-sun text-black' : 'border-white/40 hover:bg-white/10'}`}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /><path d="M8.5 11h.01M12 11h.01M15.5 11h.01" /></svg>
+              <button type="button" data-franky="franky" onClick={() => setAssistantOpen((o) => !o)} aria-pressed={assistantOpen} title={t.assistant.open} className={`flex h-11 items-center gap-1.5 rounded-sm border pl-1 pr-3 text-sm font-semibold ${assistantOpen ? 'border-sun bg-sun/15 text-sun' : 'border-white/40 hover:bg-white/10'}`}>
+                <FrankyBot size={34} mood={assistantOpen ? 'happy' : 'idle'} />
                 <span className="max-sm:hidden">{t.assistant.open}</span>
               </button>
               <HamburgerMenu label={t.mainMenu}>
@@ -884,6 +1022,7 @@ export default function App() {
                         { label: t.copyLink, onSelect: share, hidden: !chosen.length },
                         { label: focused ? t.downloadCsv(siteName(focused.site)) : '', onSelect: downloadCsv, hidden: !focused },
                         { label: t.dataSources, onSelect: () => setSourcesOpen(true) },
+                        { label: t.tour.menu, onSelect: () => setTourOn(true) },
                       ]
                         .filter((i) => !i.hidden)
                         .map((i) => (
@@ -891,6 +1030,21 @@ export default function App() {
                             {i.label}
                           </button>
                         ))}
+                    </div>
+                    <div className="border-t border-white/10 pt-1">
+                      {resetAsk ? (
+                        <div className="px-4 py-2 text-sm">
+                          <p className="text-white/85">{t.resetAsk}</p>
+                          <div className="mt-2 flex gap-2">
+                            <button type="button" onClick={resetAll} className="min-h-10 rounded-sm bg-warn px-3 font-semibold text-black hover:brightness-110">{t.resetYes}</button>
+                            <button type="button" onClick={() => setResetAsk(false)} className="min-h-10 rounded-sm border border-white/25 px-3 hover:bg-white/10">{t.resetNo}</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setResetAsk(true)} className="block min-h-11 w-full px-4 text-left text-sm text-warn hover:bg-white/10 lg:min-h-10">
+                          {t.reset}
+                        </button>
+                      )}
                     </div>
                     <p className="mx-4 mt-2 border-t border-white/10 pt-2 text-xs text-white/75">
                       <strong className="mb-0.5 block text-white">{t.demoStrong}</strong>
@@ -901,7 +1055,8 @@ export default function App() {
               </HamburgerMenu>
           </div>
         </header>
-        <Assistant open={assistantOpen} onClose={() => setAssistantOpen(false)} lang={lang} text={t.assistant} tools={assistantTools} context={assistantContext} />
+        <Assistant open={assistantOpen} onClose={() => setAssistantOpen(false)} lang={lang} text={t.assistant} tools={assistantTools} confirm={assistantConfirm} context={assistantContext} onTour={() => setTourOn(true)} />
+        {tourOn && <FrankyTour steps={tourSteps} text={t.tour} onClose={endTour} onChat={() => setAssistantOpen(true)} />}
 
         <div className="relative min-h-0 flex-1 lg:flex lg:gap-3 lg:px-3 lg:pb-3">
           {/* Phones: a dimmed backdrop behind the pop-up; tapping it closes the card. */}
@@ -1059,7 +1214,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className={`mt-3 flex items-center gap-2 ${VERDICT_CLS[focused.m.verdict]}`}>
+                <div data-franky="verdict" className={`mt-3 flex items-center gap-2 ${VERDICT_CLS[focused.m.verdict]}`}>
                   <VerdictIcon v={focused.m.verdict} size={24} />
                   <p className="text-lg font-bold leading-tight">{t.verdictLong[focused.m.verdict]}</p>
                 </div>
@@ -1076,7 +1231,7 @@ export default function App() {
                   </p>
                 )}
 
-                <dl className="mt-3 grid grid-cols-4 gap-1.5">
+                <dl data-franky="tiles" className="mt-3 grid grid-cols-4 gap-1.5">
                   {(
                     [
                       {
@@ -1152,7 +1307,7 @@ export default function App() {
                     </div>
                   ))}
                 </dl>
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div data-franky="actions" className="mt-3 grid grid-cols-2 gap-2">
                 <button
                   onClick={openStreet}
                   className="flex min-h-11 items-center justify-center gap-2 rounded-sm bg-sun px-2 text-sm font-semibold text-black hover:brightness-110"
@@ -1180,7 +1335,7 @@ export default function App() {
                       ['compare', t.compare],
                     ] as const
                   ).map(([id, label]) => (
-                    <button key={id} onClick={() => setPanel(panel === id ? null : id)} aria-pressed={panel === id} className={`min-h-10 rounded-sm px-2 text-sm font-semibold ${panel === id ? 'bg-sun text-black' : 'bg-white/10 hover:bg-white/15'}`}>
+                    <button key={id} data-franky={id} onClick={() => setPanel(panel === id ? null : id)} aria-pressed={panel === id} className={`min-h-10 rounded-sm px-2 text-sm font-semibold ${panel === id ? 'bg-sun text-black' : 'bg-white/10 hover:bg-white/15'}`}>
                       {label}
                     </button>
                   ))}
@@ -1264,7 +1419,7 @@ export default function App() {
                       )}
                     </p>
                   </details>
-                  <details className="mt-1 text-sm">
+                  <details data-franky="options" className="mt-1 text-sm">
                     <summary className="disclosure text-sm">{t.options}</summary>
                     <div className="mt-1 grid grid-cols-1 gap-3">
                       <p className={`border-l-2 pl-2 text-xs ${active ? 'border-sun/60 text-white/85' : 'border-white/25 text-muted'}`}>{active ? t.ms.valuesOf(active.name) : t.ms.valuesFree}</p>
@@ -1351,6 +1506,7 @@ export default function App() {
             <button
               onClick={() => setCardOpen(true)}
               aria-label={t.showPanel}
+              data-franky="sites"
               className="drawer-in glass pointer-events-auto absolute left-4 top-2 z-20 flex min-h-8 max-w-[min(62vw,320px)] items-center gap-1.5 rounded-full py-1 pl-2.5 pr-2 text-xs font-semibold sm:top-3 sm:min-h-10 sm:gap-2 sm:py-1.5 sm:pl-3 sm:pr-3 sm:text-sm lg:left-3"
             >
               {focused && !picking ? (

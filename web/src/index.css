@@ -536,3 +536,30 @@ details[open] > .disclosure::after { transform: translateY(2px) rotate(-135deg) 
 /* Inline links in the app's colours. */
 .link-sun { color: var(--color-sun); text-decoration: underline; text-decoration-color: rgb(242 183 5 / 0.45); text-underline-offset: 4px; transition: text-decoration-color 0.2s }
 .link-sun:hover { text-decoration-color: currentColor }
+
+/* Franky, the guide robot: floats, blinks, lights its antenna while thinking, talks, waves. */
+.fk-bot { overflow: visible }
+.fk-bot .fk-float { animation: fk-float 3.2s ease-in-out infinite; transform-origin: 32px 40px }
+@keyframes fk-float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-2.5px) } }
+.fk-bot .fk-eyes > circle:nth-child(-n+2) { animation: fk-blink 4.6s infinite; transform-box: fill-box; transform-origin: center }
+@keyframes fk-blink { 0%, 94%, 100% { transform: scaleY(1) } 96% { transform: scaleY(0.1) } }
+.fk-bot .fk-eyes { transition: transform 0.4s ease }
+.fk-bot .fk-antenna { transition: fill 0.3s }
+.fk-thinking .fk-antenna { animation: fk-glow 0.9s ease-in-out infinite }
+@keyframes fk-glow { 0%, 100% { opacity: 0.45 } 50% { opacity: 1; filter: drop-shadow(0 0 3px #f2b705) } }
+.fk-thinking .fk-eyes { animation: fk-ponder 2.4s ease-in-out infinite }
+@keyframes fk-ponder { 0%, 100% { transform: translate(-1.5px, -1px) } 50% { transform: translate(1.5px, -1px) } }
+.fk-talking .fk-mouth { animation: fk-talk 0.32s ease-in-out 6 alternate; transform-box: fill-box; transform-origin: center }
+@keyframes fk-talk { from { transform: scaleY(1) } to { transform: scaleY(2.6) } }
+.fk-happy .fk-arm-r { animation: fk-wave 0.7s ease-in-out 3; transform-box: fill-box; transform-origin: 0% 0% }
+@keyframes fk-wave { 0%, 100% { transform: rotate(0) } 50% { transform: rotate(-38deg) } }
+/* What Franky points at glows in Sun yellow for a few seconds. */
+.fk-spot { outline: 2px solid var(--color-sun); outline-offset: 4px; border-radius: 6px; animation: fk-spot 1.1s ease-in-out infinite }
+@keyframes fk-spot { 0%, 100% { box-shadow: 0 0 0 0 rgb(242 183 5 / 0.55) } 50% { box-shadow: 0 0 0 10px rgb(242 183 5 / 0) } }
+/* The guided tour: the screen dims around the part being explained. */
+.fk-hole { box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.66), 0 0 0 2px var(--color-sun); transition: left 0.45s cubic-bezier(0.22, 1, 0.36, 1), top 0.45s cubic-bezier(0.22, 1, 0.36, 1), width 0.45s cubic-bezier(0.22, 1, 0.36, 1), height 0.45s cubic-bezier(0.22, 1, 0.36, 1) }
+.fk-bubble { animation: fk-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; transition: left 0.45s cubic-bezier(0.22, 1, 0.36, 1), top 0.45s cubic-bezier(0.22, 1, 0.36, 1) }
+@keyframes fk-in { from { opacity: 0; transform: translateY(8px) scale(0.98) } }
+@media (prefers-reduced-motion: reduce) {
+  .fk-bot *, .fk-spot, .fk-hole, .fk-bubble { animation: none !important; transition: none !important }
+}

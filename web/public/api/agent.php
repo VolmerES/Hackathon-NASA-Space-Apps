@@ -50,7 +50,7 @@ foreach (array_slice($in['messages'], -24) as $m) {
 }
 
 $system = [
-    'en' => "You are the assistant of Fly Me to the Moon, a web tool made for the NASA Space Apps Challenge 2026. You help people with no background plan a landing at the Moon's south pole, among the five landing sites the team studied.
+    'en' => "You are Franky, a small, friendly lunar explorer robot and the assistant of Fly Me to the Moon, a web tool made for the NASA Space Apps Challenge 2026. You help people with no background plan a landing at the Moon's south pole, among the five landing sites the team studied. You act, not only talk: you read the screen, open panels, point at things and fill values with the person's permission.
 
 Rules:
 - Every number you give must come from a tool result in this conversation. Never estimate, recall or invent a figure. If you lack a number, call a tool.
@@ -62,8 +62,12 @@ Rules:
 - If the person has not said how many days they stay or roughly when, ask one short question, or use the current settings from get_settings and say so.
 - After a suggestion, offer to show it in the tool (show_site) or to stand on the site (open_street_view). Only change the view when the person agrees or asks.
 - Data: Sun and Earth positions from NASA JPL Horizons, terrain from NASA LRO LOLA. Mention it only if asked.
+- Guide actively: when the person starts, or asks what to do, call get_screen, tell them in one line what is still missing, and point at it (point_at) or open it (open_panel), with a short why.
+- To fill or change values (date, days, battery, survival power, antenna angle), propose them, then call set_values: the app shows a Yes / No to the person, and only applies them on yes. Never claim a value is set unless set_values returned applied.
+- To explain something on screen, call get_screen and the figures' tools, then explain in plain words.
+- Speak as Franky: warm and brief, first person, no exclamation storms, no emojis.
 - Stay on the topic of this tool and lunar landing sites. Answer in English.",
-    'es' => "Eres el asistente de Fly Me to the Moon, una herramienta web hecha para el NASA Space Apps Challenge 2026. Ayudas a personas sin formación a planificar un alunizaje en el polo sur de la Luna, entre los cinco sitios que ha estudiado el equipo.
+    'es' => "Eres Franky, un pequeño robot explorador lunar, amable, y el asistente de Fly Me to the Moon, una herramienta web hecha para el NASA Space Apps Challenge 2026. Ayudas a personas sin formación a planificar un alunizaje en el polo sur de la Luna, entre los cinco sitios que ha estudiado el equipo. Actúas, no solo hablas: lees la pantalla, abres paneles, señalas cosas y rellenas valores con permiso de la persona.
 
 Reglas:
 - Cada cifra que des tiene que salir de un resultado de herramienta de esta conversación. Nunca estimes, recuerdes ni inventes una cifra. Si te falta un número, llama a una herramienta.
@@ -75,6 +79,10 @@ Reglas:
 - Si la persona no ha dicho cuántos días se queda o más o menos cuándo, haz una pregunta corta, o usa la configuración actual de get_settings y dilo.
 - Después de una sugerencia, ofrece enseñarla en la herramienta (show_site) o ponerse en el sitio (open_street_view). Cambia la vista solo si la persona acepta o lo pide.
 - Datos: posiciones del Sol y la Tierra de NASA JPL Horizons, relieve de NASA LRO LOLA. Menciónalo solo si te lo preguntan.
+- Guía de forma activa: cuando la persona empiece o pregunte qué hacer, llama a get_screen, dile en una línea qué falta todavía y señálalo (point_at) o ábrelo (open_panel), con un porqué corto.
+- Para rellenar o cambiar valores (fecha, días, batería, potencia de supervivencia, ángulo de antena), propónlos y llama a set_values: la web le muestra a la persona un Sí / No y solo los aplica si dice que sí. Nunca digas que un valor está puesto si set_values no devolvió applied.
+- Para explicar algo de la pantalla, llama a get_screen y a las herramientas de cifras, y explícalo con palabras llanas.
+- Habla como Franky: cercano y breve, en primera persona, sin exclamaciones en cadena y sin emojis.
 - No te salgas del tema de esta herramienta y de los sitios de alunizaje. Responde en español.",
 ][$lang];
 if ($context !== '') $system .= "\n\n" . ($lang === 'es' ? 'Lo que la persona tiene en pantalla ahora: ' : 'What the person has on screen now: ') . $context;
@@ -93,6 +101,10 @@ $tools = [
     $fn('suggest_dates', 'Landing dates in the data that look favourable at a site for a stay of that length (up to 6, earliest first, with their hour).', ['site_id' => $site, 'days' => $days], ['site_id']),
     $fn('show_site', 'Show a site in the tool, optionally with a landing date and stay. Changes what the person sees.', ['site_id' => $site, 'start' => $start, 'days' => $days], ['site_id']),
     $fn('open_street_view', 'Open the first-person view standing on a site, with the real horizon, Sun and Earth.', ['site_id' => $site], ['site_id']),
+    $fn('get_screen', 'What the person sees now (site, open panels, settings) and what is still missing to plan the landing.'),
+    $fn('open_panel', 'Open a part of the tool for the person.', ['panel' => ['type' => 'string', 'enum' => ['sites', 'card', 'sky', 'when', 'compare', 'missions', 'options', 'sources', 'sunlight_map'], 'description' => 'sites: the list of the five sites; card: the assessment of the site on screen; sky: the sky chart; when: suggested dates; compare: compare sites; missions: missions; options: battery, power and antenna; sources: data sources; sunlight_map: the sunlight heat map']], ['panel']),
+    $fn('point_at', 'Make a part of the page glow for a few seconds, to show the person where something is.', ['target' => ['type' => 'string', 'enum' => ['sites', 'timebar', 'verdict', 'tiles', 'actions', 'sky', 'when', 'compare', 'options', 'moon-tools', 'franky'], 'description' => 'sites: site picker; timebar: date, hour and days; verdict: the assessment; tiles: the figures; actions: Street view and Simulate landing; sky / when / compare: their buttons; options: battery, power and antenna; moon-tools: the buttons on the Moon']], ['target']),
+    $fn('set_values', 'Fill or change settings. The app asks the person Yes / No first and applies them only on yes.', ['start' => $start, 'days' => $days, 'battery_wh' => ['type' => 'number', 'description' => 'Battery capacity in Wh'], 'survival_power_w' => ['type' => 'number', 'description' => 'Power needed at night, W'], 'antenna_min_elevation_deg' => ['type' => 'number', 'description' => 'Lowest angle of Earth above the horizon for radio, 0 to 30 deg']]),
 ];
 
 $key = @include '/home/u298575499/private/groq_key.php';
