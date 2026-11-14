@@ -85,7 +85,12 @@ export function attachCesiumMoon(o: { token: string; parent: THREE.Object3D; cam
       if (!mesh.isMesh) return
       if (!mesh.geometry.getAttribute('normal')) mesh.geometry.computeVertexNormals()
       mesh.material = Array.isArray(mesh.material) ? mesh.material.map(litMaterial) : litMaterial(mesh.material)
-      mesh.castShadow = mesh.receiveShadow = true
+      // They cast shadows on our polar cap but do not receive them: the shadow map is tuned for our own
+      // Moon, and on their much finer relief, with the Sun this low, it shadowed the tiles themselves
+      // (shadow acne) and the whole polar cap came out black. Their relief is still shaded by the Sun's
+      // angle, and the shadows painted in their picture stay.
+      mesh.castShadow = true
+      mesh.receiveShadow = false
     })
     if (!first) return
     first = false
