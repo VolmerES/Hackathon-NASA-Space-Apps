@@ -1064,8 +1064,18 @@ export default function App() {
 
           {/* Free area: the 3D Moon frames the south pole here. */}
           <div className={`pointer-events-none absolute inset-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'sm:left-[380px]' : ''}`}>
-            <div ref={frameRef} className="relative min-h-0 flex-1" aria-hidden="true">
-              {splashDone && moonOk && !panel && !lightOn && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
+            <div ref={frameRef} className="relative min-h-0 flex-1">
+              {splashDone && moonOk && !panel && !lightOn && <p className={`absolute inset-x-0 hidden text-center text-xs text-white/60 lg:block ${focused && !picking && !skyOpen && !skyStay.value ? 'bottom-16' : 'bottom-2'}`}>{t.dragHint}</p>}
+              {/* Desktop: the sky curves button, centred at the very bottom of the Moon's area. */}
+                {focused && !picking && panel !== 'sky' && !skyOpen && !skyStay.value && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-3 hidden justify-center lg:flex">
+                  <button onClick={() => setSkyOpen(true)} className="ui-in glass pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold hover:bg-white/10">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 18c3-7 6-10 9-10s6 3 9 10" /><path d="M3 21h18" /><circle cx="12" cy="8" r="1.6" fill="currentColor" /></svg>
+                    {t.skyCurves}
+                  </button>
+                </div>
+              )}
+
               {/* Legend of the heat map: what the colours mean, and how far to trust them. */}
               {splashDone && moonOk && lightOn && (
                 <div className="ui-in glass absolute bottom-2 left-2 max-w-[min(300px,calc(100%-88px))] px-3 py-2 text-xs">
@@ -1087,14 +1097,6 @@ export default function App() {
                   <Panorama site={focused.site} samples={focused.samples} height={190} />
                 </SkyStrip>
               </section>
-            )}
-            {focused && !picking && panel !== 'sky' && !skyOpen && !skyStay.value && (
-              <div className="pointer-events-none mb-12 hidden justify-center lg:flex">
-                <button onClick={() => setSkyOpen(true)} className="ui-in glass pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold hover:bg-white/10">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 18c3-7 6-10 9-10s6 3 9 10" /><path d="M3 21h18" /><circle cx="12" cy="8" r="1.6" fill="currentColor" /></svg>
-                  {t.skyCurves}
-                </button>
-              </div>
             )}
             {/* The main card, folded: a small pill at the top left brings it back. */}
           {!cardOpen && !cardStay.value && (

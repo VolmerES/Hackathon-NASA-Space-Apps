@@ -1109,7 +1109,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
           </button>
           {controls.layer && controls.onLayer && (
-            <button type="button" className="moon-layer" data-on={controls.layerOn ? 'true' : 'false'} aria-pressed={!!controls.layerOn} aria-busy={!!controls.layerBusy} onClick={controls.onLayer}>
+            <button type="button" className="moon-layer" data-on={controls.layerOn ? 'true' : 'false'} aria-pressed={!!controls.layerOn} aria-busy={!!controls.layerBusy} onClick={controls.onLayer} title={controls.layer}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 3l9 5-9 5-9-5 9-5z" />
                 <path d="M3 13l9 5 9-5" />
@@ -1118,7 +1118,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             </button>
           )}
           {hdAvailable && controls.hd && (
-            <button type="button" className="moon-layer" data-on={hdState ? 'true' : 'false'} aria-pressed={!!hdState} aria-busy={hdState === 1} onClick={() => api.current?.setHd(!hdState)}>
+            <button type="button" className="moon-layer" data-on={hdState ? 'true' : 'false'} aria-pressed={!!hdState} aria-busy={hdState === 1} onClick={() => api.current?.setHd(!hdState)} title={controls.hd}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M3 7v10M3 12h5M8 7v10M13 7h3a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4h-3z" />
               </svg>
@@ -1126,7 +1126,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             </button>
           )}
           {earth && controls.fromEarth && (
-            <button type="button" className="moon-layer" data-on={view === 1 ? 'true' : 'false'} aria-pressed={view === 1} onClick={() => api.current?.setView(view === 1 ? 0 : 1)}>
+            <button type="button" className="moon-layer" data-on={view === 1 ? 'true' : 'false'} aria-pressed={view === 1} onClick={() => api.current?.setView(view === 1 ? 0 : 1)} title={controls.fromEarth}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="8" />
                 <path d="M12 4a8 8 0 0 0 0 16c-3-2.2-3-13.8 0-16z" fill="currentColor" stroke="none" />
@@ -1135,7 +1135,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
             </button>
           )}
           {earth && controls.earth && (
-            <button type="button" className="moon-layer" data-on={view === 2 ? 'true' : 'false'} aria-pressed={view === 2} onClick={() => api.current?.setView(view === 2 ? 0 : 2)}>
+            <button type="button" className="moon-layer" data-on={view === 2 ? 'true' : 'false'} aria-pressed={view === 2} onClick={() => api.current?.setView(view === 2 ? 0 : 2)} title={controls.earth}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="8" />
                 <path d="M4 12h16M12 4c2.6 2.4 2.6 13.6 0 16M12 4c-2.6 2.4-2.6 13.6 0 16" />
@@ -1143,7 +1143,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
               <span>{controls.earth}</span>
             </button>
           )}
-          <button type="button" className="moon-recenter" onClick={() => api.current?.recenter()}>
+          <button type="button" className="moon-recenter" onClick={() => api.current?.recenter()} title={controls.recenter}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <circle cx="12" cy="12" r="7" />
               <circle cx="12" cy="12" r="1.6" fill="currentColor" />
