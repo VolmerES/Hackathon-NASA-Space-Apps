@@ -185,6 +185,8 @@ export default function App() {
     }
   })
   const [missionsOpen, setMissionsOpen] = useState(false)
+  // The saved scenario on screen: changes can update it instead of making a new one.
+  const [scenarioId, setScenarioId] = useState<string | null>(null)
   const [panel, setPanel] = useState<Panel | null>(() => {
     const p = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('p')
     return p === 'sky' || p === 'when' || p === 'compare' ? p : null
@@ -421,6 +423,7 @@ export default function App() {
   }
   const openMission = (m: MissionDef, sc?: SavedScenario) => {
     activate(m.id)
+    setScenarioId(sc?.id ?? null)
     setMission((cur) => {
       const base = applyMission(m, cur)
       return sc ? { ...base, landing: new Date(sc.landing), slipDays: sc.slipDays } : base
@@ -441,17 +444,38 @@ export default function App() {
     storeMissions(missions.filter((x) => x.id !== id))
     if (activeId === id) {
       activate(null)
+      setScenarioId(null)
       setMission((cur) => ({ ...cur, req: undefined, batteryWh: undefined }))
     }
   }
-  const deleteScenario = (mid: string, sid: string) => storeMissions(missions.map((x) => (x.id === mid ? { ...x, scenarios: x.scenarios.filter((sc) => sc.id !== sid) } : x)))
+  const deleteScenario = (mid: string, sid: string) => {
+    storeMissions(missions.map((x) => (x.id === mid ? { ...x, scenarios: x.scenarios.filter((sc) => sc.id !== sid) } : x)))
+    if (sid === scenarioId) setScenarioId(null)
+  }
+  const patchScenario = (mid: string, sid: string, patch: Partial<SavedScenario>) =>
+    storeMissions(missions.map((x) => (x.id === mid ? { ...x, scenarios: x.scenarios.map((sc) => (sc.id === sid ? { ...sc, ...patch } : sc)), updated: new Date().toISOString() } : x)))
+  // What is on screen, in the shape of a saved scenario.
+  const current = focused ? { sites: chosen.length ? chosen : [focused.site.id], focus: focused.site.id, landing: mission.landing.toISOString(), slipDays: mission.slipDays } : null
+  const autoName = (kind: SavedScenario['kind'], sc: { landing: string; slipDays: number }) => `${t.ms.kinds[kind]} · ${fmtDate(new Date(Date.parse(sc.landing) + sc.slipDays * 86400000))}`
+  const openScenario = active?.scenarios.find((sc) => sc.id === scenarioId) ?? null
+  const scenarioDirty = !!openScenario && !!current && (openScenario.focus !== current.focus || openScenario.landing !== current.landing || openScenario.slipDays !== current.slipDays || openScenario.sites.join('|') !== current.sites.join('|'))
   const saveScenario = () => {
-    if (!active || !focused) return
-    const base = { sites: chosen.length ? chosen : [focused.site.id], focus: focused.site.id, landing: mission.landing.toISOString(), slipDays: mission.slipDays }
-    const kind = kindOf(base, active.scenarios[0])
-    const sc: SavedScenario = { id: uid(), name: `${t.ms.kinds[kind]} · ${fmtDate(start)}`, kind, ...base }
+    if (!active || !current) return
+    const kind = kindOf(current, active.scenarios[0])
+    const sc: SavedScenario = { id: uid(), name: autoName(kind, current), kind, ...current }
     storeMissions(missions.map((x) => (x.id === active.id ? { ...x, scenarios: [...x.scenarios, sc], updated: new Date().toISOString() } : x)))
+    setScenarioId(sc.id)
     setToast(t.ms.saved(sc.name))
+  }
+  const updateScenario = () => {
+    if (!active || !current || !openScenario) return
+    // The baseline stays the baseline; the others are typed again against it.
+    const isBase = active.scenarios[0]?.id === openScenario.id
+    const kind = isBase ? 'baseline' : kindOf(current, active.scenarios[0])
+    // A name the tool made follows the new dates; a name the user wrote stays.
+    const name = openScenario.name === autoName(openScenario.kind, openScenario) ? autoName(kind, current) : openScenario.name
+    patchScenario(active.id, openScenario.id, { ...current, kind, name })
+    setToast(t.ms.updated(name))
   }
   const evaluateScenario = (m: MissionDef, sc: SavedScenario): Evaluated => {
     if (!ready) return null
@@ -703,7 +727,23 @@ export default function App() {
                     <>
                       <span className="text-muted">{t.ms.missionLabel}</span>
                       <button type="button" onClick={() => setMissionsOpen(true)} className="min-w-0 truncate font-semibold text-ink underline-offset-4 hover:underline">{active.name}</button>
-                      <button type="button" onClick={saveScenario} className="ml-auto min-h-9 rounded-sm border border-sun/70 px-2.5 font-semibold text-sun hover:bg-sun/10">{t.ms.saveScenario}</button>
+                      {openScenario ? (
+                        <>
+                          <span className="basis-full text-muted sm:basis-auto">
+                            · {t.ms.scenario}: <b className="font-semibold text-ink">{openScenario.name}</b>
+                          </span>
+                          <span className="ml-auto flex gap-1.5">
+                            {scenarioDirty ? (
+                              <button type="button" onClick={updateScenario} className="min-h-9 rounded-sm bg-sun px-2.5 font-semibold text-black hover:brightness-110">{t.ms.update}</button>
+                            ) : (
+                              <span className="flex min-h-9 items-center px-1 text-ok">{t.ms.upToDate}</span>
+                            )}
+                            <button type="button" onClick={saveScenario} className="min-h-9 rounded-sm border border-sun/70 px-2.5 font-semibold text-sun hover:bg-sun/10">{t.ms.saveNew}</button>
+                          </span>
+                        </>
+                      ) : (
+                        <button type="button" onClick={saveScenario} className="ml-auto min-h-9 rounded-sm border border-sun/70 px-2.5 font-semibold text-sun hover:bg-sun/10">{t.ms.saveScenario}</button>
+                      )}
                     </>
                   ) : (
                     <>
@@ -1236,7 +1276,7 @@ export default function App() {
       )}
 
       <Overlay open={missionsOpen} title={t.ms.title} onClose={() => setMissionsOpen(false)}>
-        <Missions missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} />
+        <Missions missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} openScenarioId={scenarioId} />
       </Overlay>
       <Overlay open={sourcesOpen} title={t.dataSources} onClose={() => setSourcesOpen(false)}>
         <p className="text-muted">{t.sourcesIntro}</p>

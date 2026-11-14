@@ -14,7 +14,7 @@ const STATUS_CLS: Record<Status, string> = { draft: 'border-white/30 text-muted'
 
 // The missions of this browser: list, create or edit one, and its scenarios side by side. Every figure
 // is recomputed from the current data each time (evaluate), with the mission's own requirements.
-export function Missions({ missions, activeId, evaluate, num, onSave, onDelete, onOpen, onDeleteScenario }: {
+export function Missions({ missions, activeId, openScenarioId, evaluate, num, onSave, onDelete, onOpen, onDeleteScenario, onRenameScenario }: {
   missions: MissionDef[]
   activeId: string | null
   evaluate: (m: MissionDef, s: SavedScenario) => Evaluated
@@ -23,10 +23,14 @@ export function Missions({ missions, activeId, evaluate, num, onSave, onDelete, 
   onDelete: (id: string) => void
   onOpen: (m: MissionDef, s?: SavedScenario) => void
   onDeleteScenario: (missionId: string, scenarioId: string) => void
+  onRenameScenario: (missionId: string, scenarioId: string, name: string) => void
+  /** The saved scenario on screen right now. */
+  openScenarioId: string | null
 }) {
   const t = useT()
   const [view, setView] = useState<{ kind: 'list' } | { kind: 'edit'; draft: MissionDef } | { kind: 'detail'; id: string }>({ kind: 'list' })
   const [confirm, setConfirm] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
 
   const statusOf = (m: MissionDef): Status => {
     if (!m.scenarios.length) return 'draft'
@@ -77,7 +81,25 @@ export function Missions({ missions, activeId, evaluate, num, onSave, onDelete, 
                 {rows.map(({ s, e }) => (
                   <tr key={s.id} className="border-t border-white/10 align-top">
                     <td className="py-2 pr-2">
-                      <span className="block font-semibold text-ink">{s.name}</span>
+                      {renaming?.id === s.id ? (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            if (renaming.name.trim()) onRenameScenario(m.id, s.id, renaming.name.trim())
+                            setRenaming(null)
+                          }}
+                          className="flex gap-1"
+                        >
+                          <input autoFocus aria-label={t.ms.rename} value={renaming.name} onChange={(e) => setRenaming({ id: s.id, name: e.target.value })} onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setRenaming(null) } }} className="min-h-8 min-w-0 flex-1 rounded-sm border border-white/30 bg-black/40 px-1.5 text-xs text-ink" />
+                          <button type="submit" className="rounded-sm bg-sun px-2 font-semibold text-black">OK</button>
+                        </form>
+                      ) : (
+                        <span className="flex items-center gap-1 font-semibold text-ink">
+                          {s.name}
+                          {openScenarioId === s.id && activeId === m.id && <span className="text-[10px] font-normal text-sun">● {t.ms.onScreen}</span>}
+                          <button type="button" onClick={() => setRenaming({ id: s.id, name: s.name })} aria-label={`${t.ms.rename}: ${s.name}`} title={t.ms.rename} className="px-1 font-normal text-muted hover:text-ink">✎</button>
+                        </span>
+                      )}
                       <span className="block text-muted">{t.ms.kinds[s.kind]}{e && <> · {e.site} · {e.when}</>}</span>
                     </td>
                     {e ? (
