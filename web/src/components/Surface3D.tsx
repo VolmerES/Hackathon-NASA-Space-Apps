@@ -694,7 +694,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
         {ridgeKmAt(site, heading) !== null && <span className="block text-xs text-white/65">{t.reliefSeen(ridgeKmAt(site, heading)!)}</span>}
       </p>
       {/* Landing simulation: height above the ground, descent speed and what is happening. */}
-      <div className="pointer-events-none absolute right-3 top-2 flex max-h-[calc(100%-76px)] w-[min(260px,calc(100%-24px))] flex-col gap-2 overflow-y-auto">
+      <div className="pointer-events-none absolute right-3 top-2 flex max-h-[calc(100%-76px)] w-[min(340px,calc(100%-24px))] flex-col gap-2 overflow-y-auto">
       {hud && (
         <div className="ui-in glass px-3 py-2 text-sm" role="status">
           <p className={`font-semibold ${hud.phase === 'down' ? 'text-ok' : hud.phase === 'failed' ? 'text-warn' : 'text-sun'}`}>
@@ -721,23 +721,28 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       {/* What the sky and the ground are like at this hour, from the data of the tool. */}
       <details open={skyOpen} onToggle={(e) => setSkyOpen((e.target as HTMLDetailsElement).open)} className="glass pointer-events-auto px-3 py-2 text-sm">
         <summary className="cursor-pointer font-semibold">{t.skyPanel}</summary>
-        <dl className="mt-1.5 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 tabular-nums">
-          <dt className="col-span-2 mt-1 flex items-center gap-1.5 font-semibold text-sun"><i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />{t.sunWord}</dt>
-          <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.sunAz.toFixed(1)}°</dd>
-          <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.sunEl.toFixed(1)}°</dd>
-          <dt className="text-white/75">{t.litSite}</dt><dd className="text-right">{sample.sunVisible > 0.5 ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
-          <dt className="col-span-2 mt-1.5 flex items-center gap-1.5 font-semibold text-earth"><i className="inline-block size-2.5 rounded-full bg-earth" aria-hidden="true" />{t.earthWord}</dt>
-          <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.earthAz.toFixed(1)}°</dd>
-          <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.earthEl.toFixed(1)}°</dd>
-          <dt className="text-white/75">{t.earthAbove}</dt><dd className="text-right">{sample.earthVisible ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
+        {/* The Sun and the Earth, each in its own box, side by side; the ground under them. */}
+        <div className="mt-1.5 grid grid-cols-2 gap-2 text-xs tabular-nums">
+          <dl className="grid grid-cols-[1fr_auto] content-start gap-x-2 gap-y-0.5 border border-sun/40 bg-sun/5 p-2">
+            <dt className="col-span-2 mb-0.5 flex items-center gap-1.5 font-semibold text-sun"><i className="inline-block size-2.5 rounded-full bg-sun" aria-hidden="true" />{t.sunWord}</dt>
+            <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.sunAz.toFixed(1)}°</dd>
+            <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.sunEl.toFixed(1)}°</dd>
+            <dt className="text-white/75">{t.litSite}</dt><dd className="text-right">{sample.sunVisible > 0.5 ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
+          </dl>
+          <dl className="grid grid-cols-[1fr_auto] content-start gap-x-2 gap-y-0.5 border border-earth/40 bg-earth/5 p-2">
+            <dt className="col-span-2 mb-0.5 flex items-center gap-1.5 font-semibold text-earth"><i className="inline-block size-2.5 rounded-full bg-earth" aria-hidden="true" />{t.earthWord}</dt>
+            <dt className="text-white/75">{t.azimuth}</dt><dd className="text-right">{sample.earthAz.toFixed(1)}°</dd>
+            <dt className="text-white/75">{t.elevation}</dt><dd className="text-right">{sample.earthEl.toFixed(1)}°</dd>
+            <dt className="text-white/75">{t.earthAbove}</dt><dd className="text-right">{sample.earthVisible ? <span className="text-ok">{t.yesCap}</span> : <span className="text-warn">{t.noCap}</span>}</dd>
+          </dl>
           {real && (
-            <>
-              <dt className="col-span-2 mt-1.5 font-semibold">{t.groundHere}</dt>
+            <dl className="col-span-2 grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 border border-white/15 p-2">
+              <dt className="col-span-2 mb-0.5 font-semibold">{t.groundHere}</dt>
               <dt className="text-white/75">{t.slope}</dt><dd className="text-right">{real.slopeDeg.toFixed(1)}°</dd>
               <dt className="text-white/75">{t.incidence}</dt><dd className="text-right">{incidenceDeg(real, sample.sunAz, sample.sunEl).toFixed(1)}°</dd>
-            </>
+            </dl>
           )}
-        </dl>
+        </div>
         <p className="mt-1.5 text-[11px] leading-snug text-muted">{real ? t.skyNoteGround : t.skyNote}</p>
       </details>
       </div>

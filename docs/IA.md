@@ -109,6 +109,7 @@ comprobó**. Lo que no se ha comprobado lleva ⚠️.
 | Botones sobre la Luna | «Sky curves» flota centrado abajo del todo (ya no empuja la zona de la Luna), así que los botones del mapa (mapa de luz, HD, vistas de la Tierra, polo sur, zoom) bajan con ella; en móvil solo muestran el icono, con el nombre para lectores de pantalla y al mantener pulsado | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | Móvil más compacto | En móvil, la barra de fecha empieza plegada en una línea (fecha, hora y días) y se abre y cierra al tocarla; la pastilla de la ficha es más pequeña; el logo no se parte en dos líneas | **Petición de Angela**, con una captura a 320 px | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 | Ficha como pop‑up en móvil | En móvil la ficha es un pop‑up centrado con fondo oscuro, una ✕ siempre visible arriba a la derecha y cierre con el botón «atrás» (una entrada en el historial mientras está abierta); en tablet y ordenador sigue el cajón lateral. La URL del escenario conserva el estado del historial | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin probar el botón «atrás» en un móvil real |
+| «Cielo y suelo a esta hora» en cajas | En la vista de calle, el Sol y la Tierra van cada uno en su caja, lado a lado, y el suelo debajo; panel algo más ancho (340 px) | **Petición de Angela** | Compila y pasa el lint. ⚠️ Sin ver en pantalla |
 
 ### 15‑nov · domingo
 
