@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA, DEFAULT_REQUIREMENTS, MADRID_DSN, SITES, clampToData, customSite, gridReady, gridSiteById, loadGrid, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, subearthAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { DATA, DEFAULT_REQUIREMENTS, MADRID_DSN, SITES, clampToData, customSite, gridReady, gridSiteById, loadGrid, loadRobustness, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, subearthAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
@@ -677,7 +677,7 @@ export default function App() {
   // its baseline site, as one readable HTML file to keep or print to PDF.
   const downloadReport = async (m: MissionDef) => {
     if (!ready) return
-    await loadGrid() // the landing grid, for the landing-accuracy section
+    await Promise.all([loadGrid(), loadRobustness()]) // the landing grid and its robustness over every date, for the landing-accuracy section
     const rows: ReportRow[] = m.scenarios.map((sc) => {
       const site = resolveSite(sc.focus)
       const landing = new Date(sc.landing)

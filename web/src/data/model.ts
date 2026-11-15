@@ -376,7 +376,8 @@ export const batteryMassKg = (wh: number): [number, number] => [wh / SPACE_BATTE
 /** A real reference: the battery of NASA's VIPER rover (source 4). */
 export const VIPER_BATTERY_WH = 5420
 
-/** Official Artemis III criteria (source 1): land within 100 m, under 10 deg of slope over 100 m. */
+/** NASA's crewed landing requirement (source 1): land within 100 m, under 10 deg of slope over 100 m.
+ *  The name stays from when it was set for Artemis III (since February 2026 the first landing is Artemis IV). */
 export const ARTEMIS3 = { landingAccuracyM: 100, maxLandingSlopeDeg: 10, slopeBaselineM: 100 }
 
 /** Night survival power profiles. LTV's 65 W is our average: 9.7 kWh ÷ 150 h (NASA gives the energy, not the power). */
@@ -564,6 +565,28 @@ export function gridSiteById(id: string): GridSite | undefined {
   const [e, n] = (off ?? '').split(',').map(Number)
   const p = grid?.[siteId]?.points.find((q) => q.e === e && q.n === n)
   return p ? gridSite(siteId, p) : undefined
+}
+
+// Landing-grid robustness for every landing date (robustez.json, computed by the team with this same
+// model over elipse.json): per team site and landing day at 00:00 UTC, for a 14-day stay. c: longest
+// night at the target; w: worst longest night within 100 m; b: the same after moving the target to the
+// best grid point within 100 m (hours). e0/emin/emax: Earth in view at the target and its range within
+// 100 m (%). Loaded only when a mission report needs it.
+export type RobustDay = { t: string; c: number; w: number; b: number; e0: number; emin: number; emax: number }
+let robust: Record<string, unknown> | null = null
+let robustLoading: Promise<unknown> | null = null
+export function loadRobustness(base = 'data/') {
+  robustLoading ??= fetch(base + 'robustez.json')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((g) => (robust = g))
+    .catch(() => null)
+  return robustLoading
+}
+/** Every landing date of a team site, for stays of `stayDays` days (empty if not loaded). */
+export function robustness(siteId: string): { stayDays: number; days: RobustDay[] } {
+  const days = robust && Array.isArray(robust[siteId]) ? (robust[siteId] as RobustDay[]) : []
+  const meta = robust?._meta as { stay_days?: number } | undefined
+  return { stayDays: meta?.stay_days ?? 14, days }
 }
 
 /** Great-circle distance between two points of the Moon (km), haversine on a 1737.4 km sphere. */

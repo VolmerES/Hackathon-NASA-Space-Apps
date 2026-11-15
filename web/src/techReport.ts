@@ -4,7 +4,7 @@
 // accuracy, alternatives, compliance, limitations, references and a documentation page. Template by
 // Luna (plantilla_informe_v2), ported from its reference generator. Not a NASA document: no NASA logo or
 // numbering. Every figure is computed here from the app's own model; results are worded as suggestions.
-import { ARTEMIS3, DATA, SITES, SOURCES, VIPER_BATTERY_WH, gridSites, horizonAt, landingCalendar, metrics, moonDistanceKm, overview, simulate, type GridSite, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { ARTEMIS3, DATA, POWER_PRESETS, SITES, SOURCES, VIPER_BATTERY_WH, gridSites, robustness, horizonAt, landingCalendar, metrics, moonDistanceKm, overview, simulate, type GridSite, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import type { Strings } from './i18n'
 import { missionParams, type MissionDef, type SavedScenario } from './missions'
 
@@ -89,7 +89,14 @@ export function technicalReportHtml(r: TechReportInput): string | null {
   const params: Mission = missionParams(mi)
   const land = params.landing
   if (Number.isNaN(land.getTime()) || land < DATA.start || land.getTime() + mi.durationDays * 86400000 > DATA.end.getTime()) return null
-  const samples: Sample[] = simulate(site, params)
+  // Landing accuracy: the grid around the target (empty if it did not load).
+  const grid: Pt[] = gridSites(site.id).map((p) => ({ p, m: metrics(simulate(p, params), params) }))
+  // The site's own horizon and the grid's centre point differ by rounding (up to 0.005°), enough to
+  // move the longest night by an hour. Inside the report the centre point stands for the site, so the
+  // target has one figure, not two.
+  const center = grid.find((x) => x.p.distM === 0)
+  const here: Site = center ? { ...site, horizon: center.p.horizon } : site
+  const samples: Sample[] = simulate(here, params)
   if (samples.length < 24) return null
   const m = r.cautious(site, metrics(samples, params))
   const req = params.req ?? { minSunPct: 90, maxDarkH: 24, minEarthPct: 50 }
@@ -105,6 +112,12 @@ export function technicalReportHtml(r: TechReportInput): string | null {
   const day = (d: Date) => d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   const dt = (d: Date) => `${day(d)}, ${d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC`
   const short = (d: Date) => d.toLocaleDateString(loc, { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const kwh1 = (wh: number) => (wh < 100 ? `${nf(wh)} Wh` : `${nf(wh / 1000, 1)} kWh`)
+  /** "40 m S", "40 m W, 80 m N": where a grid point is from the target. */
+  const off = (e: number, n: number) => {
+    const part = (v: number, pos: string, neg: string) => (v ? `${Math.abs(v)} m ${v > 0 ? pos : neg}` : '')
+    return [part(e, 'E', L('W', 'O')), part(n, 'N', 'S')].filter(Boolean).join(', ') || L('the target', 'el objetivo')
+  }
   const V = (v: Metrics['verdict']) => t.verdictLong[v]
   const badge = (v: Metrics['verdict']) => `<span class="badge" style="--c:${COLOR[v]}">${esc(V(v))}</span>`
   const ok = (b: boolean) => (b ? `<span class="pass">${L('Met', 'Cumple')}</span>` : `<span class="fail">${L('Not met', 'No cumple')}</span>`)
@@ -113,20 +126,39 @@ export function technicalReportHtml(r: TechReportInput): string | null {
   const S: Row[] = samples.map((s) => ({
     t: s.t,
     sunEl: s.sunEl,
-    sunHor: horizonAt(site, s.sunAz),
+    sunHor: horizonAt(here, s.sunAz),
     sunVis: s.sunVisible,
     earthEl: s.earthEl,
-    earthHor: horizonAt(site, s.earthAz),
+    earthHor: horizonAt(here, s.earthAz),
     earthVis: s.earthVisible,
     madrid: s.madridLink,
   }))
-  const days = overview(site, land, mi.durationDays, params.minAntennaElevDeg)
+  const days = overview(here, land, mi.durationDays, params.minAntennaElevDeg)
 
-  // Landing accuracy: the grid around the target (empty if it did not load).
-  const grid: Pt[] = gridSites(site.id).map((p) => ({ p, m: metrics(simulate(p, params), params) }))
+  const R100 = ARTEMIS3.landingAccuracyM + 1e-6
   const g100 = grid.filter((x) => x.p.distM <= ARTEMIS3.landingAccuracyM + 1e-6)
   const worst100 = g100.length ? g100.reduce((a, b) => (b.m.longestNightH > a.m.longestNightH ? b : a)) : null
   const best = g100.filter((x) => x.p.slope < ARTEMIS3.maxLandingSlopeDeg).sort((a, b) => b.m.opsPct - a.m.opsPct || a.m.longestNightH - b.m.longestNightH)[0]
+  // Best target: the grid point within 100 m whose own 100 m circle has the shortest worst night. A
+  // planner chooses a target, not a touchdown point, so this is the choice that can really be made.
+  const circle = (c: Pt) => grid.filter((x) => Math.hypot(x.p.e - c.p.e, x.p.n - c.p.n) <= R100)
+  const bestTarget = g100
+    .map((c) => {
+      const pts = circle(c)
+      return { c, worst: pts.reduce((a, b) => (b.m.longestNightH > a.m.longestNightH ? b : a)), n: pts.length }
+    })
+    .reduce<{ c: Pt; worst: Pt; n: number } | null>((a, b) => (!a || b.worst.m.longestNightH < a.worst.m.longestNightH || (b.worst.m.longestNightH === a.worst.m.longestNightH && b.c.p.distM < a.c.p.distM) ? b : a), null)
+  // Every landing date in the data (14-day stays, from the team's robustness file).
+  const rob = robustness(site.id)
+  const robN = rob.days.length
+  const share = (f: (d: (typeof rob.days)[number]) => boolean) => Math.round((100 * rob.days.filter(f).length) / Math.max(1, robN))
+  const robStats = robN && grid.length ? { n: robN, w24: share((d) => d.w - d.c > 24), w72: share((d) => d.w - d.c > 72), fix: share((d) => d.w - d.b > 24), same: mi.durationDays === rob.stayDays } : null
+  const robToday = rob.days.find((d) => d.t === land.toISOString().slice(0, 10))
+  // Earth in view with a higher lowest antenna angle (line of sight only).
+  const antenna = [0, 1, 2, 5].map((a) => {
+    const ps = { ...params, minAntennaElevDeg: a }
+    return { a, m: metrics(simulate(here, ps), ps) }
+  })
 
   // Alternatives: the other team sites on the same dates, and the same site landing later.
   const others = SITES.filter((s) => s.team && s.id !== site.id)
@@ -136,10 +168,10 @@ export function technicalReportHtml(r: TechReportInput): string | null {
     .map((d) => {
       const ps = { ...params, slipDays: d }
       if (land.getTime() + (d + mi.durationDays) * 86400000 > DATA.end.getTime()) return null
-      return { d, m: r.cautious(site, metrics(simulate(site, ps), ps)) }
+      return { d, m: r.cautious(site, metrics(simulate(here, ps), ps)) }
     })
     .filter((x): x is { d: number; m: Metrics } => !!x)
-  const plan = landingCalendar(site, mi.durationDays, params.minAntennaElevDeg, params.req, P, params.batteryWh, params.dod, params.eta)
+  const plan = landingCalendar(here, mi.durationDays, params.minAntennaElevDeg, params.req, P, params.batteryWh, params.dod, params.eta)
   let nextViable: Date | null = null
   for (const d of plan) {
     const h = d.hours.findIndex((v, i) => v === 'viable' && d.t.getTime() + i * HOUR >= land.getTime())
@@ -229,6 +261,7 @@ export function technicalReportHtml(r: TechReportInput): string | null {
     out.push(`<text x="${cx(0) + r100 * 0.72}" y="${cy(0) - r100 * 0.74}" class="tick">100 m</text>`)
     out.push(`<path d="M${cx(0) - 6},${cy(0)} h12 M${cx(0)},${cy(0) - 6} v12" stroke="#14171c" stroke-width="2"/>`)
     if (best) out.push(`<circle cx="${cx(best.p.e)}" cy="${cy(best.p.n)}" r="7" fill="none" stroke="#127a4a" stroke-width="2.4"/>`)
+    if (bestTarget && bestTarget.c.p.distM > 0) out.push(`<rect x="${cx(bestTarget.c.p.e) - 10}" y="${cy(bestTarget.c.p.n) - 10}" width="20" height="20" fill="none" stroke="#127a4a" stroke-width="2"/>`)
     for (const e of eS) if (e % (2 * spacing) === 0) out.push(`<text x="${cx(e)}" y="${12 + cell * nS.length + 14}" class="tick" text-anchor="middle">${e}</text>`)
     for (const n of nS) if (n % (2 * spacing) === 0) out.push(`<text x="${pad - 6}" y="${cy(n) + 3.5}" class="tick" text-anchor="end">${n}</text>`)
     out.push(`<text x="${pad + (cell * eS.length) / 2}" y="${H - 2}" class="tick" text-anchor="middle">${L('metres east of the target', 'metros al este del objetivo')}</text>`)
@@ -237,6 +270,7 @@ export function technicalReportHtml(r: TechReportInput): string | null {
     ramp.forEach((c, k) => out.push(`<rect x="${lx}" y="${30 + k * 18}" width="14" height="14" fill="${c}"/><text x="${lx + 20}" y="${41 + k * 18}" class="tick">${k * 20}–${k * 20 + 20} %</text>`))
     out.push(`<path d="M${lx + 1},136 h12 M${lx + 7},130 v12" stroke="#14171c" stroke-width="2"/><text x="${lx + 20}" y="140" class="tick">${L('target', 'objetivo')}</text>`)
     out.push(`<circle cx="${lx + 7}" cy="156" r="6" fill="none" stroke="#127a4a" stroke-width="2.4"/><text x="${lx + 20}" y="160" class="tick">${L('suggested spot', 'punto sugerido')}</text>`)
+    out.push(`<rect x="${lx + 1}" y="170" width="12" height="12" fill="none" stroke="#127a4a" stroke-width="2"/><text x="${lx + 20}" y="180" class="tick">${L('suggested target', 'objetivo sugerido')}</text>`)
     out.push('</svg>')
     return out.join('')
   }
@@ -260,16 +294,21 @@ export function technicalReportHtml(r: TechReportInput): string | null {
   else recs.push(L(`No hour in the data looks favourable for the whole ${mi.durationDays}-day stay at this site.`, `Ninguna hora de los datos parece favorable para toda la estancia de ${mi.durationDays} días en este sitio.`))
   if (best && best.m.opsPct > m.opsPct + 0.5)
     recs.push(L(
-      `Moving the target ${best.p.e} m east and ${best.p.n} m north would raise the time with the Sun and Earth together from ${pct(m.opsPct)} to ${pct(best.m.opsPct)}, on a ${nf(best.p.slope, 1)}° slope over 100 m.`,
-      `Mover el objetivo ${best.p.e} m al este y ${best.p.n} m al norte subiría el tiempo con Sol y Tierra a la vez del ${pct(m.opsPct)} al ${pct(best.m.opsPct)}, con una pendiente de ${nf(best.p.slope, 1)}° sobre 100 m.`))
+      `Touching down at ${off(best.p.e, best.p.n)} of the target would raise the time with the Sun and Earth together from ${pct(m.opsPct)} to ${pct(best.m.opsPct)}, on a ${nf(best.p.slope, 1)}° slope over 100 m.`,
+      `Tocar suelo a ${off(best.p.e, best.p.n)} del objetivo subiría el tiempo con Sol y Tierra a la vez del ${pct(m.opsPct)} al ${pct(best.m.opsPct)}, con una pendiente de ${nf(best.p.slope, 1)}° sobre 100 m.`))
   if (worst100 && P > 0 && worst100.m.nightEnergyWh > m.nightEnergyWh)
     recs.push(L(
       `Energy storage should be sized for the 100 m landing accuracy rather than for the target: the worst night within 100 m lasts ${worst100.m.longestNightH} h and needs ${kwh(worst100.m.nightEnergyWh)} at ${w1(P)} W (${mass(worst100.m.nightEnergyWh)} of batteries), against ${kwh(m.nightEnergyWh)} at the target.`,
       `La batería convendría dimensionarla para la precisión de 100 m y no para el objetivo: la peor noche a menos de 100 m dura ${worst100.m.longestNightH} h y pide ${kwh(worst100.m.nightEnergyWh)} a ${w1(P)} W (${mass(worst100.m.nightEnergyWh)} de baterías), frente a ${kwh(m.nightEnergyWh)} en el objetivo.`))
 
+  if (bestTarget && worst100 && bestTarget.c.p.distM > 0 && bestTarget.worst.m.longestNightH < worst100.m.longestNightH - 24)
+    recs.push(L(
+      `Moving the target ${off(bestTarget.c.p.e, bestTarget.c.p.n)} would bring the worst night anywhere within 100 m of it down from ${worst100.m.longestNightH} h to ${bestTarget.worst.m.longestNightH} h.`,
+      `Mover el objetivo ${off(bestTarget.c.p.e, bestTarget.c.p.n)} bajaría la peor noche a menos de 100 m de él de ${worst100.m.longestNightH} h a ${bestTarget.worst.m.longestNightH} h.`))
+
   const abstract = L(
-    `Terrain horizons computed from NASA LRO LOLA topography and hourly Sun and Earth positions from JPL Horizons were used to assess ${esc(r.siteName)} (${nf(site.lat, 3)}°, ${nf(site.lon, 3)}°) for a ${mi.durationDays}-day stay beginning ${dt(land)}. The Sun is above the local terrain for ${pct(m.sunlightPct)} of the stay and the longest dark period is ${m.longestNightH} h${P > 0 ? `, which at a night survival power of ${w1(P)} W requires ${kwh(m.nightEnergyWh)} of stored energy` : ''}. Earth is in view for ${pct(m.earthLinkPct)} of the stay, with a longest gap of ${m.longestNoEarthH} h; against the mission requirements the stay appears as “${esc(V(m.verdict))}”.${worst100 ? ` Within the 100 m landing accuracy required for Artemis III the longest night ranges up to ${worst100.m.longestNightH} h.` : ''} These results are suggestions from the data, not a mission decision.`,
-    `Se han usado horizontes de relieve calculados con la topografía LOLA del LRO de la NASA y posiciones horarias del Sol y la Tierra de JPL Horizons para evaluar ${esc(r.siteName)} (${nf(site.lat, 3)}°, ${nf(site.lon, 3)}°) en una estancia de ${mi.durationDays} días que empieza el ${dt(land)}. El Sol está sobre el relieve local el ${pct(m.sunlightPct)} de la estancia y el periodo de oscuridad más largo es de ${m.longestNightH} h${P > 0 ? `, que con una potencia de supervivencia nocturna de ${w1(P)} W pide ${kwh(m.nightEnergyWh)} de energía almacenada` : ''}. La Tierra está a la vista el ${pct(m.earthLinkPct)} de la estancia, con un hueco máximo de ${m.longestNoEarthH} h; frente a los requisitos de la misión, la estancia aparece como «${esc(V(m.verdict))}».${worst100 ? ` Dentro de la precisión de alunizaje de 100 m que pide Artemis III, la noche más larga llega a ${worst100.m.longestNightH} h.` : ''} Son sugerencias a partir de los datos, no una decisión de misión.`,
+    `Terrain horizons computed from NASA LRO LOLA topography and hourly Sun and Earth positions from JPL Horizons were used to assess ${esc(r.siteName)} (${nf(site.lat, 3)}°, ${nf(site.lon, 3)}°) for a ${mi.durationDays}-day stay beginning ${dt(land)}. The Sun is above the local terrain for ${pct(m.sunlightPct)} of the stay and the longest dark period is ${m.longestNightH} h${P > 0 ? `, which at a night survival power of ${w1(P)} W requires ${kwh(m.nightEnergyWh)} of stored energy` : ''}. Earth is in view for ${pct(m.earthLinkPct)} of the stay, with a longest gap of ${m.longestNoEarthH} h; against the mission requirements the stay appears as “${esc(V(m.verdict))}”.${worst100 ? ` Within NASA's 100 m crewed landing requirement the longest night ranges up to ${worst100.m.longestNightH} h.` : ''} These results are suggestions from the data, not a mission decision.`,
+    `Se han usado horizontes de relieve calculados con la topografía LOLA del LRO de la NASA y posiciones horarias del Sol y la Tierra de JPL Horizons para evaluar ${esc(r.siteName)} (${nf(site.lat, 3)}°, ${nf(site.lon, 3)}°) en una estancia de ${mi.durationDays} días que empieza el ${dt(land)}. El Sol está sobre el relieve local el ${pct(m.sunlightPct)} de la estancia y el periodo de oscuridad más largo es de ${m.longestNightH} h${P > 0 ? `, que con una potencia de supervivencia nocturna de ${w1(P)} W pide ${kwh(m.nightEnergyWh)} de energía almacenada` : ''}. La Tierra está a la vista el ${pct(m.earthLinkPct)} de la estancia, con un hueco máximo de ${m.longestNoEarthH} h; frente a los requisitos de la misión, la estancia aparece como «${esc(V(m.verdict))}».${worst100 ? ` Dentro de los 100 m que pide la NASA para un alunizaje tripulado, la noche más larga llega a ${worst100.m.longestNightH} h.` : ''} Son sugerencias a partir de los datos, no una decisión de misión.`,
   )
 
   const dayRows = days
@@ -291,6 +330,10 @@ export function technicalReportHtml(r: TechReportInput): string | null {
   ].join('')
   const srcs = SOURCES.map((s) => `<li id="ref${ref(s.n)}">${esc(s.title)}. <a href="${esc(s.url)}">${esc(s.url)}</a></li>`).join('')
   const desc = mi.description.trim() || mi.objectives.trim()
+  const pg = site.team?.pgda69
+  const sgn = (x: number) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), 1)}`
+  const profName: Record<string, string> = { lemsHeater: L('heater', 'calentador'), smallLander: 'lander', ltv: 'rover' }
+  const profiles = (h: number) => POWER_PRESETS.filter((x) => x.w !== null).map((x) => `${kwh1(x.w! * h)} (${w1(x.w!)} W ${profName[x.id]})`).join(' · ')
 
   return `<!doctype html>
 <html lang="${es ? 'es' : 'en'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -348,8 +391,8 @@ export function technicalReportHtml(r: TechReportInput): string | null {
     <li><b>${L('Sun and Earth.', 'Sol y Tierra.')}</b> ${L("Sub-solar and sub-Earth points from NASA JPL Horizons (DE441, libration included), every hour; Earth direction corrected for the site's offset from the Moon's centre.", 'Puntos subsolar y subterrestre de NASA JPL Horizons (DE441, con libración), cada hora; dirección de la Tierra corregida por la distancia del sitio al centro de la Luna.')}</li>
     <li><b>${L('Visibility.', 'Visibilidad.')}</b> ${L('Sunlight counts the hours with more than half of the solar disc above the terrain; Earth is in view when its centre is above the terrain plus the antenna angle. Madrid link: Earth in view and the Moon at least 10° above Robledo de Chavela.', 'La luz solar cuenta las horas con más de medio disco solar sobre el relieve; la Tierra está a la vista cuando su centro supera el relieve más el ángulo de antena. Enlace con Madrid: Tierra a la vista y la Luna a más de 10° sobre Robledo de Chavela.')}</li>
     <li><b>${L('Energy.', 'Energía.')}</b> ${L(`Energy the battery must deliver = night survival power × longest night, divided by the margins. Battery mass with today's space batteries, 125–150 Wh/kg at module level [${ref(5)}].`, `Energía que debe entregar la batería = potencia de supervivencia × noche más larga, dividida por los márgenes. Masa de batería con baterías espaciales actuales, 125–150 Wh/kg a nivel de módulo [${ref(5)}].`)}</li>
-    <li><b>${L('Landing accuracy.', 'Precisión de alunizaje.')}</b> ${L(`Artemis III must land within 100 m of its target, on slopes under 10° measured over 100 m [${ref(1)}]. The same analysis is repeated on a grid every 40 m around the target, each point with its own horizon.`, `Artemis III debe alunizar a menos de 100 m de su objetivo, con pendientes de menos de 10° medidas sobre 100 m [${ref(1)}]. El mismo análisis se repite en una malla cada 40 m alrededor del objetivo, cada punto con su propio horizonte.`)}</li>
-    <li><b>${L('Validation.', 'Validación.')}</b> ${L('Sun and Earth directions agree with JPL Horizons to within 0.006°. Against the 18.6-year averages of NASA PGDA product 69 (Mazarico et al.) [3], sunlight agrees within a few points and Earth visibility comes out 1–8 points lower (a known, documented difference).', 'Las direcciones del Sol y la Tierra coinciden con JPL Horizons con un error máximo de 0,006°. Frente a las medias de 18,6 años del producto PGDA 69 de la NASA (Mazarico et al.) [3], la luz solar coincide a pocos puntos y la visibilidad de la Tierra sale entre 1 y 8 puntos más baja (una diferencia conocida y documentada).')}</li>
+    <li><b>${L('Landing accuracy.', 'Precisión de alunizaje.')}</b> ${L(`NASA's crewed landing requirement: within 100 m of the target, on slopes under 10° measured over 100 m [${ref(1)}]. The same analysis is repeated on a grid every 40 m around the target, each point with its own horizon; the grid's centre point stands for the target throughout this report.`, `Requisito de la NASA para un alunizaje tripulado: a menos de 100 m del objetivo, con pendientes de menos de 10° medidas sobre 100 m [${ref(1)}]. El mismo análisis se repite en una malla cada 40 m alrededor del objetivo, cada punto con su propio horizonte; en todo el informe el punto central de la malla representa al objetivo.`)}</li>
+    <li><b>${L('Validation.', 'Validación.')}</b> ${L("Sun and Earth directions agree with JPL Horizons to within 0.01°. Against NASA's 18.6-year maps (PGDA 69, Mazarico et al. 2011) [3], sunlight agrees within 5 points; Earth in view comes out 1 to 8 points lower. We ruled out parallax and the Earth-disc criterion; map resolution (ours 5 m and 80 m, NASA's 240 m) explains part of it at ridge sites only. The cause is not closed, so our Earth figures are the conservative ones.", 'Las direcciones del Sol y la Tierra coinciden con JPL Horizons a menos de 0,01°. Frente a los mapas de 18,6 años de la NASA (PGDA 69, Mazarico et al. 2011) [3], la luz solar coincide a menos de 5 puntos; la Tierra a la vista nos sale entre 1 y 8 puntos más baja. Hemos descartado el paralaje y el criterio del disco de la Tierra; la resolución de los mapas (la nuestra 5 m y 80 m, la de la NASA 240 m) explica parte solo en los sitios de cresta. La causa no está cerrada, así que nuestras cifras de Tierra son las conservadoras.')}${pg ? ` ${L(`At this site, over 18.6 years: sunlight ${nf(pg.sun.ours, 1)} % ours against ${nf(pg.sun.nasa, 1)} % NASA (${sgn(pg.sun.ours - pg.sun.nasa)} points); Earth in view ${nf(pg.earth.ours, 1)} % against ${nf(pg.earth.nasa, 1)} % (${sgn(pg.earth.ours - pg.earth.nasa)} points).`, `En este sitio, en 18,6 años: luz solar ${nf(pg.sun.ours, 1)} % nuestro frente a ${nf(pg.sun.nasa, 1)} % de la NASA (${sgn(pg.sun.ours - pg.sun.nasa)} puntos); Tierra a la vista ${nf(pg.earth.ours, 1)} % frente a ${nf(pg.earth.nasa, 1)} % (${sgn(pg.earth.ours - pg.earth.nasa)} puntos).`)}` : ''}</li>
   </ul>
 </section>
 
@@ -362,41 +405,49 @@ export function technicalReportHtml(r: TechReportInput): string | null {
 
   <h3>4.2 ${L('Communications with Earth', 'Comunicaciones con la Tierra')}</h3>
   <p>${L(`Earth is in view ${pct(m.earthLinkPct)} of the stay, and in contact with the Madrid Deep Space station ${pct(m.madridPct)}. The longest time without Earth is <b>${m.longestNoEarthH} h</b>${m.longestNoEarthStart ? `, from ${dt(m.longestNoEarthStart)}` : ''}. Earth in view is line of sight over the terrain, not a radio link budget.`, `La Tierra está a la vista el ${pct(m.earthLinkPct)} de la estancia, y en contacto con la estación de espacio profundo de Madrid el ${pct(m.madridPct)}. El mayor tiempo sin Tierra es de <b>${m.longestNoEarthH} h</b>${m.longestNoEarthStart ? `, desde el ${dt(m.longestNoEarthStart)}` : ''}. Tierra a la vista es línea de visión sobre el relieve, no un balance de enlace de radio.`)}</p>
+  <table class="grid"><caption>${L('Table 2. Earth in view against the lowest antenna angle over the terrain', 'Tabla 2. Tierra a la vista según el ángulo mínimo de antena sobre el relieve')}</caption>
+    <thead><tr><th>${L('Lowest antenna angle', 'Ángulo mínimo de antena')}</th><th class="n">${L('Earth in view', 'Tierra a la vista')}</th><th class="n">${L('Madrid link', 'Enlace con Madrid')}</th><th class="n">${L('Longest without Earth', 'Mayor tiempo sin Tierra')}</th></tr></thead>
+    <tbody>${antenna.map((x) => `<tr><td>${x.a}°${x.a === mi.minAntennaElevDeg ? ` (${L('this mission', 'esta misión')})` : ''}</td><td class="n">${pct(x.m.earthLinkPct)}</td><td class="n">${pct(x.m.madridPct)}</td><td class="n">${x.m.longestNoEarthH} h</td></tr>`).join('')}</tbody></table>
+  <p>${L('Line of sight over the terrain, not a radio link budget.', 'Línea de visión sobre el relieve, no un balance de enlace de radio.')}</p>
   <figure>${profile((s) => s.earthEl, (s) => s.earthHor, (s) => s.earthVis, '#2f6db5', 'f2')}
     <figcaption id="f2">${L("Figure 2. Earth elevation (blue) and terrain horizon elevation at Earth's azimuth (grey). Shaded bands: Earth in view.", 'Figura 2. Elevación de la Tierra (azul) y del horizonte de relieve en el acimut de la Tierra (gris). Bandas sombreadas: Tierra a la vista.')}</figcaption></figure>
   <figure>${strip()}
     <figcaption>${L('Figure 3. Hour-by-hour visibility over the stay.', 'Figura 3. Visibilidad hora a hora durante la estancia.')}</figcaption></figure>
 
   ${P > 0 ? `<h3>4.3 ${L('Energy storage', 'Almacenamiento de energía')}</h3>
-  <table class="kv"><caption>${L('Table 2. Energy storage for the longest night', 'Tabla 2. Almacenamiento de energía para la noche más larga')}</caption>
+  <table class="kv"><caption>${L('Table 3. Energy storage for the longest night', 'Tabla 3. Almacenamiento de energía para la noche más larga')}</caption>
     <tr><th>${L('Energy the battery must deliver', 'Energía que debe entregar la batería')}</th><td>${w1(P)} W × ${m.longestNightH} h = <b>${kwh(m.nightEnergyWh)}</b>${m.requiredBatteryWh > m.nightEnergyWh + 0.5 ? ` · ${L('capacity with margins', 'capacidad con márgenes')} ${kwh(m.requiredBatteryWh)}` : ''}</td></tr>
     <tr><th>${L('Battery mass (125–150 Wh/kg)', 'Masa de batería (125–150 Wh/kg)')} [${ref(5)}]</th><td>${mass(m.requiredBatteryWh)}</td></tr>
     <tr><th>${L('Reference: NASA VIPER rover battery', 'Referencia: batería del rover VIPER de la NASA')} [${ref(4)}]</th><td>${kwh(VIPER_BATTERY_WH)}</td></tr>
-    ${worst100 ? `<tr><th>${L('Worst case within the 100 m landing accuracy', 'Peor caso dentro de la precisión de 100 m')}</th><td>${worst100.m.longestNightH} h → ${kwh(worst100.m.nightEnergyWh)} (${mass(worst100.m.nightEnergyWh)})</td></tr>` : ''}
-  </table>` : ''}
+    ${worst100 ? `<tr><th>${L('Worst case within 100 m', 'Peor caso a menos de 100 m')}</th><td>${worst100.m.longestNightH} h → ${kwh(worst100.m.nightEnergyWh)} (${mass(worst100.m.nightEnergyWh)})</td></tr>` : ''}
+    ${[m.longestNightH, ...(worst100 && worst100.m.longestNightH !== m.longestNightH ? [worst100.m.longestNightH] : [])].map((h) => `<tr><th>${L(`By power profile, ${h} h night`, `Por perfil de potencia, noche de ${h} h`)}</th><td>${profiles(h)}</td></tr>`).join('')}
+  </table>
+  <p>${L(`Profiles with their source: heater [${ref(3)}], small lander [${ref(2)}], rover [${ref(6)}]. The rover's 65 W is the team's average (9.7 kWh ÷ 150 h), not a NASA figure.`, `Perfiles con su fuente: calentador [${ref(3)}], lander pequeño [${ref(2)}], rover [${ref(6)}]. Los 65 W del rover son la media del equipo (9,7 kWh ÷ 150 h), no una cifra de la NASA.`)}</p>` : ''}
 
   ${grid.length ? `<h3>4.4 ${L('Landing-accuracy sensitivity', 'Sensibilidad a la precisión de alunizaje')}</h3>
-  <p>${L(`Artemis III must land within 100 m of its target [${ref(1)}]. Within that circle the results can change markedly, because a few tens of metres alter the horizon (Figure 4, Table 3).`, `Artemis III debe alunizar a menos de 100 m de su objetivo [${ref(1)}]. Dentro de ese círculo los resultados pueden cambiar mucho, porque unas decenas de metros alteran el horizonte (figura 4, tabla 3).`)}</p>
-  <figure>${heat()}<figcaption>${L('Figure 4. Share of the stay with the Sun and Earth together at each grid point (40 m spacing). Dashed: 100 m Artemis III accuracy.', 'Figura 4. Parte de la estancia con Sol y Tierra a la vez en cada punto de la malla (cada 40 m). Discontinuo: precisión de 100 m de Artemis III.')}</figcaption></figure>
-  <table class="grid"><caption>${L('Table 3. Range of results around the target', 'Tabla 3. Rango de resultados alrededor del objetivo')}</caption>
+  <p>${L(`NASA's crewed landing requirement: within 100 m of the target [${ref(1)}]. Within that circle the results can change markedly, because a few tens of metres alter the horizon (Figure 4, Table 4).`, `Requisito de la NASA para un alunizaje tripulado: a menos de 100 m del objetivo [${ref(1)}]. Dentro de ese círculo los resultados pueden cambiar mucho, porque unas decenas de metros alteran el horizonte (figura 4, tabla 4).`)}</p>
+  ${robStats ? `<p>${L(`Across all ${robStats.n} landing dates in the data, landing within 100 m adds more than 24 h of night on <b>${robStats.w24} %</b> of dates at this site (more than 72 h on ${robStats.w72} %). Moving the target recovers it on ${robStats.fix} %.${robStats.same ? '' : ` These shares are for ${rob.stayDays}-day stays; this mission lasts ${mi.durationDays} days.`}`, `En las ${robStats.n} fechas de alunizaje de los datos, alunizar a menos de 100 m añade más de 24 h de noche en el <b>${robStats.w24} %</b> de las fechas en este sitio (más de 72 h en el ${robStats.w72} %). Mover el objetivo lo recupera en el ${robStats.fix} %.${robStats.same ? '' : ` Estas cifras son para estancias de ${rob.stayDays} días; esta misión dura ${mi.durationDays}.`}`)}</p>` : ''}
+  <figure>${heat()}<figcaption>${L('Figure 4. Share of the stay with the Sun and Earth together at each grid point (40 m spacing). Dashed: 100 m around the target (NASA crewed landing requirement). Green square: suggested target.', 'Figura 4. Parte de la estancia con Sol y Tierra a la vez en cada punto de la malla (cada 40 m). Discontinuo: 100 m alrededor del objetivo (requisito de la NASA para un alunizaje tripulado). Cuadrado verde: objetivo sugerido.')}</figcaption></figure>
+  <table class="grid"><caption>${L('Table 4. Range of results around the target', 'Tabla 4. Rango de resultados alrededor del objetivo')}</caption>
     <thead><tr><th>${L('Within', 'A menos de')}</th><th class="n">${L('Sunlight', 'Luz solar')}</th><th class="n">${L('Earth', 'Tierra')}</th><th class="n">${L('Worst night', 'Peor noche')}</th><th class="n">${L('Worst energy', 'Peor energía')}</th><th class="n">${L('Max slope (100 m)', 'Pendiente máx. (100 m)')}</th></tr></thead>
-    <tbody>${g100.length ? `<tr><td>100 m (Artemis III)</td>${ring(g100).map((x) => `<td class="n">${x}</td>`).join('')}</tr>` : ''}
+    <tbody>${g100.length ? `<tr><td>100 m</td>${ring(g100).map((x) => `<td class="n">${x}</td>`).join('')}</tr>` : ''}
     <tr><td>200 m</td>${ring(grid).map((x) => `<td class="n">${x}</td>`).join('')}</tr></tbody></table>
-  ${best ? `<p>${L(`Suggested spot within 100 m with slope under 10°: <b>${best.p.e} m E, ${best.p.n} m N</b> — Sun ${pct(best.m.sunlightPct)}, Earth ${pct(best.m.earthLinkPct)}, Sun and Earth together ${pct(best.m.opsPct)}, longest night ${best.m.longestNightH} h, slope ${nf(best.p.slope, 1)}°.`, `Punto sugerido a menos de 100 m con pendiente de menos de 10°: <b>${best.p.e} m E, ${best.p.n} m N</b> — Sol ${pct(best.m.sunlightPct)}, Tierra ${pct(best.m.earthLinkPct)}, Sol y Tierra a la vez ${pct(best.m.opsPct)}, noche más larga ${best.m.longestNightH} h, pendiente ${nf(best.p.slope, 1)}°.`)}</p>` : ''}` : ''}
+  ${best ? `<p>${L(`Suggested spot within 100 m with slope under 10°: <b>${best.p.e} m E, ${best.p.n} m N</b> — Sun ${pct(best.m.sunlightPct)}, Earth ${pct(best.m.earthLinkPct)}, Sun and Earth together ${pct(best.m.opsPct)}, longest night ${best.m.longestNightH} h, slope ${nf(best.p.slope, 1)}°.`, `Punto sugerido a menos de 100 m con pendiente de menos de 10°: <b>${best.p.e} m E, ${best.p.n} m N</b> — Sol ${pct(best.m.sunlightPct)}, Tierra ${pct(best.m.earthLinkPct)}, Sol y Tierra a la vez ${pct(best.m.opsPct)}, noche más larga ${best.m.longestNightH} h, pendiente ${nf(best.p.slope, 1)}°.`)}</p>` : ''}
+  ${bestTarget && worst100 ? `<p>${L(`The spot above is where to touch down; a planner chooses a target and may land anywhere within 100 m of it. Worst night within 100 m of the present target: <b>${worst100.m.longestNightH} h</b> (at ${off(worst100.p.e, worst100.p.n)}). Suggested target, the grid point whose 100 m circle (${bestTarget.n} points) has the shortest worst night: <b>${off(bestTarget.c.p.e, bestTarget.c.p.n)}</b>, worst night ${bestTarget.worst.m.longestNightH} h.`, `El punto anterior es dónde tocar suelo; un planificador elige un objetivo y puede alunizar en cualquier sitio a menos de 100 m de él. Peor noche a menos de 100 m del objetivo actual: <b>${worst100.m.longestNightH} h</b> (a ${off(worst100.p.e, worst100.p.n)}). Objetivo sugerido, el punto de la malla cuyo círculo de 100 m (${bestTarget.n} puntos) tiene la peor noche más corta: <b>${off(bestTarget.c.p.e, bestTarget.c.p.n)}</b>, peor noche ${bestTarget.worst.m.longestNightH} h.`)}${robToday ? ` ${L(`Earth in view within 100 m of the present target: ${robToday.emin}–${robToday.emax} %.`, `Tierra a la vista a menos de 100 m del objetivo actual: ${robToday.emin}–${robToday.emax} %.`)}` : ''}</p>` : ''}` : ''}
 
   <h3>4.5 ${L('Alternative sites and dates', 'Sitios y fechas alternativos')}</h3>
-  <table class="grid"><caption>${L('Table 4. Other team sites, same dates', 'Tabla 4. Otros sitios del equipo, mismas fechas')}</caption>
+  <table class="grid"><caption>${L('Table 5. Other team sites, same dates', 'Tabla 5. Otros sitios del equipo, mismas fechas')}</caption>
     <thead><tr><th>${L('Site', 'Sitio')}</th><th class="n">${L('Distance', 'Distancia')}</th><th>${L('Assessment', 'Evaluación')}</th><th class="n">${L('Sunlight', 'Luz solar')}</th><th class="n">${L('Earth', 'Tierra')}</th><th class="n">${L('Longest night', 'Noche más larga')}</th><th class="n">${L('Energy', 'Energía')}</th></tr></thead><tbody>${otherRows}</tbody></table>
-  ${scenRows ? `<table class="grid"><caption>${L('Table 5. Same site, later landing, and saved scenarios', 'Tabla 5. Mismo sitio con alunizaje más tarde, y escenarios guardados')}</caption>
+  ${scenRows ? `<table class="grid"><caption>${L('Table 6. Same site, later landing, and saved scenarios', 'Tabla 6. Mismo sitio con alunizaje más tarde, y escenarios guardados')}</caption>
     <thead><tr><th>${L('Scenario', 'Escenario')}</th><th>${L('Assessment', 'Evaluación')}</th><th class="n">${L('Sunlight', 'Luz solar')}</th><th class="n">${L('Earth', 'Tierra')}</th><th class="n">${L('Longest night', 'Noche más larga')}</th><th class="n">${L('Energy', 'Energía')}</th><th class="n">${L('Without Earth', 'Sin Tierra')}</th></tr></thead><tbody>${scenRows}</tbody></table>` : ''}
 </section>
 
 <section>
   <h2>5 ${L('Compliance with requirements', 'Cumplimiento de requisitos')}</h2>
-  <table class="grid"><caption>${L('Table 6. Mission requirements', 'Tabla 6. Requisitos de la misión')}</caption>
+  <table class="grid"><caption>${L('Table 7. Mission requirements', 'Tabla 7. Requisitos de la misión')}</caption>
     <thead><tr><th>${L('Requirement', 'Requisito')}</th><th>${L('Asked', 'Pedido')}</th><th class="n">${L('Result', 'Resultado')}</th><th>${L('Status', 'Estado')}</th></tr></thead>
     <tbody>${reqs.map(([k, q, v, b]) => `<tr><td>${k}</td><td>${q}</td><td class="n">${v}</td><td>${ok(b)}</td></tr>`).join('')}
-    ${maxSlope100 !== null ? `<tr><td>${L('Landing slope (Artemis III)', 'Pendiente de alunizaje (Artemis III)')} [${ref(1)}]</td><td>&lt; 10° ${L('over 100 m, within 100 m', 'sobre 100 m, a menos de 100 m')}</td><td class="n">${nf(maxSlope100, 1)}°</td><td>${ok(maxSlope100 < ARTEMIS3.maxLandingSlopeDeg)}</td></tr>` : ''}</tbody></table>
+    ${maxSlope100 !== null ? `<tr><td>${L('Landing slope (NASA crewed landing requirement)', 'Pendiente de alunizaje (requisito de la NASA para un alunizaje tripulado)')} [${ref(1)}]</td><td>&lt; 10° ${L('over 100 m, within 100 m', 'sobre 100 m, a menos de 100 m')}</td><td class="n">${nf(maxSlope100, 1)}°</td><td>${ok(maxSlope100 < ARTEMIS3.maxLandingSlopeDeg)}</td></tr>` : ''}</tbody></table>
 </section>
 
 <section>
@@ -419,7 +470,7 @@ ${dayRows ? `<section class="pagebreak">
   <h2>${L('References', 'Referencias')}</h2>
   <ol class="refs">
     <li id="ref1">Fincannon, J. Lunar South Pole Illumination: Review, Reassessment, and Power System Implications. NASA/TM-2007-215025, NASA Glenn Research Center, 2007. <a href="https://ntrs.nasa.gov/citations/20070034951">https://ntrs.nasa.gov/citations/20070034951</a></li>
-    <li id="ref2">Wueller et al. (2026), Journal of Geophysical Research: Planets (CC BY 4.0). <a href="https://doi.org/10.1029/2025JE009434">https://doi.org/10.1029/2025JE009434</a></li>
+    <li id="ref2">Wueller, L., Berger, L. M., Christopher, H., Sugimoto, K., Thaker, A. D., et al. Assessing Potential Landing Sites With Favorable Illumination and Accessible, Potentially Volatile-Rich Permanently Shadowed Regions Within Artemis Candidate Landing Regions. Journal of Geophysical Research: Planets 131(3), e2025JE009434, 2026 (CC BY 4.0). <a href="https://doi.org/10.1029/2025JE009434">https://doi.org/10.1029/2025JE009434</a></li>
     <li id="ref3">Mazarico, E. et al. Illumination conditions of the lunar polar regions using LOLA topography. Icarus 211, 2011. NASA PGDA product 69. <a href="https://doi.org/10.1016/j.icarus.2010.10.030">https://doi.org/10.1016/j.icarus.2010.10.030</a></li>
     ${srcs}
   </ol>
@@ -432,7 +483,7 @@ ${dayRows ? `<section class="pagebreak">
     <tr><th>${L('Title', 'Título')}</th><td>${L('Landing Site Assessment', 'Evaluación del sitio de alunizaje')}: ${esc(r.siteName)}</td></tr>
     <tr><th>${L('Prepared by', 'Preparado por')}</th><td>${L('Fly Me to the Moon team, NASA Space Apps Challenge 2026, Madrid', 'Equipo Fly Me to the Moon, NASA Space Apps Challenge 2026, Madrid')}</td></tr>
     <tr><th>${L('Data', 'Datos')}</th><td>NASA LRO LOLA (PGDA 78, 5 m; PGDA 90, 80 m); JPL Horizons DE441, ${day(DATA.start)} – ${day(DATA.end)}</td></tr>
-    <tr><th>${L('Keywords', 'Palabras clave')}</th><td>${L('lunar south pole; illumination; Earth visibility; energy storage; landing site; Artemis III', 'polo sur lunar; iluminación; visibilidad de la Tierra; almacenamiento de energía; sitio de alunizaje; Artemis III')}</td></tr>
+    <tr><th>${L('Keywords', 'Palabras clave')}</th><td>${L('lunar south pole; illumination; Earth visibility; energy storage; landing site; Artemis', 'polo sur lunar; iluminación; visibilidad de la Tierra; almacenamiento de energía; sitio de alunizaje; Artemis')}</td></tr>
     <tr><th>${L('Distribution', 'Distribución')}</th><td>${L('Public', 'Pública')}</td></tr>
     <tr><th>${L('Disclaimer', 'Aviso')}</th><td>${L('Not a NASA document. Figures computed by Fly Me to the Moon from NASA data. Results are suggestions, not mission decisions.', 'No es un documento de la NASA. Cifras calculadas por Fly Me to the Moon con datos de la NASA. Los resultados son sugerencias, no decisiones de misión.')}</td></tr>
   </table>
