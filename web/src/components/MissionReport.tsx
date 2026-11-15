@@ -96,7 +96,7 @@ export function MissionReport({ def, onUseSpot }: { def: MissionDef; onUseSpot?:
   const margins = dod < 1 || eta < 1
   const within = rings[0]
   const card = 'rounded-sm border border-white/10 bg-black/30 p-3'
-  const h4 = 'mb-2 text-xs font-semibold uppercase tracking-wider text-muted'
+  const h4 = 'mb-2 text-sm font-semibold text-white'
 
   return (
     <div className="space-y-4 text-sm">

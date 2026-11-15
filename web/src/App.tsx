@@ -1094,7 +1094,7 @@ export default function App() {
               <HamburgerMenu label={t.mainMenu}>
                 {(close) => (
                   <>
-                    <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted">{t.language}</p>
+                    <p className="px-4 pb-1 text-sm font-semibold text-muted">{t.language}</p>
                     <div className="mx-4 mb-2 inline-flex border border-white/30" role="group" aria-label={t.language}>
                       {(
                         [

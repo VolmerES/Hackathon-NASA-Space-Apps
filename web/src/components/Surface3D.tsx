@@ -988,7 +988,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
       {/* Landing: cinema bars while the lander comes down, the word when it touches. */}
       <div className="cine-bar top" aria-hidden="true" />
       <div className="cine-bar bottom" aria-hidden="true" />
-      {hud?.phase === 'down' && <p className="touchdown" aria-hidden="true"><b>{t.simTouchdown}</b><i /></p>}
+      {hud?.phase === 'down' && <p className="touchdown" aria-hidden="true"><b>{t.simTouchdown}</b><i /><span>Buzz Aldrin, Apollo 11 · 102:45:40</span></p>}
       <p className="pointer-events-none absolute left-3 top-2 max-w-[calc(100%-24px)] text-sm text-white/80">
         {t.looking(t.compassLong[Math.round(heading / 45) % 8])}
         {ridgeKmAt(site, heading) !== null && <span className="block text-xs text-white/65">{t.reliefSeen(ridgeKmAt(site, heading)!)}</span>}

@@ -229,7 +229,7 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
           <div className="sp-ui mt-[2vh] flex w-[min(860px,100%)] flex-col items-center gap-2">
           <div className="w-full min-w-0 flex-1" role="group" aria-label={t.modeTitle}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{t.modeTitle}</p>
+              <p className="text-sm font-semibold text-white/80">{t.modeTitle}</p>
               {/* Language, before anything else: the whole tool follows it. */}
               <div className="inline-flex border border-white/30" role="group" aria-label={t.language}>
                 {(

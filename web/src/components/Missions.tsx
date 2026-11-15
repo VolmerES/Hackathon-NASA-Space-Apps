@@ -203,7 +203,7 @@ function MissionForm({ draft, onCancel, onSave, onUseSpot }: { draft: MissionDef
   const set = <K extends keyof MissionDef>(k: K, v: MissionDef[K]) => setM((x) => ({ ...x, [k]: v }))
   const setReq = (k: keyof MissionDef['req'], v: number) => setM((x) => ({ ...x, req: { ...x.req, [k]: v } }))
   const field = 'mt-1 min-h-11 w-full rounded-sm border border-white/20 bg-black/40 px-3 py-2 text-ink'
-  const legend = 'text-xs font-semibold uppercase tracking-wider text-sun'
+  const legend = 'text-base font-semibold text-white'
   const teamSites = SITES.filter((s) => s.team)
   const preset = POWER_PRESETS.find((p) => p.id === m.powerPreset) ?? POWER_PRESETS[POWER_PRESETS.length - 1]
   const iso = (d: Date) => d.toISOString().slice(0, 16)

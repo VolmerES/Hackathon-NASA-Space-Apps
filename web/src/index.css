@@ -463,7 +463,7 @@ input[type="range"] {
 /* The way down from orbit: the view closes in around the site, with its name. */
 .dive-veil { background: radial-gradient(ellipse at 50% 46%, transparent 0, transparent 16%, rgba(0, 0, 0, 0.82) 62%, #000 100%); animation: dive-veil 1.3s cubic-bezier(0.5, 0, 0.8, 0.6) both }
 @keyframes dive-veil { from { opacity: 0; transform: scale(2.4) } to { opacity: 1; transform: scale(1) } }
-.dive-kicker { font: 600 11px/1 var(--font-sans); letter-spacing: 0.32em; text-transform: uppercase; color: var(--color-sun); animation: ui-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both }
+.dive-kicker { font: 500 14px/1 var(--font-sans); color: rgba(255, 255, 255, 0.75); animation: ui-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both }
 .dive-title { margin-top: 10px; font: 700 clamp(22px, 3.4vw, 40px) / 1.1 var(--font-sans); color: #fff; text-shadow: 0 2px 24px #000; animation: ui-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both }
 .dive-coords { margin-top: 8px; font: 500 13px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.75); animation: ui-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both }
 body.is-diving .moon-controls { opacity: 0 !important; pointer-events: none; transition: opacity 0.4s }
@@ -477,9 +477,10 @@ body.is-diving .moon-controls { opacity: 0 !important; pointer-events: none; tra
 .cine-bar.bottom { bottom: 0; transform: translateY(101%) }
 .cine-on .cine-bar { transform: none }
 .touchdown { position: absolute; left: 0; right: 0; top: 22%; text-align: center; pointer-events: none; animation: touchdown 3.4s cubic-bezier(0.22, 1, 0.36, 1) both }
-.touchdown b { display: block; font: 300 clamp(26px, 5vw, 56px) / 1 var(--font-sans); letter-spacing: 0.3em; margin-right: -0.3em; text-transform: uppercase; color: #fff; text-shadow: 0 2px 18px #000 }
+.touchdown b { display: block; font: 600 clamp(28px, 5vw, 56px) / 1 var(--font-sans); letter-spacing: -0.01em; color: #fff; text-shadow: 0 2px 18px #000 }
+.touchdown span { display: block; margin-top: 10px; font: 500 13px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.75); text-shadow: 0 1px 10px #000 }
 .touchdown i { display: block; width: min(320px, 50%); height: 1px; margin: 14px auto 0; background: linear-gradient(90deg, transparent, var(--color-sun), transparent) }
-@keyframes touchdown { 0% { opacity: 0; letter-spacing: 0.2em; transform: scale(1.12) } 14% { opacity: 1; transform: scale(1) } 72% { opacity: 1 } 100% { opacity: 0; transform: translateY(-10px) } }
+@keyframes touchdown { 0% { opacity: 0; transform: scale(1.06) } 14% { opacity: 1; transform: scale(1) } 72% { opacity: 1 } 100% { opacity: 0; transform: translateY(-10px) } }
 @media (min-width: 640px) { .touchdown { right: 284px } }
 @media (prefers-reduced-motion: reduce) { .street-in, .street-in .street-top, .street-in .street-bottom, .dive-veil, .dive-kicker, .dive-title, .dive-coords { animation: none } .cine-bar { transition: none } .touchdown { animation: none; opacity: 0 } }
 
