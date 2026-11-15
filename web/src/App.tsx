@@ -1599,7 +1599,7 @@ export default function App() {
               onClick={() => setCardOpen(true)}
               aria-label={t.showPanel}
               data-franky="sites"
-              className={`drawer-in glass pointer-events-auto absolute left-4 top-2 z-20 flex min-h-8 max-w-[min(72vw,340px)] items-center gap-1.5 py-1 pl-2.5 pr-2 text-xs font-semibold sm:top-3 sm:min-h-10 sm:gap-2 sm:rounded-full sm:py-1.5 sm:pl-3 sm:pr-3 sm:text-sm lg:left-3 ${focused && !picking ? 'rounded-2xl' : 'rounded-full'}`}
+              className={`drawer-in pointer-events-auto absolute left-4 top-2 z-20 flex max-w-[min(72vw,340px)] items-center gap-1.5 font-semibold sm:top-3 sm:gap-2 lg:left-3 ${focused && !picking ? 'glass min-h-8 rounded-2xl py-1 pl-2.5 pr-2 text-xs sm:min-h-10 sm:rounded-full sm:py-1.5 sm:pl-3 sm:pr-3 sm:text-sm' : 'pick-cta'}`}
             >
               {focused && !picking ? (
                 <>
