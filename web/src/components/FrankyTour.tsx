@@ -5,8 +5,8 @@ import * as sfx from '../sound'
 // The guided tour: Franky walks a newcomer through the tool in a few fixed steps. No AI here: the
 // same words every time, it works offline, and it can be skipped at any moment. Each step can point
 // at a part of the page (data-franky="…"); the rest of the screen dims around it. Franky himself, in 3D,
-// rolls beside the bubble from step to step, waves when he gets there, and at the end rolls into the
-// chat button (data-franky="franky"), where he lives.
+// rides inside the bubble (no turning about the screen): the bubble glides to each step and he waves
+// when it gets there; at the end the bubble shrinks into the chat button (data-franky="franky").
 export type TourStep = { target?: string; title: string; text: string; before?: () => void }
 export type TourText = { next: string; back: string; skip: string; done: string; chat: string; step: (i: number, n: number) => string }
 
@@ -15,7 +15,6 @@ const PAD = 8
 export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]; text: TourText; onClose: () => void; onChat: () => void }) {
   const [i, setI] = useState(0)
   const [exit, setExit] = useState<{ x: number; y: number } | null>(null)
-  const [bubbleH, setBubbleH] = useState(0)
   // Leaving: Franky rolls into the chat button, then the tour closes (and the chat opens, if asked).
   const leave = (chat = false) => {
     if (exit) return
@@ -75,7 +74,6 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
     const h = window.innerHeight
     const bw = b.offsetWidth
     const bh = b.offsetHeight
-    setBubbleH(bh)
     if (!rect) return setBubblePos({ left: (w - bw) / 2, top: (h - bh) / 2 })
     const below = rect.bottom + PAD + 12
     const above = rect.top - PAD - 12 - bh
@@ -84,7 +82,6 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
     let left = rect.left + rect.width / 2 - bw / 2
     if (sideFits) left = rect.right + 16 + bw < w ? rect.right + 16 : rect.left - 16 - bw
     setBubblePos({ left: Math.max(8, Math.min(w - bw - 8, left)), top })
-    setBubbleH(bh)
   }, [rect, i])
 
   useEffect(() => {
@@ -113,11 +110,22 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
       <div className="fixed inset-0" onClick={() => undefined} />
       <div
         ref={bubble}
-        className={`fk-bubble fixed w-[min(380px,calc(100vw-16px))] rounded-xl border border-sun/40 bg-[#0b0f18]/95 p-4 text-sm text-white shadow-2xl backdrop-blur-md transition-opacity duration-300 ${exit ? 'opacity-0' : ''}`}
-        style={{ left: bubblePos.left, top: bubblePos.top }}
+        className="fk-bubble fixed w-[min(460px,calc(100vw-16px))] rounded-xl border border-sun/40 bg-[#0b0f18]/95 p-4 text-sm text-white shadow-2xl backdrop-blur-md"
+        style={{
+          left: bubblePos.left,
+          top: bubblePos.top,
+          ...(exit && bubble.current
+            ? {
+                transform: `translate(${exit.x - bubblePos.left - bubble.current.offsetWidth / 2}px, ${exit.y - bubblePos.top - bubble.current.offsetHeight / 2}px) scale(0.08)`,
+                opacity: 0,
+                transition: 'transform 0.8s cubic-bezier(0.45, 0, 0.25, 1), opacity 0.4s ease 0.4s',
+              }
+            : {}),
+        }}
       >
         <div className="flex gap-3">
-          <div key={i} className="ui-in min-w-0">
+          <BubbleBot step={i} />
+          <div key={i} className="ui-in min-w-0 flex-1 self-center">
             <p className="text-[11px] text-white/50">{text.step(i + 1, steps.length)}</p>
             <p className="mt-0.5 text-base font-semibold leading-snug">{step.title}</p>
             <p className="mt-1 leading-relaxed text-white/85">{step.text}</p>
@@ -154,34 +162,24 @@ export function FrankyTour({ steps, text, onClose, onChat }: { steps: TourStep[]
           ))}
         </div>
       </div>
-      <TourWalker bubble={{ ...bubblePos, h: bubbleH }} target={rect ? { top: rect.top, bottom: rect.bottom } : null} step={i} exit={exit} />
     </div>
   )
 }
 
-// Franky in 3D beside the bubble: on the left of it if there is room, else on the right, standing on
-// its bottom edge. He rolls from place to place and waves when he arrives.
-function TourWalker({ bubble, target, step, exit }: { bubble: { left: number; top: number; h: number }; target: { top: number; bottom: number } | null; step: number; exit: { x: number; y: number } | null }) {
+// Franky in 3D inside the bubble, at the left of the words, turned a little towards them. He waves
+// on arrival and at each new step; he never rolls about or turns round.
+function BubbleBot({ step }: { step: number }) {
   const small = window.innerWidth < 640
-  const W = small ? 96 : 150
-  const H = small ? 118 : 185
+  const W = small ? 72 : 108
+  const H = small ? 90 : 134
   const box = useRef<HTMLDivElement>(null)
   const stage = useRef<FrankyStage | null>(null)
-  const prev = useRef<number | null>(null)
-  const bw = Math.min(380, window.innerWidth - 16)
-  const onLeft = bubble.left - W + 18 > 0
-  // No room at either side (a phone: the bubble is as wide as the screen): he stands on top of the
-  // bubble, at its right end, or hangs under it if the bubble is at the top; never over its buttons.
-  const beside = onLeft || bubble.left + bw - 18 + W <= window.innerWidth
-  // On top only if he fits there without standing in front of what the step points at.
-  const onTop = bubble.top - H + 16 > 4 && !(target && target.bottom > bubble.top - H + 16 && target.top < bubble.top)
-  const left = onLeft ? bubble.left - W + 18 : beside ? bubble.left + bw - 18 : bubble.left + bw - W - 6
-  const top = beside ? Math.max(4, bubble.top + bubble.h - H + 10) : onTop ? bubble.top - H + 16 : bubble.top + bubble.h - 8
+  const first = useRef(true)
 
   useEffect(() => {
     const el = box.current
     if (!el) return
-    const s = createFranky(el, W, H, { facing: onLeft ? 0.25 : -0.25 })
+    const s = createFranky(el, W, H, { facing: 0.35 })
     stage.current = s
     s.loaded.then((ok) => {
       if (!ok) return
@@ -196,49 +194,24 @@ function TourWalker({ bubble, target, step, exit }: { bubble: { left: number; to
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // A new place: roll there (facing the way he goes), then turn towards the bubble and wave.
   useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
     const s = stage.current
-    if (!s || exit) return
-    const from = prev.current
-    prev.current = left
-    if (from === null || Math.abs(left - from) < 6) return
-    s.set({ rolling: true, waving: false, facing: left > from ? Math.PI / 2 : -Math.PI / 2 })
+    if (!s) return
+    // Waits for the bubble to glide into place, then a short wave.
     const a = window.setTimeout(() => {
-      s.set({ rolling: false, facing: onLeft ? 0.25 : -0.25, waving: true })
+      s.set({ waving: true })
       sfx.chirp('step')
-    }, 850)
-    const b = window.setTimeout(() => s.set({ waving: false }), 1900)
+    }, 420)
+    const b = window.setTimeout(() => s.set({ waving: false }), 1500)
     return () => {
       window.clearTimeout(a)
       window.clearTimeout(b)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [left, top, step])
+  }, [step])
 
-  // Leaving: roll towards the chat button, shrinking into it.
-  useEffect(() => {
-    const s = stage.current
-    if (!exit || !s) return
-    s.set({ rolling: true, waving: false, facing: exit.x > left ? Math.PI / 2 : -Math.PI / 2 })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exit])
-
-  const move = 'cubic-bezier(0.45, 0, 0.25, 1)'
-  return (
-    <div
-      ref={box}
-      aria-hidden="true"
-      className="pointer-events-none fixed z-[71]"
-      style={{
-        left,
-        top,
-        width: W,
-        height: H,
-        transition: `left 0.85s ${move}, top 0.85s ${move}, transform 0.9s ${move}, opacity 0.35s ease 0.6s`,
-        transform: exit ? `translate(${exit.x - left - W / 2}px, ${exit.y - top - H / 2}px) scale(0.12)` : 'none',
-        opacity: exit ? 0 : 1,
-      }}
-    />
-  )
+  return <div ref={box} aria-hidden="true" className="-my-2 -ml-1 shrink-0 self-end" style={{ width: W, height: H }} />
 }
