@@ -1,4 +1,4 @@
-import type { Sample } from '../data/model'
+import { DSN_STATIONS, type Sample } from '../data/model'
 import { useT } from '../i18n'
 
 function runs(samples: Sample[], on: (s: Sample) => boolean) {
@@ -28,7 +28,10 @@ function Band({ samples, on, color, label }: { samples: Sample[]; on: (s: Sample
 
 // The whole stay at a glance: when there is sunlight, and when Earth can be reached.
 // With `from` and `to`, a time axis runs under it: start, end, a tick per day and the length in hours.
-export function StayBar({ samples, madrid = false, from, to }: { samples: Sample[]; madrid?: boolean; from?: string; to?: string }) {
+// One colour per DSN antenna, in DSN_STATIONS order: Madrid, Goldstone, Canberra.
+export const DSN_COLORS = ['var(--color-nasa-red)', '#b794f6', '#2dd4bf']
+
+export function StayBar({ samples, madrid = false, from, to }: { samples: Sample[]; /** Show a band per DSN antenna. */ madrid?: boolean; from?: string; to?: string }) {
   const t = useT()
   const n = samples.length
   const days = Array.from({ length: Math.max(0, Math.ceil(n / 24) - 1) }, (_, i) => (i + 1) * 24).filter((h) => h < n)
@@ -36,8 +39,8 @@ export function StayBar({ samples, madrid = false, from, to }: { samples: Sample
     <div>
       <div className="relative space-y-1">
         <Band samples={samples} on={(s) => s.sunVisible > 0.5} color="var(--color-sun)" label={t.barSun} />
-        <Band samples={samples} on={(s) => s.earthVisible} color="var(--color-earth)" label={t.barEarth} />
-        {madrid && <Band samples={samples} on={(s) => s.madridLink} color="var(--color-nasa-red)" label={t.barMadrid} />}
+        <Band samples={samples} on={(s) => s.link} color="var(--color-earth)" label={t.barEarth} />
+        {madrid && DSN_STATIONS.map((st, k) => <Band key={st.id} samples={samples} on={(s) => s.earthVisible && (s.dsn & (1 << k)) !== 0} color={DSN_COLORS[k]} label={t.barStation(st.name)} />)}
         {from &&
           days.length <= 14 &&
           days.map((h) => <span key={h} aria-hidden="true" className="absolute -top-0.5 -bottom-0.5 w-px bg-white/35" style={{ left: `${(100 * h) / n}%` }} />)}

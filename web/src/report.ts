@@ -58,8 +58,8 @@ function daily(all: Sample[]) {
     days[d] ??= { day: d + 1, t: s.t, sun: 0, earth: 0, both: 0, madrid: 0, n: 0 }
     const lit = s.sunVisible > 0.5
     days[d].sun += lit ? 1 : 0
-    days[d].earth += s.earthVisible ? 1 : 0
-    days[d].both += lit && s.earthVisible ? 1 : 0
+    days[d].earth += s.link ? 1 : 0
+    days[d].both += lit && s.link ? 1 : 0
     days[d].madrid += s.madridLink ? 1 : 0
     days[d].n++
   })
@@ -136,8 +136,8 @@ export function missionReportHtml(r: ReportInput): string {
       const end = s[s.length - 1].t
       const ld = longestDark(s)
       const firstSunset = s[0].sunVisible > 0.5 ? s.findIndex((q) => q.sunVisible <= 0.5) : 0
-      const firstEarthset = s[0].earthVisible ? s.findIndex((q) => !q.earthVisible) : 0
-      const window = s[0].sunVisible > 0.5 && s[0].earthVisible
+      const firstEarthset = s[0].link ? s.findIndex((q) => !q.link) : 0
+      const window = s[0].sunVisible > 0.5 && s[0].link
       const when = (i: number, atLanding: string) => (i < 0 ? esc(rp.never) : i === 0 ? esc(atLanding) : `${esc(fmt.dateTime(s[i].t))} <span class="muted">(${esc(rp.afterH(num(i)))})</span>`)
       const vsBase =
         base && x !== base && base.m

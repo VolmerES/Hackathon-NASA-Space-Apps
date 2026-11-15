@@ -77,7 +77,7 @@ figcaption { font-size: 8.5pt; color: var(--muted); margin-top: 1mm }
   table, tr { break-inside: avoid }
 }`
 
-type Row = { t: Date; sunEl: number; sunHor: number; sunVis: number; earthEl: number; earthHor: number; earthVis: boolean; madrid: boolean }
+type Row = { t: Date; sunEl: number; sunHor: number; sunVis: number; earthEl: number; earthHor: number; earthVis: boolean; link: boolean; madrid: boolean }
 type Pt = { p: GridSite; m: Metrics }
 
 /** Returns null when the mission's site or dates fall outside the data: the caller uses the short report. */
@@ -131,6 +131,7 @@ export function technicalReportHtml(r: TechReportInput): string | null {
     earthEl: s.earthEl,
     earthHor: horizonAt(here, s.earthAz),
     earthVis: s.earthVisible,
+    link: s.link,
     madrid: s.madridLink,
   }))
   const days = overview(here, land, mi.durationDays, params.minAntennaElevDeg)
@@ -221,7 +222,7 @@ export function technicalReportHtml(r: TechReportInput): string | null {
     const W = 680, Lm = 118, R = 12, rowh = 16, gap = 8
     const rows: [string, (s: Row) => number, string][] = [
       [L('Sun (disc fraction)', 'Sol (fracción del disco)'), (s) => s.sunVis, '#c98f00'],
-      [L('Earth in view', 'Tierra a la vista'), (s) => (s.earthVis ? 1 : 0), '#2f6db5'],
+      [L('Contact with Earth (DSN)', 'Contacto con la Tierra (DSN)'), (s) => (s.link ? 1 : 0), '#2f6db5'],
       [L('Madrid link', 'Enlace con Madrid'), (s) => (s.madrid ? 1 : 0), '#5b4bb7'],
     ]
     const H = rows.length * (rowh + gap) + 24

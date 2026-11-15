@@ -219,7 +219,7 @@ const en = {
     darkestDay: (d: string, h: string) => `Darkest day: ${d} (${h} h of Sun)`,
     noEarthFrom: (h: string, from: string) => `Longest time without Earth: ${h}, from ${from} UTC`,
     noEarthNone: 'Earth is in view the whole stay.',
-    earthShare: (e: string, madrid: string) => `Earth in view ${e} % of the stay · with Madrid (Robledo) ${madrid} %`,
+    earthShare: (e: string, stations: string) => `Contact with Earth ${e} % of the stay · by antenna: ${stations}`,
     noEarthFail: 'Direct-to-Earth requirement not met: consider another date, another site or a relay satellite.',
     accuracy: "Landing accuracy: NASA's crewed landing requirement is within 100 m of the target",
     accuracyNote: "Grid every 40 m round the site, each point with its own LOLA horizon. Slope over 100 m from the 5 m LOLA map; NASA's crewed landing requirement asks for less than 10°.",
@@ -291,15 +291,17 @@ const en = {
   barSun: 'Sunlight during the stay',
   barEarth: 'Contact with Earth during the stay',
   barMadrid: 'Madrid deep space station can reach the site',
+  barStation: (name: string) => `${name} can reach the site`,
 
   both: 'Sun and Earth together',
   bothShort: 'Both',
   caveat:
     'Hourly approximations. Seeing Earth does not guarantee a working radio link, and being in sunlight does not guarantee enough electrical power.',
-  madridToggle: 'Show the Madrid deep space station (Robledo de Chavela)',
+  madridToggle: 'Show NASA\'s Deep Space Network antennas (Madrid, Goldstone, Canberra)',
   madridBand: 'Madrid can reach the site',
   madridExplain: (minEl: number) =>
-    `Hours when the site sees Earth and, at the same time, the Moon is at least ${minEl}° above the horizon at the NASA station in Robledo de Chavela, near Madrid.`,
+    `Contact with Earth counts the hours when the site sees Earth and, at the same time, the Moon is at least ${minEl}° above the horizon at one of the three 70 m antennas of the NASA Deep Space Network: Madrid (DSS-63), Goldstone (DSS-14) or Canberra (DSS-43).`,
+  dsnPcts: (list: string) => `Each antenna can reach the site: ${list} of the stay.`,
   madridPct: (pct: string) => `Madrid can reach the site ${pct} % of the stay.`,
 
   yearTitle: 'Which dates look most favourable?',
@@ -309,7 +311,7 @@ const en = {
   yearCompute: 'Calculating…',
 
   downloadCsv: (name: string) => `Download the hourly table for ${name} (CSV)`,
-  csvHeader: ['time_utc', 'sun_visible', 'earth_visible', 'both', 'madrid_link', 'sun_az_deg', 'sun_el_deg', 'earth_az_deg', 'earth_el_deg'],
+  csvHeader: ['time_utc', 'sun_visible', 'earth_in_view', 'earth_contact_dsn', 'sun_and_contact', 'madrid_dss63', 'goldstone_dss14', 'canberra_dss43', 'sun_az_deg', 'sun_el_deg', 'earth_az_deg', 'earth_el_deg'],
   yes: 'yes',
   findTitle: 'Where do you want to land?',
   loadingData: 'Loading NASA data…',
@@ -502,7 +504,7 @@ const en = {
   earthLabel: 'Earth',
   splashStarting: 'Starting services',
   splashReady: 'Ready',
-  svc: { ephem: 'NASA JPL Horizons ephemerides (DE441)', sites: 'Artemis candidate sites, Wueller et al. 2026', team: 'Team shortlist, LOLA relief at 5 m (PGDA 78)', horizons: 'Terrain horizons from LRO LOLA, 80 m', madrid: 'Madrid deep space station, DSS-63', check: 'Check against the published study', moon: '3D Moon, NASA SVS CGI Moon Kit (LROC, LOLA)' },
+  svc: { ephem: 'NASA JPL Horizons ephemerides (DE441)', sites: 'Artemis candidate sites, Wueller et al. 2026', team: 'Team shortlist, LOLA relief at 5 m (PGDA 78)', horizons: 'Terrain horizons from LRO LOLA, 80 m', madrid: 'NASA Deep Space Network: Madrid, Goldstone, Canberra', check: 'Check against the published study', moon: '3D Moon, NASA SVS CGI Moon Kit (LROC, LOLA)' },
   svcWait: 'connecting…',
   svcQueued: 'standing by',
   splashHorizon: 'Real horizon of Mons Mouton 07, one of our sites (LRO LOLA)',
@@ -776,7 +778,7 @@ const es: Strings = {
     darkestDay: (d, h) => `Día con menos Sol: ${d} (${h} h de Sol)`,
     noEarthFrom: (h, from) => `Más tiempo seguido sin Tierra: ${h}, desde el ${from} UTC`,
     noEarthNone: 'La Tierra se ve durante toda la estancia.',
-    earthShare: (e, madrid) => `Tierra a la vista el ${e} % de la estancia · con Madrid (Robledo) el ${madrid} %`,
+    earthShare: (e, stations) => `Contacto con la Tierra el ${e} % de la estancia · por antena: ${stations}`,
     noEarthFail: 'No se cumple el requisito de contacto directo con la Tierra: prueba otra fecha, otro sitio o un satélite repetidor.',
     accuracy: 'Precisión de alunizaje: la NASA pide para un alunizaje tripulado quedar a menos de 100 m del objetivo',
     accuracyNote: 'Malla cada 40 m alrededor del sitio, cada punto con su propio horizonte LOLA. Pendiente sobre 100 m del mapa LOLA de 5 m; la NASA pide menos de 10° para un alunizaje tripulado.',
@@ -848,15 +850,17 @@ const es: Strings = {
   barSun: 'Luz solar durante la estancia',
   barEarth: 'Contacto con la Tierra durante la estancia',
   barMadrid: 'La estación de espacio profundo de Madrid puede alcanzar el sitio',
+  barStation: (name) => `${name} puede alcanzar el sitio`,
 
   both: 'Sol y Tierra a la vez',
   bothShort: 'Ambos',
   caveat:
     'Aproximaciones horarias. Ver la Tierra no garantiza un enlace de radio operativo, y estar iluminado no garantiza suficiente producción eléctrica.',
-  madridToggle: 'Mostrar la estación de espacio profundo de Madrid (Robledo de Chavela)',
+  madridToggle: 'Mostrar las antenas de la Red de Espacio Profundo de la NASA (Madrid, Goldstone, Canberra)',
   madridBand: 'Madrid puede alcanzar el sitio',
   madridExplain: (minEl) =>
-    `Horas en las que el sitio ve la Tierra y, a la vez, la Luna está al menos ${minEl}° sobre el horizonte en la estación de la NASA en Robledo de Chavela, cerca de Madrid.`,
+    `El contacto con la Tierra cuenta las horas en las que el sitio ve la Tierra y, a la vez, la Luna está al menos ${minEl}° sobre el horizonte en una de las tres antenas de 70 m de la Red de Espacio Profundo de la NASA: Madrid (DSS-63), Goldstone (DSS-14) o Canberra (DSS-43).`,
+  dsnPcts: (list) => `Cada antena puede alcanzar el sitio: ${list} de la estancia.`,
   madridPct: (pct) => `Madrid puede alcanzar el sitio el ${pct} % de la estancia.`,
 
   yearTitle: '¿Qué fechas parecen más favorables?',
@@ -866,7 +870,7 @@ const es: Strings = {
   yearCompute: 'Calculando…',
 
   downloadCsv: (name) => `Descargar la tabla horaria de ${name} (CSV)`,
-  csvHeader: ['hora_utc', 'sol_visible', 'tierra_visible', 'ambos', 'enlace_madrid', 'sol_az_grados', 'sol_el_grados', 'tierra_az_grados', 'tierra_el_grados'],
+  csvHeader: ['hora_utc', 'sol_visible', 'tierra_a_la_vista', 'contacto_tierra_dsn', 'sol_y_contacto', 'madrid_dss63', 'goldstone_dss14', 'canberra_dss43', 'sol_az_grados', 'sol_el_grados', 'tierra_az_grados', 'tierra_el_grados'],
   yes: 'sí',
   findTitle: '¿Dónde quieres alunizar?',
   loadingData: 'Cargando los datos de la NASA…',
@@ -1059,7 +1063,7 @@ const es: Strings = {
   earthLabel: 'Tierra',
   splashStarting: 'Iniciando servicios',
   splashReady: 'Listo',
-  svc: { ephem: 'Efemérides NASA JPL Horizons (DE441)', sites: 'Sitios candidatos de Artemis, Wueller et al. 2026', team: 'Selección del equipo, relieve LOLA a 5 m (PGDA 78)', horizons: 'Horizontes del relieve LOLA (LRO), 80 m', madrid: 'Estación de espacio profundo de Madrid, DSS-63', check: 'Comprobación con el estudio publicado', moon: 'Luna en 3D, NASA SVS CGI Moon Kit (LROC, LOLA)' },
+  svc: { ephem: 'Efemérides NASA JPL Horizons (DE441)', sites: 'Sitios candidatos de Artemis, Wueller et al. 2026', team: 'Selección del equipo, relieve LOLA a 5 m (PGDA 78)', horizons: 'Horizontes del relieve LOLA (LRO), 80 m', madrid: 'Red de Espacio Profundo de la NASA: Madrid, Goldstone, Canberra', check: 'Comprobación con el estudio publicado', moon: 'Luna en 3D, NASA SVS CGI Moon Kit (LROC, LOLA)' },
   svcWait: 'conectando…',
   svcQueued: 'en espera',
   splashHorizon: 'Horizonte real de Mons Mouton 07, uno de nuestros sitios (LOLA, LRO)',

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import * as THREE from 'three'
+import { DSN_MIN_ELEV_DEG, DSN_STATIONS } from '../data/model'
 import { measureQuality, qualityAt, type Quality } from './quality'
 import type { CesiumMoon } from './cesiumMoon'
 import * as sfx from '../sound'
@@ -43,7 +44,7 @@ type Props = {
   sunAt?: { lat: number; lon: number }
   /** The Earth in the Moon's sky at the chosen hour: sub-Earth point (deg) and distance, from JPL
    *  Horizons; `t` (ms, UTC) sets which side of the Earth faces the Moon. */
-  earth?: { lat: number; lon: number; km: number; t: number; label: string }
+  earth?: { lat: number; lon: number; km: number; t: number; label: string; /** Moon elevation (deg) over each DSN antenna, in DSN_STATIONS order. */ dsn?: number[] }
   /** Street view button inside the callout: stand on that site. */
   onStreet?: (id: string) => void
   streetLabel?: string
@@ -109,6 +110,20 @@ function polarCap(q: Quality) {
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4))
   g.setIndex(idx)
   return g
+}
+
+// A round dot (or a soft glow) drawn once on a canvas, for points and sprites.
+function dotTexture(soft = false) {
+  const c = document.createElement('canvas')
+  c.width = c.height = 64
+  const g = c.getContext('2d')!
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+  grad.addColorStop(0, 'rgba(255,255,255,1)')
+  grad.addColorStop(soft ? 0.25 : 0.7, soft ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,1)')
+  grad.addColorStop(soft ? 1 : 0.85, 'rgba(255,255,255,0)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 64, 64)
+  return new THREE.CanvasTexture(c)
 }
 
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
@@ -463,6 +478,61 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     earthEl.className = 'moon-earth-label'
     earthEl.style.opacity = '0'
     labels.appendChild(earthEl)
+    // NASA's Deep Space Network on the Earth: the three 70 m antennas at their real latitude and
+    // longitude (the Earth turns to its real side for the hour, see orientEarth). Looking at the Earth,
+    // each antenna that has the Moon at least DSN_MIN_ELEV_DEG over its horizon is linked to the chosen
+    // site, with signal pulses travelling along the link. A picture of the geometry, not a radio budget.
+    const DSN_HEX = [0xff5a6a, 0xb794f6, 0x2dd4bf] // Madrid, Goldstone, Canberra (as in the stay bar)
+    const dsnLocal = DSN_STATIONS.map((st) => surface(st.lat, st.lon, 1.015))
+    const dsnDots = new THREE.Points(
+      new THREE.BufferGeometry().setFromPoints(dsnLocal),
+      new THREE.PointsMaterial({ size: 9, sizeAttenuation: false, vertexColors: true, depthWrite: false, map: dotTexture(), alphaTest: 0.3, transparent: true }),
+    )
+    dsnDots.geometry.setAttribute('color', new THREE.Float32BufferAttribute(DSN_HEX.flatMap((c) => new THREE.Color(c).toArray()), 3))
+    dsnDots.visible = false
+    earthMesh.add(dsnDots)
+    const linkMat = (hex: number) =>
+      new THREE.ShaderMaterial({
+        uniforms: { time: { value: 0 }, alpha: { value: 0 }, color: { value: new THREE.Color(hex) } },
+        vertexShader: 'attribute float u; varying float vU; void main() { vU = u; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        // A faint line with bright pulses running from the antenna (u = 0) to the site (u = 1).
+        fragmentShader: 'uniform float time; uniform float alpha; uniform vec3 color; varying float vU; void main() { float p = fract(vU * 7.0 - time * 0.9); float pulse = smoothstep(0.82, 0.97, p) * (1.0 - smoothstep(0.97, 1.0, p)); gl_FragColor = vec4(color, alpha * (0.45 + 0.55 * pulse)); }',
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      })
+    const dsnLinks = DSN_STATIONS.map((_, k) => {
+      const g = new THREE.BufferGeometry()
+      const SEG = 64 // many points along the link, so the pulses are smooth
+      g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array((SEG + 1) * 3), 3))
+      g.setAttribute('u', new THREE.Float32BufferAttribute(Array.from({ length: SEG + 1 }, (_, i) => i / SEG), 1))
+      const line = new THREE.Line(g, linkMat(DSN_HEX[k]))
+      line.frustumCulled = false
+      line.visible = false
+      moon.add(line)
+      return line
+    })
+    // A bright packet of signal running down each link, antenna to site.
+    const packetTex = dotTexture(true)
+    const dsnPackets = DSN_STATIONS.map((_, k) => {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: packetTex, color: DSN_HEX[k], blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, sizeAttenuation: false }))
+      sp.scale.setScalar(0.0045)
+      sp.visible = false
+      moon.add(sp)
+      return sp
+    })
+    const dsnLabels = DSN_STATIONS.map((st, k) => {
+      const el = document.createElement('div')
+      el.className = 'moon-earth-label moon-dsn-label'
+      el.style.opacity = '0'
+      el.innerHTML = `<i style="background:#${DSN_HEX[k].toString(16).padStart(6, '0')}"></i>${st.name} <span>${st.dss}</span>`
+      labels.appendChild(el)
+      return el
+    })
+    const dsnA = new THREE.Vector3()
+    const dsnB = new THREE.Vector3()
+    const dsnN = new THREE.Vector3()
+    let dsnShow = 0 // 0..1, fades the links in and out
     const earthDir = new THREE.Vector3(1, 0, 0) // Moon-fixed
     const earthWorld = new THREE.Vector3()
     let earthKey = ''
@@ -1232,6 +1302,54 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         }
       }
       earthEl.style.opacity = earthShown ? '1' : '0'
+
+      // The DSN antennas and their links, looking at the Earth.
+      dsnShow += ((ea && earthMesh.visible && altKind === 2 ? vk : 0) - dsnShow) * (1 - Math.exp(-dt * 4))
+      const dsnOn = dsnShow > 0.02 && !!ea
+      dsnDots.visible = dsnOn
+      if (dsnOn) {
+        earthMesh.updateMatrix()
+        const fm2 = markers.find((x) => x.id === state.current.focusId)
+        dsnB.copy(fm2 ? fm2.local : surface(-89.5, 0)).multiplyScalar(1.004)
+        DSN_STATIONS.forEach((_, k) => {
+          const up = (ea.dsn?.[k] ?? -90) >= DSN_MIN_ELEV_DEG
+          const line = dsnLinks[k]
+          line.visible = up
+          dsnA.copy(dsnLocal[k]).applyMatrix4(earthMesh.matrix)
+          if (up) {
+            const pos = line.geometry.getAttribute('position') as THREE.BufferAttribute
+            for (let i = 0; i < pos.count; i++) {
+              const f = i / (pos.count - 1)
+              pos.setXYZ(i, dsnA.x + (dsnB.x - dsnA.x) * f, dsnA.y + (dsnB.y - dsnA.y) * f, dsnA.z + (dsnB.z - dsnA.z) * f)
+            }
+            pos.needsUpdate = true
+            const mat = line.material as THREE.ShaderMaterial
+            mat.uniforms.time.value = now / 1000 + k * 0.37
+            mat.uniforms.alpha.value = dsnShow
+            const f = (now / 1000 / 2.4 + k * 0.33) % 1
+            dsnPackets[k].position.lerpVectors(dsnA, dsnB, f)
+            ;(dsnPackets[k].material as THREE.SpriteMaterial).opacity = dsnShow * Math.sin(Math.PI * f)
+          }
+          dsnPackets[k].visible = up
+          // Its name, when the antenna is on the side of the Earth facing the camera.
+          world.copy(dsnA).applyMatrix4(moon.matrixWorld)
+          dsnN.copy(dsnLocal[k]).applyQuaternion(earthMesh.quaternion).applyQuaternion(moon.quaternion)
+          tmp.copy(camera.position).sub(world)
+          const facing = dsnN.dot(tmp) > 0
+          tmp.copy(world).project(camera)
+          const el = dsnLabels[k]
+          if (facing && tmp.z < 1) {
+            const x = (tmp.x * 0.5 + 0.5) * w
+            const y = (-tmp.y * 0.5 + 0.5) * h
+            el.style.transform = `translate(${Math.round(x + 8)}px, ${Math.round(y - 7)}px)`
+            el.style.opacity = String(dsnShow * (up ? 1 : 0.55))
+          } else el.style.opacity = '0'
+        })
+      } else {
+        dsnLinks.forEach((l) => (l.visible = false))
+        dsnPackets.forEach((p) => (p.visible = false))
+        dsnLabels.forEach((el) => (el.style.opacity = '0'))
+      }
 
       // Callout: next to where the mouse found the site (its dot, or its label when the label sits away
       // from the dot), opening to the side with more room.

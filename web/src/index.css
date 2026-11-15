@@ -229,6 +229,9 @@ body {
 .moon-controls .moon-layer[data-on="true"] { color: #000; background: var(--color-sun); border-color: var(--color-sun) }
 .moon-controls .moon-layer[aria-busy="true"] { opacity: 0.7; cursor: progress }
 /* Name of the Earth under its disc in the 3D scene. */
+.moon-dsn-label { font-size: 11px }
+.moon-dsn-label i { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; vertical-align: 0 }
+.moon-dsn-label span { font-weight: 500; color: rgba(255, 255, 255, 0.7) }
 .moon-earth-label {
   position: absolute;
   left: 0;

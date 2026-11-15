@@ -6,7 +6,9 @@
 //    scripts/build_catalogue.py; the 5 sites of the team use 5 m relief near the site
 //    (scripts/import_team_package.py);
 //  - candidate sites: Wueller et al. (2026), 130 sites in the 16 Artemis candidate regions;
-//  - Moon elevation over NASA's Madrid deep space station, from Horizons (fetch_madrid.py).
+//  - Moon elevation over the three 70 m antennas of NASA's Deep Space Network (Madrid DSS-63,
+//    Goldstone DSS-14, Canberra DSS-43), from Horizons (fetch_dsn.py). Direct contact with Earth needs
+//    Earth above the site's horizon AND the Moon at least 10 deg over one of them.
 // Everything is computed here, in the browser, from those files: no server.
 import { versioned } from './version'
 
@@ -77,7 +79,12 @@ export interface Sample {
   earthAz: number
   earthEl: number
   sunVisible: number // fraction of the solar disc above the terrain, 0..1
+  /** Earth above the site's terrain horizon (by the antenna angle): geometry only. */
   earthVisible: boolean
+  /** Direct contact with Earth: Earth in view AND the Moon at least 10 deg over one DSN antenna. */
+  link: boolean
+  /** DSN antennas with the Moon at least 10 deg over them (bit 1 Madrid, 2 Goldstone, 4 Canberra). */
+  dsn: number
   /** Earth in view from the site AND the Moon at least 10 deg over Madrid (Robledo de Chavela). */
   madridLink: boolean
 }
@@ -96,6 +103,8 @@ export interface Metrics {
   earthLinkPct: number
   opsPct: number
   madridPct: number
+  /** Share of the stay (%) each DSN antenna can reach the site, in DSN_STATIONS order. */
+  stationPct: number[]
   hoursToSunset: number | null
   hoursToEarthset: number | null
   /** Battery left after the longest night (Wh): capacity minus the battery that night needs. Null: no battery set. */
@@ -116,6 +125,14 @@ export interface Metrics {
 }
 
 export const MADRID_DSN = { name: 'Robledo de Chavela', lat: 40.431, lon: -4.248, minElevDeg: 10 }
+/** The 70 m antennas of NASA's Deep Space Network: geodetic WGS84 (lat, east lon, height in km),
+ *  from the Earth-fixed positions NASA/JPL publish. Replaced by the ones in dsn.json once loaded. */
+export const DSN_STATIONS = [
+  { id: 'madrid', name: 'Madrid', dss: 'DSS-63', lat: 40.431208, lon: -4.24801, altKm: 0.865 },
+  { id: 'goldstone', name: 'Goldstone', dss: 'DSS-14', lat: 35.425901, lon: -116.889537, altKm: 1.001 },
+  { id: 'canberra', name: 'Canberra', dss: 'DSS-43', lat: -35.402428, lon: 148.981265, altKm: 0.689 },
+]
+export const DSN_MIN_ELEV_DEG = 10
 
 const R_MOON_KM = 1737.4
 const SUN_RADIUS_DEG = 0.2665
@@ -126,6 +143,7 @@ const HOUR = 3600000
 export const SITES: Site[] = []
 let rows: Float64Array = new Float64Array(0) // 5 per hour: earthLon, earthLat, sunLon, sunLat, earthKm
 let madrid: Float32Array = new Float32Array(0)
+let dsnEl: Float32Array[] = [] // Moon elevation (deg) over each DSN antenna, every hour
 let startMs = 0
 let hours = 0
 export const DATA = { start: new Date(0), end: new Date(0), ready: false, validation: null as null | Record<string, number> }
@@ -172,7 +190,12 @@ export function loadData(base = 'data/'): Promise<void> {
       tap(get('sites.json'), 'sites', (x: { sites: { region: string }[] }) => ({ sites: x.sites.length, regions: new Set(x.sites.map((s) => s.region)).size })),
       tap(get('horizons.json'), 'horizons', (x: Record<string, unknown>) => ({ sites: Object.keys(x).length - 1, azimuths: 720 })),
       tap(get('subpoints.json'), 'ephem', (x: { rows: unknown[]; start: string }) => ({ hours: x.rows.length, start: Date.parse(x.start) })),
-      tap(get('madrid.json'), 'madrid', (x: { el: unknown[] }) => ({ hours: x.el.length })),
+      // The three DSN antennas; madrid.json (Madrid only) if dsn.json is missing.
+      tap(
+        get('dsn.json').catch(() => get('madrid.json').then((m) => ({ stations: [{ ...DSN_STATIONS[0], el: m.el }] }))),
+        'madrid',
+        (x: { stations: { el: unknown[] }[] }) => ({ hours: x.stations[0].el.length, stations: x.stations.length }),
+      ),
       get('validation.json').then(
         (x) => (report('check', { sites: x.stats.sites, median: x.stats.medianAbsDiffDays }), x),
         () => (report('check', null), null),
@@ -187,7 +210,8 @@ export function loadData(base = 'data/'): Promise<void> {
     hours = sub.rows.length
     rows = new Float64Array(hours * 5)
     sub.rows.forEach((r: number[], i: number) => rows.set(r, i * 5))
-    madrid = Float32Array.from(mad.el as number[])
+    dsnEl = (mad.stations as { el: number[] }[]).map((st) => Float32Array.from(st.el))
+    madrid = dsnEl[0]
     DATA.start = new Date(startMs)
     DATA.end = new Date(startMs + (hours - 1) * HOUR)
     DATA.validation = val?.stats ?? null
@@ -281,7 +305,21 @@ function row(t: number) {
     sLat: rows[a + 3] + (rows[b + 3] - rows[a + 3]) * f,
     km: rows[a + 4] + (rows[b + 4] - rows[a + 4]) * f,
     madridEl: madrid[Math.min(madrid.length - 1, Math.round(x))],
+    dsn: dsnBits(Math.round(x)),
   }
+}
+
+// DSN antennas with the Moon at least DSN_MIN_ELEV_DEG over them at hour index i (bit k: station k).
+function dsnBits(i: number) {
+  let b = 0
+  for (let k = 0; k < dsnEl.length; k++) if (dsnEl[k][Math.min(dsnEl[k].length - 1, i)] >= DSN_MIN_ELEV_DEG) b |= 1 << k
+  return b
+}
+
+/** Moon elevation (deg) over each DSN antenna at time t, in DSN_STATIONS order. */
+export function dsnAt(t: Date): number[] {
+  const x = Math.min(hours - 1, Math.max(0, Math.round((t.getTime() - startMs) / HOUR)))
+  return dsnEl.map((el) => el[Math.min(el.length - 1, x)])
 }
 
 /** Sub-solar point on the Moon (deg, Moon-fixed, east longitude) at time t, from the Horizons rows. */
@@ -312,6 +350,8 @@ function sampleAt(site: Site, t: number, minAntennaElevDeg: number): Sample {
     earthEl: earth.el,
     sunVisible,
     earthVisible,
+    link: earthVisible && r.dsn !== 0,
+    dsn: r.dsn,
     madridLink: earthVisible && r.madridEl >= MADRID_DSN.minElevDeg,
   }
 }
@@ -340,8 +380,8 @@ export function overview(site: Site, from: Date, days: number, minAntennaElevDeg
       const s = sampleAt(site, day + h * HOUR, minAntennaElevDeg)
       const lit = s.sunVisible > 0.5
       sun += lit ? 1 : 0
-      earth += s.earthVisible ? 1 : 0
-      both += lit && s.earthVisible ? 1 : 0
+      earth += s.link ? 1 : 0
+      both += lit && s.link ? 1 : 0
     }
     out.push({ t: new Date(day), sun: sun / 24, earth: earth / 24, both: both / 24 })
   }
@@ -422,7 +462,7 @@ export function landingCalendar(site: Site, durationDays: number, minAntennaElev
   for (let i = 0; i < n; i++) {
     const s = sampleAt(site, startMs + i * HOUR, minAntennaElevDeg)
     lit[i] = s.sunVisible > 0.5 ? 1 : 0
-    earth[i] = s.earthVisible ? 1 : 0
+    earth[i] = s.link ? 1 : 0
   }
   const pl = new Uint32Array(n + 1)
   const pe = new Uint32Array(n + 1)
@@ -457,8 +497,8 @@ export function landingCalendar(site: Site, durationDays: number, minAntennaElev
 export function metrics(samples: Sample[], mission: Mission): Metrics {
   const n = Math.max(1, samples.length)
   const sunlit = samples.filter((s) => s.sunVisible > 0.5).length
-  const earth = samples.filter((s) => s.earthVisible).length
-  const ops = samples.filter((s) => s.sunVisible > 0.5 && s.earthVisible).length
+  const earth = samples.filter((s) => s.link).length
+  const ops = samples.filter((s) => s.sunVisible > 0.5 && s.link).length
 
   // Longest runs of dark hours and of hours without Earth, with the index where each one starts.
   let longest = 0
@@ -473,7 +513,7 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
       longest = run
       longestAt = i - run + 1
     }
-    runE = s.earthVisible ? 0 : runE + 1
+    runE = s.link ? 0 : runE + 1
     if (runE > noEarth) {
       noEarth = runE
       noEarthAt = i - runE + 1
@@ -486,7 +526,7 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
     return i < 0 ? null : i
   }
   const hoursToSunset = samples.length && samples[0].sunVisible > 0.5 ? firstIndex((s) => s.sunVisible <= 0.5) : 0
-  const hoursToEarthset = samples.length && samples[0].earthVisible ? firstIndex((s) => !s.earthVisible) : 0
+  const hoursToEarthset = samples.length && samples[0].link ? firstIndex((s) => !s.link) : 0
 
   const sunlightPct = (100 * sunlit) / n
   const earthLinkPct = (100 * earth) / n
@@ -511,6 +551,7 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
     earthLinkPct,
     opsPct: (100 * ops) / n,
     madridPct: (100 * samples.filter((s) => s.madridLink).length) / n,
+    stationPct: DSN_STATIONS.map((_, k) => (100 * samples.filter((s) => s.earthVisible && s.dsn & (1 << k)).length) / n),
     hoursToSunset,
     hoursToEarthset,
     batteryMarginWh,

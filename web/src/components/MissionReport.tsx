@@ -6,7 +6,7 @@
 // dates. Every default comes from a NASA source, listed at the foot. All in the browser, recomputed on
 // every change: about 90 sites × 14 days × 24 h, well under 0.1 s.
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { ARTEMIS3, DATA, SITES, SOURCES, SPACE_BATTERY_WH_PER_KG, VIPER_BATTERY_WH, batteryMassKg, gridReady, gridSites, loadGrid, metrics, moonDistanceKm, overview, simulate, type GridSite, type Metrics, type Site } from '../data/model'
+import { ARTEMIS3, DATA, SITES, SOURCES, SPACE_BATTERY_WH_PER_KG, VIPER_BATTERY_WH, batteryMassKg, gridReady, gridSites, loadGrid, metrics, moonDistanceKm, overview, simulate, type GridSite, type Metrics, type Site, DSN_STATIONS } from '../data/model'
 import { useT } from '../i18n'
 import { missionParams, type MissionDef } from '../missions'
 
@@ -147,7 +147,7 @@ export function MissionReport({ def, onUseSpot }: { def: MissionDef; onUseSpot?:
       <section className={card}>
         <h4 className={h4}>{ms.sComms}</h4>
         {main.longestNoEarthH > 0 && main.longestNoEarthStart ? <p>{ms.noEarthFrom(hours(main.longestNoEarthH), dateTime(main.longestNoEarthStart))}</p> : <p>{ms.noEarthNone}</p>}
-        <p className="mt-1 text-muted">{ms.earthShare(num(main.earthLinkPct), num(main.madridPct))}</p>
+        <p className="mt-1 text-muted">{ms.earthShare(num(main.earthLinkPct), DSN_STATIONS.map((st, k) => `${st.name} ${num(main.stationPct[k])} %`).join(' · '))}</p>
         {main.noEarthExceeded && <p className="mt-2 text-bad">{ms.noEarthFail}</p>}
       </section>
 
