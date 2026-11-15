@@ -34,6 +34,8 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
   const [phase, setPhase] = useState<'show' | 'leave' | 'gone'>(() => (SKIP ? 'gone' : 'show'))
   const [status, setStatus] = useState<Record<Service, State>>(() => Object.fromEntries(ORDER.map((s) => [s, { state: 'pending' }])) as Record<Service, State>)
   const [stage, setStage] = useState<'choose' | 'load'>('choose')
+  // The short story of the project and the team, over the splash (closed by default).
+  const [about, setAbout] = useState<null | 'project' | 'team'>(null)
   const [botWaved, setBotWaved] = useState(false)
   const wide = useMemo(() => window.innerWidth >= 640, [])
   const [shown, setShown] = useState(0)
@@ -177,6 +179,7 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
   }
   const earthUp = status.ephem.state === 'done' && shown >= 1
 
+  const a = t.splashAbout
   return (
     <div
       role="status"
@@ -285,6 +288,19 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
                 </span>
               </button>
             </div>
+            <div className="mt-3 flex justify-center gap-2">
+              {(
+                [
+                  ['project', a.open, 'M12 17v-5M12 8v.5M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z'],
+                  ['team', a.team, 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M13 15c.9-.4 1.9-.5 3-.5 2.5 0 4.7 1.5 5.5 4.5'],
+                ] as const
+              ).map(([id, label, d]) => (
+                <button key={id} type="button" onClick={() => setAbout(id)} className="about-link">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           </div>
         ) : (
@@ -361,6 +377,70 @@ export function Splash({ onDone, onMode, lang, onLang, showMoon, moon }: { onDon
         </div>
         )}
       </div>
+
+      {about && (
+        <div className="ui-fade absolute inset-0 z-10 flex items-center justify-center bg-black/60 p-4" onClick={() => setAbout(null)} onKeyDown={(e) => e.key === 'Escape' && setAbout(null)}>
+          <section role="dialog" aria-modal="true" aria-label={about === 'team' ? a.tabTeam : a.tabProject} onClick={(e) => e.stopPropagation()} className="pop-in flex max-h-[min(640px,90dvh)] w-[min(640px,100%)] flex-col border border-white/15 bg-[#0b0f18]/97 text-left shadow-2xl backdrop-blur-md">
+            <div className="flex items-center gap-2 border-b border-white/10 px-3">
+              <div className="flex flex-1 gap-1" role="tablist">
+                {(
+                  [
+                    ['project', a.tabProject],
+                    ['team', a.tabTeam],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button key={id} type="button" role="tab" aria-selected={about === id} onClick={() => setAbout(id)} className={`min-h-12 px-3 text-sm ${about === id ? 'border-b-2 border-sun font-semibold text-white' : 'text-white/60 hover:text-white'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button type="button" autoFocus onClick={() => setAbout(null)} aria-label={a.close} title={a.close} className="flex size-9 items-center justify-center rounded-sm border border-white/25 hover:bg-white/10">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+            <div key={about} className="ui-fade min-h-0 overflow-y-auto px-5 py-4 text-sm leading-relaxed text-white/85">
+              {about === 'project' ? (
+                <>
+                  {(
+                    [
+                      [a.whatTitle, a.what],
+                      [a.howTitle, a.how],
+                      [a.whoTitle, a.who],
+                    ] as const
+                  ).map(([h, p], i) => (
+                    <div key={h} className={`flex gap-3 ${i ? 'mt-4' : ''}`}>
+                      <span className="wordmark mt-0.5 w-6 shrink-0 text-sun" style={{ letterSpacing: 0 }}>{String(i + 1).padStart(2, '0')}</span>
+                      <div>
+                        <h3 className="font-semibold text-white">{h}</h3>
+                        <p className="mt-1">{p}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="mt-5 border-t border-white/10 pt-3 text-xs text-white/55">{a.challenge}</p>
+                </>
+              ) : (
+                <>
+                  <p>{a.teamIntro}</p>
+                  <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {a.members.map((m) => (
+                      <li key={m.name} className="flex items-center gap-3 border border-white/10 bg-white/[0.03] p-3">
+                        <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-sun/60 font-semibold text-sun" aria-hidden="true">
+                          {m.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-white">{m.name}</span>
+                          <span className="block text-xs text-white/60">{m.role}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-4 border-t border-white/10 pt-3 text-xs text-white/55">{a.franky}</p>
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
 
       <div className="sp-meta absolute inset-x-0 bottom-6 flex flex-col items-center gap-1 px-6 text-xs text-white/80 [text-shadow:0_1px_10px_#000,0_0_2px_#000] sm:bottom-12 sm:flex-row sm:justify-between sm:px-20">
         <span className="text-center">{t.splashData}</span>
