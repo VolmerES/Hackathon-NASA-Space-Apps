@@ -118,7 +118,7 @@ export function CloseButton({ label, onClick, kind = 'close', withText = false, 
 }
 
 /** Modal overlay over a translucent backdrop (native dialog: focus trap and Escape for free). */
-export function Overlay({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
+export function Overlay({ open, title, onClose, children, wide = false }: { open: boolean; title: string; onClose: () => void; children: ReactNode; /** Wider, for reports with tables. */ wide?: boolean }) {
   const t = useT()
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -154,7 +154,7 @@ export function Overlay({ open, title, onClose, children }: { open: boolean; tit
         onClose()
       }}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="modal-soft m-auto w-[min(560px,calc(100%-32px))] border border-rule bg-paper/95 p-0 text-ink shadow-2xl backdrop-blur-md"
+      className={`modal-soft m-auto ${wide ? 'w-[min(880px,calc(100%-32px))]' : 'w-[min(560px,calc(100%-32px))]'} border border-rule bg-paper/95 p-0 text-ink shadow-2xl backdrop-blur-md`}
     >
       <div className="flex items-center justify-between gap-4 border-b border-rule px-5 py-3">
         <h2 className="text-lg font-bold">{title}</h2>

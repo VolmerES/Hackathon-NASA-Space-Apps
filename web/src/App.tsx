@@ -1867,13 +1867,13 @@ export default function App() {
         </div>
       )}
 
-      <Overlay open={missionsOpen} title={t.ms.title} onClose={() => { setMissionsOpen(false); pendingScenario.current = null }}>
+      <Overlay wide open={missionsOpen} title={t.ms.title} onClose={() => { setMissionsOpen(false); pendingScenario.current = null }}>
         <Missions key={missionsStartNew} startNew={missionsStartNew > 0 && pendingScenario.current !== null} missions={missions} activeId={activeId} evaluate={evaluateScenario} num={num} onSave={saveMissionDef} onDelete={deleteMission} onOpen={openMission} onDeleteScenario={deleteScenario} onRenameScenario={(mid, sid, name) => patchScenario(mid, sid, { name })} onReport={downloadReport} openScenarioId={scenarioId} onUseSpot={(id, def) => { loadGrid().then(() => { setGridTick((n) => n + 1); setMission((cur) => ({ ...cur, landing: new Date(def.landing), slipDays: 0, durationDays: def.durationDays, survivalPowerW: def.survivalPowerW })); pick(id); setMissionsOpen(false) }) }} />
       </Overlay>
       {/* The project in one minute: why it matters, what is new, why trust it, the NASA data, and three ways in. */}
-      <Overlay open={aboutOpen} title={t.about.title} onClose={() => setAboutOpen(false)}>
+      <Overlay wide open={aboutOpen} title={t.about.title} onClose={() => setAboutOpen(false)}>
         <p className="text-muted">{t.about.intro}</p>
-        <div className="mt-4">
+        <div className="mt-4 grid gap-x-8 md:grid-cols-2">
           {t.about.cards.map((c, n) => (
             <section key={c.k} className="about-card">
               <p className="about-n" aria-hidden="true">{n + 1}</p>
