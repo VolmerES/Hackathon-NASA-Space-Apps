@@ -768,6 +768,7 @@ details[open] > .disclosure::after { transform: translateY(2px) rotate(-135deg) 
 .mission-strip { border: 1px solid rgba(255, 255, 255, 0.12); border-left: 3px solid var(--color-sun); background: rgba(0, 0, 0, 0.35) }
 .about-link { display: inline-flex; min-height: 36px; align-items: center; gap: 7px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 999px; padding: 0 14px; font-size: 13px; color: rgba(255, 255, 255, 0.85); background: rgba(0, 0, 0, 0.35); transition: background-color 150ms ease, border-color 150ms ease }
 .about-link:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.5); color: #fff }
+.near-box { display: flex; gap: 10px; border: 1px dashed color-mix(in srgb, var(--color-sun) 55%, transparent); background: color-mix(in srgb, var(--color-sun) 6%, transparent); padding: 10px 12px }
 /* The site card goes to two columns when it is wide enough (container query on the card). */
 .card-box { container-type: inline-size }
 @container (min-width: 480px) {

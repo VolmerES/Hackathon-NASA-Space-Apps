@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA, DEFAULT_REQUIREMENTS, DSN_MIN_ELEV_DEG, DSN_STATIONS, SITES, clampToData, customSite, gridReady, gridSiteById, loadGrid, loadRobustness, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, subearthAt, dsnAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { DATA, DEFAULT_REQUIREMENTS, DSN_MIN_ELEV_DEG, DSN_STATIONS, SITES, clampToData, customSite, gridReady, gridSiteById, loadGrid, loadRobustness, landingCalendar, loadData, metrics, moonDistanceKm, overview, simulate, subsolarAt, subearthAt, dsnAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
@@ -90,9 +90,9 @@ function resolveSite(id: string): Site | undefined {
     const [lat, lon] = id.slice(7).split(',').map(Number)
     return Number.isFinite(lat) && Number.isFinite(lon) ? customSite(lat, lon) : undefined
   }
-  // Only the five landing sites of the team: a shared link naming any other candidate opens nothing.
-  const site = SITES.find((s) => s.id === id)
-  return site && (site.team || !SITES.some((x) => x.team)) ? site : undefined
+  // Any of the 130 candidate sites (real relief): the five of the team are listed, the others are
+  // reached from the suggestion of a nearer site that looks better.
+  return SITES.find((s) => s.id === id)
 }
 
 // Speaker in the header: sound on or off, remembered in this browser.
@@ -425,6 +425,33 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mission, ready],
   )
+  // A site or point that does not look favourable: the nearest of the 130 candidate sites (real
+  // relief) that looks better for the same dates and requirements, to suggest going there. Only
+  // worked out when needed; a suggestion, not a decision.
+  const nearer = useMemo(() => {
+    if (!ready || !focused || focused.m.verdict === 'viable') return null
+    const here = focused.site
+    const mine = RANK[focused.m.verdict]
+    let found: { site: Site; m: Metrics; km: number } | null = null
+    const byDistance = SITES.filter((s) => s.id !== here.id && !s.ideal)
+      .map((s) => ({ s, km: moonDistanceKm(here, s) }))
+      .sort((a, b) => a.km - b.km)
+    // The nearest favourable one; failing that (from an unfavourable start), the nearest possible one.
+    for (const target of [0, 1] as const) {
+      if (target >= mine) break
+      for (const { s, km } of byDistance) {
+        const m = cautious(s, metrics(simulate(s, mission), mission))
+        if (RANK[m.verdict] <= target) {
+          found = { site: s, m, km }
+          break
+        }
+      }
+      if (found) break
+    }
+    return found
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, focused?.site.id, focused?.m.verdict, mission])
+
   const best = useMemo(() => (results.length > 1 ? [...results].sort((a, b) => RANK[a.m.verdict] - RANK[b.m.verdict] || b.m.opsPct - a.m.opsPct)[0] : undefined), [results])
 
   // The 14 months of hourly data, from the first day they cover.
@@ -1344,6 +1371,31 @@ export default function App() {
                 <p className="mt-1 text-sm text-ink">{reason(focused.m)}</p>
                 {active && <p className="mt-1 text-xs text-muted">{t.ms.judgedBy(active.name)}</p>}
                 {focused.site.ideal && <p className="mt-1 text-xs text-warn">{t.noTerrain}</p>}
+                {focused.m.verdict !== 'viable' && (
+                  <div className="near-box mt-2.5">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0 text-sun"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+                    {nearer ? (
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-white/70">{t.nearTitle(focused.site.ideal)}</p>
+                        <p className="mt-0.5 font-semibold leading-snug text-white">
+                          {siteName(nearer.site)} <span className="font-normal text-white/60">· {num(nearer.km, nearer.km < 10 ? 1 : 0)} km</span>
+                        </p>
+                        <p className={`text-xs ${VERDICT_CLS[nearer.m.verdict]}`}>
+                          {t.verdictLong[nearer.m.verdict]} · {t.sunlight} {num(nearer.m.sunlightPct)} % · {t.earthContact} {num(nearer.m.earthLinkPct)} %
+                        </p>
+                        <button type="button" onClick={() => pick(nearer.site.id)} className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-sm bg-sun px-3 text-sm font-semibold text-black hover:brightness-110">
+                          {t.nearGo}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="min-w-0 flex-1 text-xs text-white/75">
+                        {t.nearNone}{' '}
+                        <button type="button" onClick={() => setPanel('when')} className="link-sun">{t.bestDates}</button>
+                      </p>
+                    )}
+                  </div>
+                )}
                 {disagrees(focused.site) && focused.site.oursSunDays2027 !== undefined && focused.site.published?.['2027'] !== undefined && (
                   <p className="mt-2 flex gap-2 border border-warn/40 bg-warn/10 p-2.5 text-sm text-warn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="mt-0.5 shrink-0" aria-hidden="true">
