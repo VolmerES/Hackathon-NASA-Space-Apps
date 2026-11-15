@@ -674,7 +674,7 @@ details[open] > .disclosure::after { transform: translateY(2px) rotate(-135deg) 
 }
 
 /* Nothing chosen yet: the first thing to do, plain to see. A solid button with a slow beacon ring. */
-.pick-cta { position: relative; min-height: 44px; padding: 0 14px 0 16px; border-radius: 999px; font-size: 15px; color: #000; background: var(--color-sun); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) }
+.pick-cta { min-height: 44px; padding: 0 14px 0 16px; border-radius: 999px; font-size: 15px; color: #000; background: var(--color-sun); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) }
 .pick-cta:hover { filter: brightness(1.08) }
 .pick-cta .text-muted { color: rgba(0, 0, 0, 0.6) }
 .pick-cta::after { content: ''; position: absolute; inset: -4px; border: 2px solid var(--color-sun); border-radius: inherit; opacity: 0; animation: pick-beacon 2.8s ease-out 1.5s infinite; pointer-events: none }
