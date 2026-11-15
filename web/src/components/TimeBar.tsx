@@ -54,7 +54,7 @@ export function TimeBar({ start, min, max, stay, index, sunHours, plan, label, o
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="ml-auto shrink-0 text-muted" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
       </button>
     )}
-    <div className={`glass flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1 sm:flex sm:flex-nowrap ${open ? 'flex' : 'hidden'}`} title={t.timeBarTitle}>
+    <div className={`glass flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1 sm:flex sm:min-h-11 sm:flex-nowrap sm:gap-x-3 sm:px-3 ${open ? 'flex' : 'hidden'}`} title={t.timeBarTitle}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-sun" aria-hidden="true">
         <circle cx="12" cy="12" r="4" />
         <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
@@ -71,14 +71,14 @@ export function TimeBar({ start, min, max, stay, index, sunHours, plan, label, o
           const day = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
           onStart(new Date(Math.min(max.getTime(), Math.max(min.getTime(), day + (h * 60 + (mi || 0)) * 60000))))
         }}
-        className="h-8 w-[5.5rem] shrink-0 rounded-sm border border-white/20 bg-black/40 px-1.5 text-xs text-ink"
+        className="h-8 w-[5.5rem] shrink-0 rounded-sm border border-white/20 bg-black/40 px-1.5 text-xs text-ink sm:h-9 sm:w-[6rem] sm:text-sm"
       />
-      <span className="hidden text-[11px] text-muted sm:inline">UTC</span>
-      <label className="flex shrink-0 items-center gap-1 text-[11px] text-muted" title={t.daysOnSurface}>
-        <NumberField aria-label={t.daysOnSurface} min={1} max={60} value={stay} onValue={(n) => onStay(Math.round(n))} className="h-8 w-12 rounded-sm border border-white/20 bg-black/40 px-1.5 text-center text-xs text-ink" />
+      <span className="hidden text-[11px] text-muted sm:inline sm:text-xs">UTC</span>
+      <label className="flex shrink-0 items-center gap-1 text-[11px] text-muted sm:gap-1.5 sm:text-xs" title={t.daysOnSurface}>
+        <NumberField aria-label={t.daysOnSurface} min={1} max={60} value={stay} onValue={(n) => onStay(Math.round(n))} className="h-8 w-12 rounded-sm border border-white/20 bg-black/40 px-1.5 text-center text-xs text-ink sm:h-9 sm:w-14 sm:text-sm" />
         {t.daysShort}
       </label>
-      <output className="ml-auto shrink-0 rounded-sm bg-sun/15 px-2 py-1 text-xs tabular-nums text-ink sm:order-last sm:ml-0 lg:max-xl:hidden">
+      <output className="ml-auto shrink-0 rounded-sm bg-sun/15 px-2 py-1 text-xs tabular-nums text-ink sm:px-2.5 sm:py-1.5 sm:text-sm sm:order-last sm:ml-0 xl:max-2xl:hidden">
         <strong className="font-semibold text-sun">{t.dayOfStay(day, stay)}</strong> · {when}
       </output>
       <div className="relative min-w-0 flex-1 basis-full sm:basis-auto" title={sunHours?.length ? t.timeBarStrip : undefined}>

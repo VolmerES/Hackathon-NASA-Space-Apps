@@ -766,6 +766,16 @@ details[open] > .disclosure::after { transform: translateY(2px) rotate(-135deg) 
 .scene-btn:hover .scene-art { transform: translateY(-2px) }
 .scene-label { position: relative }
 .mission-strip { border: 1px solid rgba(255, 255, 255, 0.12); border-left: 3px solid var(--color-sun); background: rgba(0, 0, 0, 0.35) }
+/* The site card goes to two columns when it is wide enough (container query on the card). */
+.card-box { container-type: inline-size }
+@container (min-width: 480px) {
+  .card-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; align-items: start }
+  .card-cols .tiles-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .card-cols .card-col > [data-franky="actions"] { margin-top: 12px }
+  .card-cols .panel-links { grid-template-columns: minmax(0, 1fr) }
+  .card-cols .panel-links .panel-link { min-height: 46px }
+  .card-cols .panel-links .col-span-2 { grid-column: auto }
+}
 .panel-link {
   display: flex;
   min-height: 52px;

@@ -1074,7 +1074,7 @@ export default function App() {
       )}
 
       <div inert={diving && !streetOpen} className={`pointer-events-none relative z-10 flex h-dvh flex-col transition-opacity ${diving ? 'duration-500' : 'duration-700'} ${splashDone && !diving ? 'opacity-100' : 'opacity-0'}`}>
-        <header className="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 lg:flex-nowrap bg-gradient-to-b from-black/85 to-transparent px-4 pb-4 pt-3">
+        <header className="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 xl:flex-nowrap bg-gradient-to-b from-black/85 to-transparent px-4 pb-4 pt-3">
           <div className="flex shrink-0 items-center gap-3">
             <button onClick={() => setPicking(true)} aria-label={t.findTitle} className="min-h-11">
               <Logo />
@@ -1082,12 +1082,12 @@ export default function App() {
           </div>
           {/* Quick date and hour: the Moon's light and shadows follow it. A second line on phones. */}
           {splashDone && ready && (
-            <div data-franky="timebar" className="order-last min-w-0 basis-full lg:order-none lg:ml-auto lg:max-w-2xl lg:flex-1 lg:basis-auto">
+            <div data-franky="timebar" className="order-last min-w-0 basis-full xl:order-none xl:ml-2 xl:flex-1 xl:basis-auto">
               <TimeBar start={start} min={DATA.start} max={DATA.end} stay={mission.durationDays} index={focused ? (playIdx ?? 0) : freeHour} sunHours={focused?.samples.map((x) => x.sunVisible)} plan={plan} label={fmtDateTime} onStart={setStart} onStay={(n) => setMissionValue('durationDays', n)} onScrub={scrub} />
             </div>
           )}
           {/* Settings and actions: a gear in the top right corner. */}
-          <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
+          <div className="ml-auto flex shrink-0 items-center gap-2 xl:ml-0">
               <SoundButton />
               <button type="button" data-franky="franky" onClick={() => setAssistantOpen((o) => !o)} aria-pressed={assistantOpen} title={t.assistant.open} className={`flex h-11 items-center gap-1.5 rounded-sm border pl-1 pr-3 text-sm font-semibold ${assistantOpen ? 'border-sun bg-sun/15 text-sun' : 'border-white/40 hover:bg-white/10'}`}>
                 <FrankyBot size={34} mood={assistantOpen ? 'happy' : 'idle'} />
@@ -1159,7 +1159,7 @@ export default function App() {
               Moon on phones, beside it from tablets up. A slim tab on its edge folds it; on phones a swipe
               to the left does too. */}
           <div
-            className={`pointer-events-auto fixed inset-x-3 inset-y-0 z-40 m-auto h-fit max-w-[440px] sm:absolute sm:inset-x-auto sm:left-0 sm:z-20 sm:m-0 sm:h-auto sm:w-[400px] sm:max-w-none lg:relative lg:z-auto lg:w-[clamp(420px,32vw,560px)] lg:shrink-0 ${cardOpen ? 'drawer-in' : cardStay.value ? 'drawer-out' : 'hidden'}`}
+            className={`pointer-events-auto fixed inset-x-3 inset-y-0 z-40 m-auto h-fit max-w-[440px] sm:absolute sm:inset-x-auto sm:left-0 sm:z-20 sm:m-0 sm:h-auto sm:w-[400px] sm:max-w-none lg:relative lg:z-auto lg:w-[clamp(420px,42vw,780px)] lg:shrink-0 ${cardOpen ? 'drawer-in' : cardStay.value ? 'drawer-out' : 'hidden'}`}
             role={isPhone ? 'dialog' : undefined}
             aria-modal={isPhone ? true : undefined}
             onTouchStart={(e) => {
@@ -1173,7 +1173,7 @@ export default function App() {
               if (st && st.x - p.clientX > 70 && Math.abs(p.clientY - st.y) < 50) setCardOpen(false)
             }}
           >
-          <section className="glass card-phone max-h-[82dvh] overflow-y-auto overscroll-contain rounded-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:h-full sm:max-h-none sm:rounded-l-none sm:rounded-r-xl lg:rounded-none lg:p-5">
+          <section className="glass card-phone card-box max-h-[82dvh] overflow-y-auto overscroll-contain rounded-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:h-full sm:max-h-none sm:rounded-l-none sm:rounded-r-xl lg:rounded-none lg:p-5">
             {/* Folding the card, always in reach at the top right: a round close button on phones (it is a
                 pop-up there), a labelled button on wider screens. The card folds to the pill at the top left. */}
             <div className="sticky top-0 z-10 -mx-1 -mt-1 flex justify-end sm:hidden">
@@ -1334,6 +1334,9 @@ export default function App() {
                   </button>
                 </div>
 
+                {/* Wide card: two columns (the answer | what to do next), so it fits without scrolling. */}
+                <div className="card-cols">
+                <div className="card-col">
                 <div data-franky="verdict" className={`mt-3 flex items-center gap-2 ${VERDICT_CLS[focused.m.verdict]}`}>
                   <VerdictIcon v={focused.m.verdict} size={24} />
                   <p className="text-lg font-bold leading-tight">{t.verdictLong[focused.m.verdict]}</p>
@@ -1351,7 +1354,7 @@ export default function App() {
                   </p>
                 )}
 
-                <dl data-franky="tiles" className="mt-3 grid grid-cols-4 gap-1.5">
+                <dl data-franky="tiles" className="tiles-grid mt-3 grid grid-cols-4 gap-1.5">
                   {(
                     [
                       {
@@ -1427,6 +1430,26 @@ export default function App() {
                     </div>
                   ))}
                 </dl>
+                {/* The whole stay at a glance: sunlight, Earth (and DSN) hour by hour. */}
+                <div className="mt-3">
+                  <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
+                  <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-muted">
+                    <span className="flex items-center gap-1.5">
+                      <i className="inline-block size-2 bg-sun" /> {t.sunlight}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.sunlightPct * stayH) / 100)} h</b>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <i className="inline-block size-2 bg-earth" /> {t.earthContact}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.earthLinkPct * stayH) / 100)} h</b>
+                    </span>
+                    {madrid && (
+                      <span className="flex items-center gap-1.5">
+                        <i className="inline-block size-2 bg-nasa-red" /> {t.dsnShort}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.dsnPct * stayH) / 100)} h</b>
+                      </span>
+                    )}
+                  </p>
+                </div>
+                {/* Everything else opens beside the card, as tabs of one panel: no folds inside folds. */}
+                </div>
+                <div className="card-col">
                 <div data-franky="actions" className="mt-3 grid grid-cols-2 gap-2">
                   <button onClick={openStreet} className="scene-btn is-primary">
                     {/* A horizon with a low Sun and someone standing on the site. */}
@@ -1459,25 +1482,7 @@ export default function App() {
                     </span>
                   </button>
                 </div>
-                {/* The whole stay at a glance: sunlight, Earth (and DSN) hour by hour. */}
-                <div className="mt-3">
-                  <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
-                  <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-muted">
-                    <span className="flex items-center gap-1.5">
-                      <i className="inline-block size-2 bg-sun" /> {t.sunlight}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.sunlightPct * stayH) / 100)} h</b>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <i className="inline-block size-2 bg-earth" /> {t.earthContact}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.earthLinkPct * stayH) / 100)} h</b>
-                    </span>
-                    {madrid && (
-                      <span className="flex items-center gap-1.5">
-                        <i className="inline-block size-2 bg-nasa-red" /> {t.dsnShort}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.dsnPct * stayH) / 100)} h</b>
-                      </span>
-                    )}
-                  </p>
-                </div>
-                {/* Everything else opens beside the card, as tabs of one panel: no folds inside folds. */}
-                <nav aria-label={t.explore} className="mt-3 grid grid-cols-2 gap-1.5">
+                <nav aria-label={t.explore} className="panel-links mt-3 grid grid-cols-2 gap-1.5">
                   {(
                     [
                       ['detail', t.navDetail, t.moreDetailHint, 'M4 19V9M10 19V5M16 19v-7M22 19H2'],
@@ -1503,6 +1508,8 @@ export default function App() {
                     </button>
                   ))}
                 </nav>
+                </div>
+                </div>
                 <p className="mt-4 text-xs text-muted">{t.caveat}</p>
               </div>
             )}
