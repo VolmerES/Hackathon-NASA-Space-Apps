@@ -970,7 +970,10 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site])
   useEffect(() => {
-    if (landing) api.current?.land(sample.sunAz)
+    if (!landing) return
+    // The landing in full view: the sky cards fold away while it plays; they are one tap from coming back.
+    setCardsShown(false)
+    api.current?.land(sample.sunAz)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [landing])
 
@@ -1023,7 +1026,7 @@ export default function Surface3D({ site, sample, height = 420, landing = 0 }: {
           {(hud.phase === 'descent' || hud.phase === 'down') && (
             <p className="mt-1 text-xs tabular-nums text-white/80">{t.simClock(`102:${String(43 + Math.floor((1 + Math.round(hud.clock)) / 60)).padStart(2, '0')}:${String((1 + Math.round(hud.clock)) % 60).padStart(2, '0')}`, A11_SPEEDUP)}</p>
           )}
-          <p className="mt-1 text-[11px] leading-snug text-muted">{t.simNote}</p>
+          <details className="mt-1 text-[11px] leading-snug text-muted"><summary className="cursor-pointer list-none underline decoration-white/30 underline-offset-2">{t.simSource}</summary><p className="mt-1">{t.simNote}</p></details>
         </details>
       )}
       {/* What the sky and the ground are like at this hour, from the data of the tool. */}
