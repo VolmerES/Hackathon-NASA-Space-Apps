@@ -28,6 +28,7 @@ const en = {
   addPoint: 'Add this point',
   cancel: 'Cancel',
   useOwnCoords: 'Use your own coordinates',
+  useOwnCoordsSub: 'Any point near the south pole (80° to 90° S): enter its latitude and longitude and get its answer.',
   customName: (lat: string, lon: string) => `Custom ${lat}°, ${lon}°`,
 
   whenTitle: 'When?',
@@ -584,6 +585,7 @@ const es: Strings = {
   addPoint: 'Añadir este punto',
   cancel: 'Cancelar',
   useOwnCoords: 'Usar tus propias coordenadas',
+  useOwnCoordsSub: 'Cualquier punto cerca del polo sur (de 80° a 90° S): escribe su latitud y longitud y obtén su respuesta.',
   customName: (lat, lon) => `Punto propio ${lat}°, ${lon}°`,
 
   whenTitle: '¿Cuándo?',

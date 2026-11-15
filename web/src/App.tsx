@@ -1221,9 +1221,18 @@ export default function App() {
                     ))}
                   </ol>
                 </div>
-                <details className="mt-4 text-sm">
-                  <summary className="disclosure text-sm">{t.useOwnCoords}</summary>
-                  <div className="mt-2 space-y-3">
+                {/* Any point near the south pole, not only the candidate sites: one of the goals of the challenge. */}
+                <details className="coords-cta mt-4 text-sm">
+                  <summary className="disclosure">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="shrink-0 text-sun"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="1.6" fill="currentColor" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+                      <span className="min-w-0">
+                        <span className="block text-base font-semibold text-white">{t.useOwnCoords}</span>
+                        <span className="block text-xs font-normal text-white/70">{t.useOwnCoordsSub}</span>
+                      </span>
+                    </span>
+                  </summary>
+                  <div className="space-y-3 px-4 pb-4 pt-1">
                     <div className="grid grid-cols-2 gap-3">
                       <label>
                         {t.latitude}
@@ -1235,7 +1244,7 @@ export default function App() {
                       </label>
                     </div>
                     <p className="text-warn">{t.customWarning}</p>
-                    <button onClick={addCustom} className="min-h-11 rounded-sm bg-nasa-blue px-4 font-semibold text-white">
+                    <button onClick={addCustom} className="min-h-11 rounded-sm bg-sun px-4 font-semibold text-black hover:brightness-110">
                       {t.addPoint}
                     </button>
                   </div>

@@ -637,6 +637,12 @@ details.soft-moving { overflow: hidden }
 details[open] > .disclosure::after { transform: translateY(2px) rotate(-135deg) }
 .disclosure:hover { color: var(--color-sun) }
 .disclosure:focus-visible { outline: 2px solid var(--color-sun); outline-offset: 2px }
+/* Your own coordinates: an action of its own, not one more line of the list. */
+.coords-cta { border: 1px solid rgba(242, 183, 5, 0.55); border-radius: 8px; background: rgba(242, 183, 5, 0.06); transition: border-color 0.2s, background 0.2s }
+.coords-cta:hover, .coords-cta[open] { border-color: var(--color-sun); background: rgba(242, 183, 5, 0.09) }
+.coords-cta > .disclosure { min-height: 3.75rem; padding: 0.75rem 1rem }
+.coords-cta > .disclosure::after { color: var(--color-sun) }
+.coords-cta > .disclosure:hover { color: inherit }
 /* Inline links in the app's colours. */
 .link-sun { color: var(--color-sun); text-decoration: underline; text-decoration-color: rgb(242 183 5 / 0.45); text-underline-offset: 4px; transition: text-decoration-color 0.2s }
 .link-sun:hover { text-decoration-color: currentColor }
