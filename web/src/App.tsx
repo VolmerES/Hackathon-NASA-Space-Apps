@@ -1173,17 +1173,19 @@ export default function App() {
             }}
           >
           <section className="glass card-phone max-h-[82dvh] overflow-y-auto overscroll-contain rounded-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:h-full sm:max-h-none sm:rounded-l-none sm:rounded-r-xl lg:rounded-none lg:p-5">
-            {/* Phones: the pop-up's close button, always in reach at the top right. */}
-            <div className="sticky top-0 z-10 -mx-1 -mt-1 flex justify-end sm:hidden">
-              <button type="button" onClick={() => setCardOpen(false)} aria-label={t.closePanel} title={t.closePanel} className="flex size-10 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white backdrop-blur hover:bg-white/15">
+            {/* Folding the card, always in reach at the top right: a round close button on phones (it is a
+                pop-up there), a labelled button on wider screens. The card folds to the pill at the top left. */}
+            <div className="sticky top-0 z-10 -mx-1 -mt-1 flex justify-end sm:static sm:mx-0 sm:mb-2 sm:mt-0">
+              <button type="button" onClick={() => setCardOpen(false)} aria-label={t.closePanel} title={t.closePanel} className="flex size-10 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white backdrop-blur hover:bg-white/15 sm:hidden">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+              <button type="button" onClick={() => setCardOpen(false)} className="hidden min-h-9 items-center gap-1.5 rounded-sm border border-white/25 px-2.5 text-sm font-semibold text-white/85 hover:border-white/50 hover:bg-white/10 hover:text-white sm:flex">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                {t.hidePanel}
               </button>
             </div>
             {picking || !focused ? (
               <div>
-                {focused && (
-                  <CloseButton label={t.back} onClick={() => setPicking(false)} kind="back" withText className="mb-3" />
-                )}
                 <h1 className="text-2xl font-bold">{t.findTitle}</h1>
                 <p className="mt-1 text-muted">{t.findHelp}</p>
                 {!ready && <p className="mt-4 text-sm text-muted">{dataFailed ? t.dataFailed : t.loadingData}</p>}
@@ -1543,15 +1545,6 @@ export default function App() {
               </div>
             )}
           </section>
-          <button
-            type="button"
-            onClick={() => setCardOpen(false)}
-            aria-label={t.hidePanel}
-            title={t.hidePanel}
-            className="glass absolute -right-5 top-1/2 hidden h-14 w-5 -translate-y-1/2 items-center justify-center rounded-r-md border-l-0 text-white/70 hover:text-white sm:flex"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-          </button>
           </div>
 
           {/* Free area: the 3D Moon frames the south pole here. */}
