@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { DATA, DEFAULT_REQUIREMENTS, DSN_MIN_ELEV_DEG, DSN_STATIONS, SITES, clampToData, customSite, gridReady, gridSiteById, loadGrid, loadRobustness, landingCalendar, loadData, metrics, moonDistanceKm, overview, simulate, subsolarAt, subearthAt, dsnAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
+import { DATA, DEFAULT_REQUIREMENTS, DSN_MIN_ELEV_DEG, DSN_STATIONS, SITES, clampToData, customSite, gridReady, gridSiteById, loadGrid, loadRobustness, landingCalendar, loadData, metrics, moonDistanceKm, POWER_PRESETS, overview, simulate, subsolarAt, subearthAt, dsnAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
 import { StayBar } from './components/StayBar'
@@ -1676,58 +1676,96 @@ export default function App() {
                 {shownPanel === 'setup' && (
                   <>
                     <h2 className="text-lg font-bold">{t.navSetup}</h2>
-                    <p className="mt-1 text-sm text-muted">{t.stayDays(mission.durationDays)}, {fmtDate(start)}</p>
-                    <section className="mt-4 border border-white/10 bg-black/25 p-3">
-                      <h3 className="font-semibold">{t.slipTitle}</h3>
-                      <p className="mb-2 text-xs text-muted">{t.slipHint}</p>
-                      <div className="flex items-center gap-2">
-                        <button aria-label={t.dayEarlier} onClick={() => set('slipDays', Math.max(-30, mission.slipDays - 1))} className="size-11 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">
-                          −
-                        </button>
-                        <input type="range" min={-30} max={60} value={mission.slipDays} onChange={(e) => set('slipDays', Number(e.target.value))} className="h-11 min-w-0 flex-1 accent-sun" aria-label={t.daysOfDelay} />
-                        <button aria-label={t.dayLater} onClick={() => set('slipDays', Math.min(60, mission.slipDays + 1))} className="size-11 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">
-                          +
-                        </button>
+                    <p className={`mt-2 border-l-2 pl-2.5 text-xs ${active ? 'border-sun/60 text-white/85' : 'border-white/25 text-muted'}`}>{active ? t.ms.valuesOf(active.name) : t.ms.valuesFree}</p>
+
+                    {/* Landing date: what if it slips. */}
+                    <section className="set-card mt-4">
+                      <header className="set-head">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M9 3v5M15 3v5" /></svg>
+                        <h3 className="flex-1">{t.slipTitle}</h3>
+                        <span className={`set-chip ${slipped ? 'is-warn' : 'is-ok'}`}>{slipped ? t.slipChip(mission.slipDays) : t.onTime}</span>
+                      </header>
+                      <p className="text-xs text-muted">{t.slipHint}</p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button aria-label={t.dayEarlier} onClick={() => set('slipDays', Math.max(-30, mission.slipDays - 1))} className="size-10 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">−</button>
+                        <div className="relative min-w-0 flex-1">
+                          <input type="range" min={-30} max={60} value={mission.slipDays} onChange={(e) => set('slipDays', Number(e.target.value))} className="h-10 w-full accent-sun" aria-label={t.daysOfDelay} />
+                          <div className="pointer-events-none relative h-4 text-[10px] tabular-nums text-white/45" aria-hidden="true">
+                            {[-30, 0, 30, 60].map((d) => (
+                              <span key={d} className={`absolute -translate-x-1/2 ${d === 0 ? 'text-white/80' : ''}`} style={{ left: `${((d + 30) / 90) * 100}%` }}>{d > 0 ? `+${d}` : d}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <button aria-label={t.dayLater} onClick={() => set('slipDays', Math.min(60, mission.slipDays + 1))} className="size-10 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">+</button>
                       </div>
-                      <p className="mt-1 text-sm">
-                        {slipped ? (
+                      <p className="mt-2 text-sm">
+                        {t.landingOn} <b className="font-semibold tabular-nums">{fmtDateTime(start)}</b>
+                        {slipped && (
                           <>
-                            <strong>{t.slipBy(mission.slipDays)}</strong> {t.landingMovesTo(fmtDateTime(start))}{' '}
-                            <button onClick={() => set('slipDays', 0)} className="link-sun">
-                              {t.backToPlanned}
-                            </button>
+                            {' · '}
+                            <button onClick={() => set('slipDays', 0)} className="link-sun">{t.backToPlanned}</button>
                           </>
-                        ) : (
-                          t.onSchedule(fmtDateTime(start))
                         )}
                       </p>
                     </section>
-                    <section className="mt-3 border border-white/10 bg-black/25 p-3 text-sm">
-                      <h3 className="mb-2 font-semibold">{t.options}</h3>
-                      <div className="grid grid-cols-1 gap-3">
-                        <p className={`border-l-2 pl-2 text-xs ${active ? 'border-sun/60 text-white/85' : 'border-white/25 text-muted'}`}>{active ? t.ms.valuesOf(active.name) : t.ms.valuesFree}</p>
-                        <label>
-                          {t.ms.battery}
-                          <NumberField min={0} max={1e7} step={100} value={mission.batteryWh ?? 0} onValue={(v) => setMissionValue('batteryWh', v)} className={`mt-1 ${field}`} />
+
+                    <div className="mt-3 grid gap-3 xl:grid-cols-2">
+                      {/* Power through the dark. */}
+                      <section className="set-card">
+                        <header className="set-head">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="7" width="16" height="10" rx="1.5" /><path d="M21 10v4M7 10v4M11 10v4" /></svg>
+                          <h3 className="flex-1">{t.setPower}</h3>
+                        </header>
+                        <label className="set-field">
+                          <span>{t.survivalPower}</span>
+                          <span className="set-input"><NumberField min={0} max={1e6} value={mission.survivalPowerW} onValue={(v) => setMissionValue('survivalPowerW', v)} className={field} /><i>W</i></span>
                         </label>
-                        <label>
-                          {t.survivalPower}
-                          <NumberField min={0} max={1e6} value={mission.survivalPowerW} onValue={(v) => setMissionValue('survivalPowerW', v)} className={`mt-1 ${field}`} />
+                        <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label={t.presets}>
+                          {POWER_PRESETS.filter((p) => p.w !== null).map((p) => (
+                            <button key={p.id} type="button" onClick={() => setMissionValue('survivalPowerW', p.w!)} aria-pressed={mission.survivalPowerW === p.w} title={t.ms.profiles[p.id]} className={`set-preset ${mission.survivalPowerW === p.w ? 'is-on' : ''}`}>
+                              {p.w} W · {t.ms.profiles[p.id].split(' (')[0]}
+                            </button>
+                          ))}
+                        </div>
+                        <label className="set-field mt-3">
+                          <span>{t.ms.battery}</span>
+                          <span className="set-input"><NumberField min={0} max={1e7} step={100} value={mission.batteryWh ?? 0} onValue={(v) => setMissionValue('batteryWh', v)} className={field} /><i>Wh</i></span>
                         </label>
-                        <label>
-                          {t.antennaAngle}
-                          <NumberField min={0} max={30} step={0.5} value={mission.minAntennaElevDeg} onValue={(v) => setMissionValue('minAntennaElevDeg', v)} className={`mt-1 ${field}`} />
+                        {focused.m.requiredBatteryWh > 0 && (
+                          <p className={`mt-2 text-xs ${mission.batteryWh && focused.m.batteryMarginWh !== null ? (focused.m.batteryMarginWh >= 0 ? 'text-ok' : 'text-bad') : 'text-muted'}`}>{t.needWh(num(focused.m.requiredBatteryWh), fmtDuration(focused.m.longestNightH).toLowerCase())}</p>
+                        )}
+                      </section>
+
+                      {/* Link with Earth. */}
+                      <section className="set-card">
+                        <header className="set-head">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 19l5-9M10 10a5 5 0 0 1 7-7M8 6a8 8 0 0 1 11 0M12 21H4" /></svg>
+                          <h3 className="flex-1">{t.setLink}</h3>
+                        </header>
+                        <label className="set-field">
+                          <span>{t.antennaAngle}</span>
+                          <span className="set-input"><NumberField min={0} max={30} step={0.5} value={mission.minAntennaElevDeg} onValue={(v) => setMissionValue('minAntennaElevDeg', v)} className={field} /><i>°</i></span>
                         </label>
-                        <label className="flex cursor-pointer items-start gap-3">
-                          <input type="checkbox" checked={madrid} onChange={(e) => setMadrid(e.target.checked)} className="mt-1 size-5 shrink-0 accent-sun" />
-                          <span>
+                        <label className="mt-3 flex cursor-pointer items-start gap-3">
+                          <input type="checkbox" role="switch" checked={madrid} onChange={(e) => setMadrid(e.target.checked)} className="set-switch mt-0.5" />
+                          <span className="text-sm">
                             {t.madridToggle}
-                            <span className="block text-xs text-muted">{t.madridExplain(DSN_MIN_ELEV_DEG)}</span>
-                            {madrid && <span className="mt-1 block text-xs">{t.dsnPcts(DSN_STATIONS.map((st, k) => `${st.name} ${num(focused.m.stationPct[k])} %`).join(' · '))}</span>}
+                            <span className="mt-0.5 block text-xs text-muted">{t.madridExplain(DSN_MIN_ELEV_DEG)}</span>
                           </span>
                         </label>
-                      </div>
-                    </section>
+                        {madrid && (
+                          <ul className="mt-3 space-y-1.5">
+                            {DSN_STATIONS.map((st, k) => (
+                              <li key={st.id} className="flex items-center gap-2 text-xs">
+                                <span className="w-20 shrink-0 text-white/80">{st.name}</span>
+                                <span className="relative h-1.5 flex-1 bg-white/10"><span className="absolute inset-y-0 left-0" style={{ width: `${Math.min(100, focused.m.stationPct[k])}%`, background: ['#ff5a6a', '#b794f6', '#2dd4bf'][k] }} /></span>
+                                <span className="w-10 shrink-0 text-right tabular-nums">{num(focused.m.stationPct[k])} %</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </section>
+                    </div>
                   </>
                 )}
                 {shownPanel === 'sky' && (
