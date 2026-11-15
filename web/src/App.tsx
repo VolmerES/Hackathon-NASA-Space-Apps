@@ -16,7 +16,7 @@ import { TimeBar } from './components/TimeBar'
 import { Missions, type Evaluated } from './components/Missions'
 import { missionReportHtml, type ReportRow } from './report'
 import { technicalReportHtml } from './techReport'
-import { applyMission, kindOf, loadMissions, saveMissions, uid, type MissionDef, type SavedScenario } from './missions'
+import { applyMission, kindOf, loadMissions, newMission, saveMissions, uid, type MissionDef, type SavedScenario } from './missions'
 import { Logo } from './components/Logo'
 import { StayHeatmap } from './components/StayHeatmap'
 import { MoonFallback } from './components/MoonFallback'
@@ -701,6 +701,28 @@ export default function App() {
     patchScenario(active.id, openScenario.id, { ...current, kind, name })
     setToast(t.ms.updated(name))
   }
+  // The report of what is on screen: the open mission's, or, in free exploration, one made on the
+  // spot from the site, dates and values shown (not saved anywhere).
+  const quickReport = () => {
+    if (active) return downloadReport(active)
+    if (!focused || !current) return
+    sfx.confirm()
+    const name = `${siteName(focused.site)} · ${fmtDate(start)}`
+    const def: MissionDef = {
+      ...newMission(),
+      name,
+      durationDays: mission.durationDays,
+      survivalPowerW: mission.survivalPowerW,
+      powerPreset: 'custom',
+      batteryWh: mission.batteryWh ?? 0,
+      minAntennaElevDeg: mission.minAntennaElevDeg,
+      req: { ...(mission.req ?? DEFAULT_REQUIREMENTS) },
+      site: focused.site.id,
+      landing: start.toISOString(),
+      scenarios: [{ id: uid(), name: autoName('baseline', current), kind: 'baseline', ...current }],
+    }
+    downloadReport(def)
+  }
   // A mission's report: every scenario recomputed with the current data, plus the best landing days at
   // its baseline site, as one readable HTML file to keep or print to PDF.
   const downloadReport = async (m: MissionDef) => {
@@ -1293,6 +1315,10 @@ export default function App() {
                       <span className="text-muted">{t.ms.missionLabel}</span>
                       <button type="button" onClick={leaveMission} aria-label={t.ms.leave} title={t.ms.leave} className="-mx-1 px-1 text-muted hover:text-ink">×</button>
                       <button type="button" onClick={() => setMissionsOpen(true)} className="min-w-0 truncate text-sm font-semibold text-ink underline-offset-4 hover:underline">{active.name}</button>
+                      <button type="button" onClick={quickReport} className="report-btn order-last">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></svg>
+                        {t.ms.reportNow}
+                      </button>
                       {openScenario ? (
                         <>
                           <span className="basis-full text-muted sm:basis-auto">
@@ -1323,8 +1349,12 @@ export default function App() {
                         <span className="block text-sm font-semibold text-ink">{t.ms.noActive}</span>
                         <span className="block text-[11px] leading-snug text-muted">{t.ms.addHint}</span>
                       </span>
+                      <button type="button" onClick={quickReport} className="report-btn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></svg>
+                        {t.ms.reportNow}
+                      </button>
                       <details className="relative">
-                        <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-sm bg-sun px-3 font-semibold text-black hover:brightness-110">
+                        <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-sm border border-sun/70 px-3 font-semibold text-sun hover:bg-sun/10">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
                           {t.ms.addTo}
                         </summary>
