@@ -1072,8 +1072,8 @@ export default function App() {
       )}
 
       <div inert={diving && !streetOpen} className={`pointer-events-none relative z-10 flex h-dvh flex-col transition-opacity ${diving ? 'duration-500' : 'duration-700'} ${splashDone && !diving ? 'opacity-100' : 'opacity-0'}`}>
-        <header className="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 bg-gradient-to-b from-black/85 to-transparent px-4 pb-4 pt-3">
-          <div className="flex items-center gap-3">
+        <header className="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 lg:flex-nowrap bg-gradient-to-b from-black/85 to-transparent px-4 pb-4 pt-3">
+          <div className="flex shrink-0 items-center gap-3">
             <button onClick={() => setPicking(true)} aria-label={t.findTitle} className="min-h-11">
               <Logo />
             </button>
@@ -1085,7 +1085,7 @@ export default function App() {
             </div>
           )}
           {/* Settings and actions: a gear in the top right corner. */}
-          <div className="ml-auto flex items-center gap-2 lg:ml-0">
+          <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
               <SoundButton />
               <button type="button" data-franky="franky" onClick={() => setAssistantOpen((o) => !o)} aria-pressed={assistantOpen} title={t.assistant.open} className={`flex h-11 items-center gap-1.5 rounded-sm border pl-1 pr-3 text-sm font-semibold ${assistantOpen ? 'border-sun bg-sun/15 text-sun' : 'border-white/40 hover:bg-white/10'}`}>
                 <FrankyBot size={34} mood={assistantOpen ? 'happy' : 'idle'} />
