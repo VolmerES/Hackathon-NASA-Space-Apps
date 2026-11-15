@@ -231,8 +231,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     scene.add(moon)
     const loader = new THREE.TextureLoader()
     const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 })
-    // In HD the globe only fills the holes of the tiles near the poles (above 55 degrees): elsewhere it
-    // is cut away, or it would show through the hairline seams between tiles.
+    // In HD the globe stays underneath everywhere and fills what the tiles leave empty: blocks with no
+    // picture, and tiles not loaded yet when zoomed out (cut to the poles, those showed as black holes).
     const globeHd = { value: 0 }
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.globeHd = globeHd
@@ -241,7 +241,6 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUp = normalize(position).y;')
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', '#include <common>\nuniform float globeHd;\nvarying float vUp;')
-        .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (globeHd > 0.5 && abs(vUp) < 0.8) discard;')
     }
     const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 256, 192), mat)
     globe.visible = false
