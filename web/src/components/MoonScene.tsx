@@ -212,6 +212,18 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     scene.add(moon)
     const loader = new THREE.TextureLoader()
     const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 })
+    // In HD the globe only fills the holes of the tiles near the poles (above 55 degrees): elsewhere it
+    // is cut away, or it would show through the hairline seams between tiles.
+    const globeHd = { value: 0 }
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.globeHd = globeHd
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying float vUp;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUp = normalize(position).y;')
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float globeHd;\nvarying float vUp;')
+        .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (globeHd > 0.5 && abs(vUp) < 0.8) discard;')
+    }
     const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 256, 192), mat)
     globe.visible = false
     moon.add(globe)
@@ -251,8 +263,11 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const showHd = () => {
       const on = hdOn && hdTiles
       cesium?.setVisible(on)
-      // In HD the tiles replace the globe; the polar cap stays (see cesiumMoon.ts).
-      globe.visible = !on && shownAt > 0
+      // In HD the tiles cover the globe, which stays just underneath (0.6 % smaller, below the lowest
+      // ground) to fill the holes of their mosaic; the polar cap stays on top (see cesiumMoon.ts).
+      globe.visible = shownAt > 0
+      globe.scale.setScalar(on ? 0.994 : 1)
+      globeHd.value = on ? 1 : 0
       cap.visible = shownAt > 0
       // Their mosaic has black blocks of painted shadow right where the cap fades out (65 to 70 S):
       // with the tiles on, the cap is solid to 24 degrees and fades over the last one.

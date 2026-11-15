@@ -58,10 +58,11 @@ function dayMaterial(old: THREE.Material): THREE.Material {
         // Day and night from the Sun's height over this point's horizon: full light once it is a
         // few degrees up, a faint glow (earthshine) at night.
         // Polewards of about 60 degrees, north and south, their mosaic has black blocks with no picture
-        // in them (straight edges, pure black). Those, and only those, are filled with plain regolith grey.
+        // in them (straight edges, pure black). Those pixels are left out, and the scene's own Moon,
+        // kept just underneath, shows through with the real Sun of the date.
         float polar = smoothstep(0.82, 0.9, abs(p.y));
         float luma = dot(diffuseColor.rgb, vec3(0.3, 0.5, 0.2));
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.075, 0.073, 0.07), polar * (1.0 - smoothstep(0.015, 0.07, luma)));
+        if (polar > 0.5 && luma < 0.03) discard;
         float sunUp = dot(p, normalize(sunDir));
         // Their picture is darker and greyer than the scene's own Moon: lifted and warmed to match it.
         diffuseColor.rgb *= vec3(1.55, 1.5, 1.42) * mix(0.03, 1.0, smoothstep(-0.015, 0.06, sunUp));
