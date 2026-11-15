@@ -684,6 +684,84 @@ details[open] > .disclosure::after { transform: translateY(2px) rotate(-135deg) 
 }
 
 /* Nothing chosen yet: the first thing to do, plain to see. A solid button with a slow beacon ring. */
+/* Links in the site card that open a panel beside it (a chevron says where it goes). */
+/* Folding the site card, in its title row (wide screens). */
+.hide-panel {
+  min-height: 40px;
+  min-width: 40px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.hide-panel:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.5); color: #fff }
+/* Franky's chat. Phones: a sheet from the bottom. Wide screens: hangs from Franky's button. */
+.chat-panel { transform-origin: 50% 100% }
+.chat-panel.is-open { animation: chat-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) both }
+.chat-panel.is-closing { animation: chat-down 0.18s ease-in both }
+.chat-fade-out { animation: pop-out 0.18s ease-in both }
+@keyframes chat-up { from { transform: translateY(40px); opacity: 0 } }
+@keyframes chat-down { to { transform: translateY(40px); opacity: 0 } }
+@media (min-width: 640px) {
+  .chat-panel { top: var(--chat-top, 68px); max-height: min(680px, calc(100dvh - var(--chat-top, 68px) - 12px)); transform-origin: calc(100% - var(--chat-notch, 60px) - 6px) 0 }
+  .chat-panel.is-open { animation: chat-drop 0.26s cubic-bezier(0.16, 1, 0.3, 1) both }
+  .chat-panel.is-closing { animation: chat-lift 0.16s ease-in both }
+}
+@keyframes chat-drop { from { transform: translateY(-6px) scale(0.92); opacity: 0 } }
+@keyframes chat-lift { to { transform: translateY(-6px) scale(0.94); opacity: 0 } }
+.chat-notch {
+  position: absolute; top: -7px; right: var(--chat-notch, 60px); width: 12px; height: 12px;
+  transform: rotate(45deg); background: #0b0f18; border-left: 1px solid rgba(255, 255, 255, 0.15); border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+.chat-bubble { margin-right: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); padding: 8px 12px; border-radius: 4px 12px 12px 12px; line-height: 1.55; color: rgba(255, 255, 255, 0.92) }
+.chat-user { margin-left: 2.5rem; background: color-mix(in srgb, var(--color-sun) 18%, transparent); border: 1px solid color-mix(in srgb, var(--color-sun) 35%, transparent); padding: 8px 12px; border-radius: 12px 4px 12px 12px }
+.chat-chip { border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 999px; padding: 6px 12px; text-align: left; font-size: 13px; color: rgba(255, 255, 255, 0.9); transition: background-color 150ms ease, border-color 150ms ease }
+.chat-chip:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.4) }
+@media (prefers-reduced-motion: reduce) { .chat-panel.is-open, .chat-panel.is-closing { animation: none } }
+/* The two ways onto the surface: a tile with a small line drawing and a line of what it does. */
+.scene-btn {
+  position: relative;
+  display: flex;
+  min-height: 92px;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-sun) 70%, transparent);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 8px 10px;
+  text-align: left;
+  color: var(--color-sun);
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+.scene-btn:hover { background: color-mix(in srgb, var(--color-sun) 12%, transparent) }
+.scene-btn:active { transform: translateY(1px) }
+.scene-btn.is-primary { background: var(--color-sun); color: #000; border-color: var(--color-sun) }
+.scene-btn.is-primary:hover { filter: brightness(1.08) }
+.scene-art { position: absolute; inset: 4px 6px auto auto; width: 62%; height: auto; opacity: 0.55; transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1) }
+.scene-btn:hover .scene-art { transform: translateY(-2px) }
+.scene-label { position: relative }
+.mission-strip { border: 1px solid rgba(255, 255, 255, 0.12); border-left: 3px solid var(--color-sun); background: rgba(0, 0, 0, 0.35) }
+.panel-link {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px 10px;
+  color: #fff;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.panel-link:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.28) }
+.panel-link:hover svg:last-child { transform: translateX(2px) }
+.panel-link svg:last-child { transition: transform 160ms ease }
+.panel-link.is-on { background: var(--color-sun); border-color: var(--color-sun); color: #000 }
 .pick-cta { min-height: 44px; padding: 0 14px 0 16px; border-radius: 999px; font-size: 15px; color: #000; background: var(--color-sun); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) }
 .pick-cta:hover { filter: brightness(1.08) }
 .pick-cta .text-muted { color: rgba(0, 0, 0, 0.6) }

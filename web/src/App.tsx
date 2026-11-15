@@ -38,7 +38,8 @@ const PLAY_MS = 90
 const OVERVIEW_MONTHS = 14
 const OVERVIEW_DAYS = 426
 
-type Panel = 'sky' | 'when' | 'compare'
+type Panel = 'detail' | 'sky' | 'when' | 'compare' | 'setup'
+const PANELS: readonly Panel[] = ['detail', 'sky', 'when', 'compare', 'setup']
 
 function csvFor(samples: Sample[], t: Strings) {
   const yn = (b: boolean) => (b ? t.yes : t.no)
@@ -255,7 +256,7 @@ export default function App() {
   const [scenarioId, setScenarioId] = useState<string | null>(null)
   const [panel, setPanel] = useState<Panel | null>(() => {
     const p = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('p')
-    return p === 'sky' || p === 'when' || p === 'compare' ? p : null
+    return PANELS.includes(p as Panel) ? (p as Panel) : null
   })
   const [splashDone, setSplashDone] = useState(SKIP_SPLASH)
   // Guided (the usual flow) or expert (a site, the calendar and the sky open from the start).
@@ -1158,7 +1159,7 @@ export default function App() {
               Moon on phones, beside it from tablets up. A slim tab on its edge folds it; on phones a swipe
               to the left does too. */}
           <div
-            className={`pointer-events-auto fixed inset-x-3 inset-y-0 z-40 m-auto h-fit max-w-[440px] sm:absolute sm:inset-x-auto sm:left-0 sm:z-20 sm:m-0 sm:h-auto sm:w-[380px] sm:max-w-none lg:relative lg:z-auto lg:w-[400px] lg:shrink-0 ${cardOpen ? 'drawer-in' : cardStay.value ? 'drawer-out' : 'hidden'}`}
+            className={`pointer-events-auto fixed inset-x-3 inset-y-0 z-40 m-auto h-fit max-w-[440px] sm:absolute sm:inset-x-auto sm:left-0 sm:z-20 sm:m-0 sm:h-auto sm:w-[400px] sm:max-w-none lg:relative lg:z-auto lg:w-[clamp(420px,32vw,560px)] lg:shrink-0 ${cardOpen ? 'drawer-in' : cardStay.value ? 'drawer-out' : 'hidden'}`}
             role={isPhone ? 'dialog' : undefined}
             aria-modal={isPhone ? true : undefined}
             onTouchStart={(e) => {
@@ -1175,18 +1176,20 @@ export default function App() {
           <section className="glass card-phone max-h-[82dvh] overflow-y-auto overscroll-contain rounded-xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:h-full sm:max-h-none sm:rounded-l-none sm:rounded-r-xl lg:rounded-none lg:p-5">
             {/* Folding the card, always in reach at the top right: a round close button on phones (it is a
                 pop-up there), a labelled button on wider screens. The card folds to the pill at the top left. */}
-            <div className="sticky top-0 z-10 -mx-1 -mt-1 flex justify-end sm:static sm:mx-0 sm:mb-2 sm:mt-0">
+            <div className="sticky top-0 z-10 -mx-1 -mt-1 flex justify-end sm:hidden">
               <button type="button" onClick={() => setCardOpen(false)} aria-label={t.closePanel} title={t.closePanel} className="flex size-10 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white backdrop-blur hover:bg-white/15 sm:hidden">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-              </button>
-              <button type="button" onClick={() => setCardOpen(false)} className="hidden min-h-9 items-center gap-1.5 rounded-sm border border-white/25 px-2.5 text-sm font-semibold text-white/85 hover:border-white/50 hover:bg-white/10 hover:text-white sm:flex">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-                {t.hidePanel}
               </button>
             </div>
             {picking || !focused ? (
               <div>
-                <h1 className="text-2xl font-bold">{t.findTitle}</h1>
+                <div className="flex items-start justify-between gap-3">
+                  <h1 className="text-2xl font-bold">{t.findTitle}</h1>
+                  <button type="button" onClick={() => setCardOpen(false)} aria-label={t.closePanel} title={t.closePanel} className="hide-panel hidden sm:flex">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5" /><path d="M9 4v16M16 9l-3 3 3 3" /></svg>
+                    <span className="hidden xl:inline">{t.hidePanel}</span>
+                  </button>
+                </div>
                 <p className="mt-1 text-muted">{t.findHelp}</p>
                 {!ready && <p className="mt-4 text-sm text-muted">{dataFailed ? t.dataFailed : t.loadingData}</p>}
                 {ready && (
@@ -1257,7 +1260,7 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <div className="flex flex-wrap items-center gap-2 border border-white/10 bg-black/30 px-2.5 py-2 text-xs">
+                <div className="mission-strip flex flex-wrap items-center gap-2.5 px-3 py-2.5 text-xs">
                   {active ? (
                     <>
                       <span className="text-muted">{t.ms.missionLabel}</span>
@@ -1283,11 +1286,20 @@ export default function App() {
                     </>
                   ) : (
                     <>
-                      <span className="text-muted">{t.ms.noActive}</span>
-                      <details className="relative ml-auto">
-                        <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1 rounded-sm border border-sun/70 px-2.5 font-semibold text-sun hover:bg-sun/10">
+                      <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-sun">
+                        {/* A mission patch: a ring, a flag on the Moon's limb. */}
+                        <circle cx="20" cy="20" r="17" />
+                        <path d="M7 27c4-3 9-4 13-4s9 1 13 4" />
+                        <path d="M17 23V10l8 3-8 3" />
+                      </svg>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-ink">{t.ms.noActive}</span>
+                        <span className="block text-[11px] leading-snug text-muted">{t.ms.addHint}</span>
+                      </span>
+                      <details className="relative">
+                        <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-sm bg-sun px-3 font-semibold text-black hover:brightness-110">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
                           {t.ms.addTo}
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
                         </summary>
                         <div className="absolute right-0 z-30 mt-1 w-56 border border-white/15 bg-black/90 py-1 shadow-xl backdrop-blur-md">
                           {missions.map((m) => (
@@ -1310,12 +1322,16 @@ export default function App() {
                     without scrolling; the rest is folded under "More detail". */}
                 <div className="mt-3 flex items-center gap-2.5">
                   <CloseButton label={t.changeSite} onClick={() => setPicking(true)} kind="back" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h1 className="truncate text-xl font-bold leading-tight">{siteName(focused.site)}</h1>
                     <p className="truncate text-xs text-muted">
                       {focused.site.lat.toFixed(2)}°, {focused.site.lon.toFixed(2)}° · {fmtDate(start)} – {fmtDate(end)}
                     </p>
                   </div>
+                  <button type="button" onClick={() => setCardOpen(false)} aria-label={t.closePanel} title={t.closePanel} className="hide-panel hidden sm:flex">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5" /><path d="M9 4v16M16 9l-3 3 3 3" /></svg>
+                    <span className="hidden xl:inline">{t.hidePanel}</span>
+                  </button>
                 </div>
 
                 <div data-franky="verdict" className={`mt-3 flex items-center gap-2 ${VERDICT_CLS[focused.m.verdict]}`}>
@@ -1412,45 +1428,38 @@ export default function App() {
                   ))}
                 </dl>
                 <div data-franky="actions" className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  onClick={openStreet}
-                  className="flex min-h-11 items-center justify-center gap-2 rounded-sm bg-sun px-2 text-sm font-semibold text-black hover:brightness-110"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="5" r="2.2" />
-                    <path d="M12 8v6M9 21l3-7 3 7M8.5 11.5h7" />
-                    <path d="M3 18.5c2.2-1 5.4-1.6 9-1.6s6.8.6 9 1.6" />
-                  </svg>
-                  {t.streetShort}
-                </button>
-                <button onClick={simulateLanding} className="flex min-h-11 items-center justify-center gap-2 rounded-sm border border-sun/70 bg-black/30 px-2 text-sm font-semibold text-sun hover:bg-sun/10">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M8 4h8l2 6H6l2-6z" />
-                    <path d="M7 10l-3 9M17 10l3 9M12 10v5M9 20h6M2.5 19h3M18.5 19h3" />
-                  </svg>
-                  {t.simShort}
-                </button>
+                  <button onClick={openStreet} className="scene-btn is-primary">
+                    {/* A horizon with a low Sun and someone standing on the site. */}
+                    <svg className="scene-art" viewBox="0 0 160 70" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M0 52 L22 44 L38 48 L58 36 L74 42 L96 30 L118 40 L138 34 L160 42" />
+                      <circle cx="128" cy="22" r="6" />
+                      <path d="M128 10v-4M140 22h4M136.5 13.5l3-3M119.5 13.5l-3-3" />
+                      <path d="M0 62h160" opacity="0.5" />
+                      <circle cx="40" cy="27" r="3.2" />
+                      <path d="M40 31v10M35 35h10M40 41l-4 9M40 41l4 9" />
+                    </svg>
+                    <span className="scene-label">
+                      <span className="block text-[15px] font-bold leading-tight">{t.streetShort}</span>
+                      <span className="block text-[11.5px] font-medium leading-snug opacity-80">{t.streetSub}</span>
+                    </span>
+                  </button>
+                  <button onClick={simulateLanding} className="scene-btn">
+                    {/* A lander coming down on its plume over the ground. */}
+                    <svg className="scene-art" viewBox="0 0 160 70" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M0 60 Q40 54 80 58 T160 56" />
+                      <path d="M104 8h16l4 10h-24z" />
+                      <path d="M100 18h24v8h-24z" />
+                      <path d="M102 26l-6 10M122 26l6 10M93 36h6M125 36h6" />
+                      <path d="M108 30l4 14 4-14" opacity="0.7" />
+                      <path d="M70 18l-14 10M56 10l-10 7" opacity="0.4" strokeDasharray="2 4" />
+                    </svg>
+                    <span className="scene-label">
+                      <span className="block text-[15px] font-bold leading-tight">{t.simShort}</span>
+                      <span className="block text-[11.5px] font-medium leading-snug opacity-80">{t.simSub}</span>
+                    </span>
+                  </button>
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  {(
-                    [
-                      ['sky', t.seeSky],
-                      ['when', t.bestDates],
-                      ['compare', t.compare],
-                    ] as const
-                  ).map(([id, label]) => (
-                    <button key={id} data-franky={id} onClick={() => setPanel(panel === id ? null : id)} aria-pressed={panel === id} className={`min-h-10 rounded-sm px-2 text-sm font-semibold ${panel === id ? 'bg-sun text-black' : 'bg-white/10 hover:bg-white/15'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                <details className="mt-3 border-t border-white/10 pt-1">
-                  <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 font-semibold">
-                    <span>{t.moreDetail}</span>
-                    <span className="text-xs font-normal text-muted">{t.moreDetailHint}</span>
-                  </summary>
-                <SiteLight site={focused.site} light={lightOn ? lightShown : null} onTurnOn={() => setLightOn(true)} busy={lightBusy} />
+                {/* The whole stay at a glance: sunlight, Earth (and DSN) hour by hour. */}
                 <div className="mt-3">
                   <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
                   <p className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-muted">
@@ -1467,89 +1476,33 @@ export default function App() {
                     )}
                   </p>
                 </div>
-
-                {/* Phone: the sky in 2D right in the answer (on desktop it sits under the Moon). */}
-                {skyOpen ? (
-                  <div className="mt-4 border border-white/10 bg-black/30 lg:hidden">
-                    <SkyStrip name={siteName(focused.site)} height={180} onExpand={() => { setView('2d'); setPanel('sky') }} onClose={() => setSkyOpen(false)}>
-                      <Panorama site={focused.site} samples={focused.samples} height={180} />
-                    </SkyStrip>
-                  </div>
-                ) : (
-                  <button onClick={() => setSkyOpen(true)} className="sky-btn mt-4 w-full lg:hidden">
-                    <SkyThumb site={focused.site} samples={focused.samples} />
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="block">{t.skyCurves}</span>
-                      <span className="block truncate text-xs font-normal text-white/60">{t.skyCurvesSub}</span>
-                    </span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-white/70"><path d="M6 9l6 6 6-6" /></svg>
-                  </button>
-                )}
-
-                {focused.site.published && focused.site.published['2027'] !== undefined && (
-                  <p className="mt-2 border-l-2 border-white/25 pl-3 text-sm text-muted">{t.publishedRef(focused.site.published['2027'])}</p>
-                )}
-                {focused.site.team && (
-                  <p className="mt-2 border-l-2 border-sun/60 pl-3 text-sm text-muted">{focused.site.team.hypothesis[lang]}</p>
-                )}
-                </details>
-                <details className="border-t border-white/10 pt-1" open={slipped || undefined}>
-                  <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 font-semibold">
-                    <span>{t.whenTitle}</span>
-                    <span className="text-xs font-normal text-muted">{t.stayDays(mission.durationDays)}, {fmtDate(start)}</span>
-                  </summary>
-                  {/* Date, hour and days on the surface are set in the time bar of the header. */}
-                  <details className="mt-1" open={slipped}>
-                    <summary className="disclosure text-sm">{t.slipTitle}</summary>
-                    <div className="flex items-center gap-2">
-                      <button aria-label={t.dayEarlier} onClick={() => set('slipDays', Math.max(-30, mission.slipDays - 1))} className="size-11 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">
-                        −
-                      </button>
-                      <input type="range" min={-30} max={60} value={mission.slipDays} onChange={(e) => set('slipDays', Number(e.target.value))} className="h-11 min-w-0 flex-1 accent-sun" aria-label={t.daysOfDelay} />
-                      <button aria-label={t.dayLater} onClick={() => set('slipDays', Math.min(60, mission.slipDays + 1))} className="size-11 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">
-                        +
-                      </button>
-                    </div>
-                    <p className="mt-1 text-sm">
-                      {slipped ? (
-                        <>
-                          <strong>{t.slipBy(mission.slipDays)}</strong> {t.landingMovesTo(fmtDateTime(start))}{' '}
-                          <button onClick={() => set('slipDays', 0)} className="link-sun">
-                            {t.backToPlanned}
-                          </button>
-                        </>
-                      ) : (
-                        t.onSchedule(fmtDateTime(start))
-                      )}
-                    </p>
-                  </details>
-                  <details data-franky="options" className="mt-1 text-sm">
-                    <summary className="disclosure text-sm">{t.options}</summary>
-                    <div className="mt-1 grid grid-cols-1 gap-3">
-                      <p className={`border-l-2 pl-2 text-xs ${active ? 'border-sun/60 text-white/85' : 'border-white/25 text-muted'}`}>{active ? t.ms.valuesOf(active.name) : t.ms.valuesFree}</p>
-                      <label>
-                        {t.ms.battery}
-                        <NumberField min={0} max={1e7} step={100} value={mission.batteryWh ?? 0} onValue={(v) => setMissionValue('batteryWh', v)} className={`mt-1 ${field}`} />
-                      </label>
-                      <label>
-                        {t.survivalPower}
-                        <NumberField min={0} max={1e6} value={mission.survivalPowerW} onValue={(v) => setMissionValue('survivalPowerW', v)} className={`mt-1 ${field}`} />
-                      </label>
-                      <label>
-                        {t.antennaAngle}
-                        <NumberField min={0} max={30} step={0.5} value={mission.minAntennaElevDeg} onValue={(v) => setMissionValue('minAntennaElevDeg', v)} className={`mt-1 ${field}`} />
-                      </label>
-                      <label className="flex cursor-pointer items-start gap-3">
-                        <input type="checkbox" checked={madrid} onChange={(e) => setMadrid(e.target.checked)} className="mt-1 size-5 shrink-0 accent-sun" />
-                        <span>
-                          {t.madridToggle}
-                          <span className="block text-xs text-muted">{t.madridExplain(DSN_MIN_ELEV_DEG)}</span>
-                          {madrid && <span className="mt-1 block text-xs">{t.dsnPcts(DSN_STATIONS.map((st, k) => `${st.name} ${num(focused.m.stationPct[k])} %`).join(' · '))}</span>}
-                        </span>
-                      </label>
-                    </div>
-                  </details>
-                </details>
+                {/* Everything else opens beside the card, as tabs of one panel: no folds inside folds. */}
+                <nav aria-label={t.explore} className="mt-3 grid grid-cols-2 gap-1.5">
+                  {(
+                    [
+                      ['detail', t.navDetail, t.moreDetailHint, 'M4 19V9M10 19V5M16 19v-7M22 19H2'],
+                      ['sky', t.seeSky, t.navSkyHint, 'M3 18c3-8 15-8 18 0M12 4v2M5 7l1.5 1.5M19 7l-1.5 1.5'],
+                      ['when', t.bestDates, t.navWhenHint, 'M4 6h16v14H4zM4 10h16M9 3v5M15 3v5'],
+                      ['compare', t.compare, t.navCompareHint, 'M5 20V10M12 20V4M19 20v-7'],
+                      ['setup', t.navSetup, slipped ? t.slipBy(mission.slipDays) : t.navSetupHint(t.stayDays(mission.durationDays)), 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4'],
+                    ] as const
+                  ).map(([id, label, hint, d]) => (
+                    <button
+                      key={id}
+                      data-franky={id === 'setup' ? 'options' : id}
+                      onClick={() => setPanel(panel === id ? null : id)}
+                      aria-pressed={panel === id}
+                      className={`panel-link ${panel === id ? 'is-on' : ''} ${id === 'setup' ? 'col-span-2' : ''}`}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0"><path d={d} /></svg>
+                      <span className="min-w-0 flex-1 text-left">
+                        <span className="block truncate text-sm font-semibold">{label}</span>
+                        <span className={`block truncate text-[11px] font-normal ${id === 'setup' && slipped ? 'text-warn' : 'opacity-70'}`}>{hint}</span>
+                      </span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-60"><path d="M9 6l6 6-6 6" /></svg>
+                    </button>
+                  ))}
+                </nav>
                 <p className="mt-4 text-xs text-muted">{t.caveat}</p>
               </div>
             )}
@@ -1557,7 +1510,7 @@ export default function App() {
           </div>
 
           {/* Free area: the 3D Moon frames the south pole here. */}
-          <div className={`pointer-events-none absolute inset-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'sm:left-[380px]' : ''}`}>
+          <div className={`pointer-events-none absolute inset-0 flex flex-col lg:static lg:min-w-0 lg:flex-1 ${cardOpen ? 'sm:left-[400px] lg:left-0' : ''}`}>
             <div ref={frameRef} className="relative min-h-0 flex-1">
               {splashDone && moonOk && !panel && !lightOn && mode === 'guided' && !focused && <p className="absolute inset-x-0 bottom-2 hidden text-center text-xs text-white/60 lg:block">{t.dragHint}</p>}
               {/* Desktop: the sky curves button, centred at the very bottom of the Moon's area. */}
@@ -1623,14 +1576,16 @@ export default function App() {
 
           {/* On-demand panels: the sky, the best dates, the comparison. */}
           {shownPanel && focused && (
-            <section className={`${panelStay.leaving ? 'ui-out' : 'ui-in'} glass pointer-events-auto fixed inset-0 z-30 solid-phone flex flex-col lg:static lg:inset-auto lg:z-auto lg:w-[min(760px,50vw)] lg:shrink-0`} aria-label={shownPanel === 'sky' ? t.seeSky : shownPanel === 'when' ? t.bestDates : t.compare}>
+            <section className={`${panelStay.leaving ? 'ui-out' : 'ui-in'} glass pointer-events-auto fixed inset-0 z-30 solid-phone flex flex-col lg:static lg:inset-auto lg:z-auto lg:w-[min(720px,44vw)] lg:shrink-0`} aria-label={{ detail: t.navDetail, sky: t.seeSky, when: t.bestDates, compare: t.compare, setup: t.navSetup }[shownPanel]}>
               <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
                 <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto" role="tablist">
                   {(
                     [
+                      ['detail', t.navDetail],
                       ['sky', t.seeSky],
                       ['when', t.bestDates],
                       ['compare', t.compare],
+                      ['setup', t.navSetupTab],
                     ] as const
                   ).map(([id, label]) => (
                     <button key={id} role="tab" aria-selected={shownPanel === id} onClick={() => setPanel(id)} className={`min-h-11 shrink-0 whitespace-nowrap px-2.5 text-sm sm:px-3 ${shownPanel === id ? 'border-b-2 border-sun font-semibold' : 'text-muted hover:text-ink'}`}>
@@ -1642,6 +1597,80 @@ export default function App() {
               </div>
 
               <div key={shownPanel} className="ui-fade flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+                {shownPanel === 'detail' && (
+                  <>
+                    <h2 className="text-lg font-bold">{t.navDetail} · {siteName(focused.site)}</h2>
+                    <p className="mt-1 text-sm text-muted">{fmtDate(start)} – {fmtDate(end)}</p>
+                    <div className="mt-4">
+                      <StayBar samples={focused.samples} madrid={madrid} from={fmtDate(focused.samples[0].t)} to={fmtDate(focused.samples[stayH - 1].t)} />
+                    </div>
+                    <h3 className="mt-5 text-sm font-semibold">{t.lightMapTitle}</h3>
+                    <SiteLight site={focused.site} light={lightOn ? lightShown : null} onTurnOn={() => setLightOn(true)} busy={lightBusy} />
+                    {focused.site.published && focused.site.published['2027'] !== undefined && (
+                      <p className="mt-2 border-l-2 border-white/25 pl-3 text-sm text-muted">{t.publishedRef(focused.site.published['2027'])}</p>
+                    )}
+                    {focused.site.team && (
+                      <p className="mt-2 border-l-2 border-sun/60 pl-3 text-sm text-muted">{focused.site.team.hypothesis[lang]}</p>
+                    )}
+                  </>
+                )}
+                {shownPanel === 'setup' && (
+                  <>
+                    <h2 className="text-lg font-bold">{t.navSetup}</h2>
+                    <p className="mt-1 text-sm text-muted">{t.stayDays(mission.durationDays)}, {fmtDate(start)}</p>
+                    <section className="mt-4 border border-white/10 bg-black/25 p-3">
+                      <h3 className="font-semibold">{t.slipTitle}</h3>
+                      <p className="mb-2 text-xs text-muted">{t.slipHint}</p>
+                      <div className="flex items-center gap-2">
+                        <button aria-label={t.dayEarlier} onClick={() => set('slipDays', Math.max(-30, mission.slipDays - 1))} className="size-11 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">
+                          −
+                        </button>
+                        <input type="range" min={-30} max={60} value={mission.slipDays} onChange={(e) => set('slipDays', Number(e.target.value))} className="h-11 min-w-0 flex-1 accent-sun" aria-label={t.daysOfDelay} />
+                        <button aria-label={t.dayLater} onClick={() => set('slipDays', Math.min(60, mission.slipDays + 1))} className="size-11 shrink-0 rounded-sm border border-white/25 text-xl hover:bg-white/10">
+                          +
+                        </button>
+                      </div>
+                      <p className="mt-1 text-sm">
+                        {slipped ? (
+                          <>
+                            <strong>{t.slipBy(mission.slipDays)}</strong> {t.landingMovesTo(fmtDateTime(start))}{' '}
+                            <button onClick={() => set('slipDays', 0)} className="link-sun">
+                              {t.backToPlanned}
+                            </button>
+                          </>
+                        ) : (
+                          t.onSchedule(fmtDateTime(start))
+                        )}
+                      </p>
+                    </section>
+                    <section className="mt-3 border border-white/10 bg-black/25 p-3 text-sm">
+                      <h3 className="mb-2 font-semibold">{t.options}</h3>
+                      <div className="grid grid-cols-1 gap-3">
+                        <p className={`border-l-2 pl-2 text-xs ${active ? 'border-sun/60 text-white/85' : 'border-white/25 text-muted'}`}>{active ? t.ms.valuesOf(active.name) : t.ms.valuesFree}</p>
+                        <label>
+                          {t.ms.battery}
+                          <NumberField min={0} max={1e7} step={100} value={mission.batteryWh ?? 0} onValue={(v) => setMissionValue('batteryWh', v)} className={`mt-1 ${field}`} />
+                        </label>
+                        <label>
+                          {t.survivalPower}
+                          <NumberField min={0} max={1e6} value={mission.survivalPowerW} onValue={(v) => setMissionValue('survivalPowerW', v)} className={`mt-1 ${field}`} />
+                        </label>
+                        <label>
+                          {t.antennaAngle}
+                          <NumberField min={0} max={30} step={0.5} value={mission.minAntennaElevDeg} onValue={(v) => setMissionValue('minAntennaElevDeg', v)} className={`mt-1 ${field}`} />
+                        </label>
+                        <label className="flex cursor-pointer items-start gap-3">
+                          <input type="checkbox" checked={madrid} onChange={(e) => setMadrid(e.target.checked)} className="mt-1 size-5 shrink-0 accent-sun" />
+                          <span>
+                            {t.madridToggle}
+                            <span className="block text-xs text-muted">{t.madridExplain(DSN_MIN_ELEV_DEG)}</span>
+                            {madrid && <span className="mt-1 block text-xs">{t.dsnPcts(DSN_STATIONS.map((st, k) => `${st.name} ${num(focused.m.stationPct[k])} %`).join(' · '))}</span>}
+                          </span>
+                        </label>
+                      </div>
+                    </section>
+                  </>
+                )}
                 {shownPanel === 'sky' && (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
