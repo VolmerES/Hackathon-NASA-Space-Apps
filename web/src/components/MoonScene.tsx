@@ -126,6 +126,9 @@ function dotTexture(soft = false) {
   return new THREE.CanvasTexture(c)
 }
 
+// Read once at load: the app rewrites the hash afterwards.
+const SFX_DEBUG = typeof window !== 'undefined' && /sfxdebug/.test(window.location.hash)
+
 const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
 
 export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onReady, showLabels = true, info, controls, dive = false, compactControls = false, sunAt, onStreet, streetLabel = 'Street view', heat = null, earth }: Props) {
@@ -437,6 +440,7 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     const sun = new THREE.DirectionalLight(0xfff4e6, 3.2)
     scene.add(sun)
     const Y_AXIS = new THREE.Vector3(0, 1, 0)
+    const Z_AXIS = new THREE.Vector3(0, 0, 1)
     const sunGoal = new THREE.Vector3()
     const sunLocal = new THREE.Vector3() // current sunlight direction, Moon-fixed
 
@@ -600,6 +604,62 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         if (!overCallout && !sticky) setHoverId(null)
       }, 900)
     }
+    // Picking a site: a small lunar module comes down a beam of light onto it, and as it touches two
+    // waves open on the ground in the colour of the site's verdict. A sign, not a trajectory.
+    const pickBeam = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 1, 20, 1, true),
+      new THREE.ShaderMaterial({
+        uniforms: { alpha: { value: 0 } },
+        vertexShader: 'varying float vY; void main() { vY = position.y + 0.5; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        // Bright at the ground (y = 0), fading upwards.
+        fragmentShader: 'uniform float alpha; varying float vY; void main() { gl_FragColor = vec4(1.0, 0.82, 0.35, alpha * pow(1.0 - vY, 2.0) * 0.55); }',
+        transparent: true,
+        depthWrite: false,
+        depthTest: false, // the relief of the high-resolution cap would cut it
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      }),
+    )
+    pickBeam.visible = false
+    pickBeam.renderOrder = 5
+    moon.add(pickBeam)
+    const pickRings = [0, 1].map(() => {
+      const r = new THREE.Mesh(new THREE.RingGeometry(0.0125, 0.0135, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }))
+      r.visible = false
+      r.renderOrder = 5
+      moon.add(r)
+      return r
+    })
+    // The lander, drawn once: body, descent stage, four legs.
+    const landerTex = (() => {
+      const c = document.createElement('canvas')
+      c.width = c.height = 64
+      const g = c.getContext('2d')!
+      g.strokeStyle = g.fillStyle = '#fff'
+      g.lineWidth = 3
+      g.lineCap = 'round'
+      g.fillRect(24, 14, 16, 12) // ascent stage
+      g.fillRect(20, 26, 24, 12) // descent stage
+      g.beginPath()
+      for (const [x0, x1] of [[22, 10], [42, 54], [26, 20], [38, 44]]) {
+        g.moveTo(x0, 36)
+        g.lineTo(x1, 52)
+      }
+      g.moveTo(6, 52); g.lineTo(14, 52); g.moveTo(50, 52); g.lineTo(58, 52)
+      g.stroke()
+      return new THREE.CanvasTexture(c)
+    })()
+    const pickLander = new THREE.Sprite(new THREE.SpriteMaterial({ map: landerTex, color: 0xffffff, transparent: true, depthWrite: false, depthTest: false }))
+    pickLander.center.set(0.5, 0.18) // its feet, not its middle, sit on the line of descent
+    pickLander.visible = false
+    pickLander.renderOrder = 6
+    moon.add(pickLander)
+    let pickAnim: { id: string; t0: number } | null = null
+    let pickSeen: string | undefined | null = null // null: the app has not shown a frame yet
+    const pickN = new THREE.Vector3()
+    const pickQ = new THREE.Quaternion()
+    const pickInv = new THREE.Quaternion()
+    const pickUp = new THREE.Vector3()
     const ringGeo = new THREE.RingGeometry(0.010, 0.0135, 48)
     const dotGeo = new THREE.CircleGeometry(0.0045, 24)
     const syncSites = () => {
@@ -1349,6 +1409,65 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
         dsnLinks.forEach((l) => (l.visible = false))
         dsnPackets.forEach((p) => (p.visible = false))
         dsnLabels.forEach((el) => (el.style.opacity = '0'))
+      }
+
+      // The landing sign on a newly picked site (see pickBeam). Not on the first site of a shared link
+      // or of the expert mode, which arrive picked, and not with reduced motion.
+      if (state.current.mode === 'app') {
+        const fid = state.current.focusId
+        if (pickSeen === null) pickSeen = fid // what arrives already picked is not animated
+        else if (fid !== pickSeen) {
+          if (fid && !reduce) pickAnim = { id: fid, t0: now }
+          pickSeen = fid
+        }
+      }
+      const pm = pickAnim ? markers.find((x) => x.id === pickAnim!.id) : undefined
+      // #sfxdebug: window.__pickT freezes the animation at that second, for checks.
+      const dbgW = window as unknown as { __pickT?: number; __dbg?: boolean; __pickDbg?: unknown }
+      const pickDbg = SFX_DEBUG || !!dbgW.__dbg // the hash may have changed before this chunk loaded
+      const pickFix = pickDbg ? dbgW.__pickT : undefined
+      const pt = pickAnim ? (pickFix ?? (now - pickAnim.t0) / 1000) : 99
+      if (pickDbg) dbgW.__pickDbg = { mode: state.current.mode, focus: state.current.focusId, seen: pickSeen, anim: !!pickAnim, pm: !!pm, pt }
+      if (pm && pt < 3.6) {
+        const S = pm.dot.scale.x || 1
+        // The beam stands straight up on the screen (a sign, not a trajectory): seen from above the
+        // pole the local vertical points at the camera, and the lander would seem to rise.
+        pickN.set(0, 1, 0).applyQuaternion(camera.quaternion).applyQuaternion(moon.getWorldQuaternion(pickInv).invert())
+        pickQ.setFromUnitVectors(Y_AXIS, pickN)
+        const D = camera.position.distanceTo(world.copy(pm.local).applyMatrix4(moon.matrixWorld))
+        // The beam: a quarter of the screen high at any zoom (in the Moon's own units, it may be scaled).
+        const H = (0.5 * D * Math.tan((fov * DEG) / 2)) / (moon.matrixWorld.getMaxScaleOnAxis() || 1)
+        if (pickDbg) dbgW.__pickDbg = { ...(dbgW.__pickDbg as object), D, H, fov, ms: moon.matrixWorld.getMaxScaleOnAxis() }
+        const down = Math.min(1, pt / 1.6)
+        const fall = 1 - Math.pow(1 - down, 3) // eases into the touchdown
+        // Beam: fades in, then out after the touchdown.
+        ;(pickBeam.material as THREE.ShaderMaterial).uniforms.alpha.value = Math.min(1, pt / 0.15) * (1 - THREE.MathUtils.smoothstep(pt, 1.6, 2.3))
+        pickBeam.visible = true
+        pickBeam.quaternion.copy(pickQ)
+        pickBeam.scale.set(H * 0.008, H, H * 0.008)
+        pickBeam.position.copy(pm.local).addScaledVector(pickN, H / 2)
+        // Lander: from the top of the beam down to the ground, then gone.
+        pickLander.visible = pt < 2.2
+        pickLander.position.copy(pm.local).addScaledVector(pickN, H * (1 - fall))
+        pickLander.scale.setScalar(H * 0.16)
+        ;(pickLander.material as THREE.SpriteMaterial).opacity = (1 - THREE.MathUtils.smoothstep(pt, 1.75, 2.2))
+        // Two waves on the ground from the touchdown, in the verdict colour of the site.
+        pickRings.forEach((r, i) => {
+          const f = (pt - 1.55 - i * 0.35) / 1.4
+          r.visible = f > 0 && f < 1
+          if (!r.visible) return
+          pickUp.copy(pm.local).normalize() // the waves lie on the ground
+          r.position.copy(pm.local).addScaledVector(pickUp, 0.0004)
+          r.quaternion.setFromUnitVectors(Z_AXIS, pickUp)
+          r.scale.setScalar(S * (1 + 6 * (1 - Math.pow(1 - f, 2))))
+          const mat = r.material as THREE.MeshBasicMaterial
+          mat.color.copy(pm.color)
+          mat.opacity = (1 - f) * 0.9
+        })
+      } else {
+        pickAnim = null
+        pickBeam.visible = pickLander.visible = false
+        pickRings.forEach((r) => (r.visible = false))
       }
 
       // Callout: next to where the mouse found the site (its dot, or its label when the label sits away
