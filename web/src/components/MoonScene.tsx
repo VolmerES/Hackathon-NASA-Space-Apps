@@ -32,7 +32,7 @@ type Props = {
   /** Contents of the callout shown while the mouse rests on a site (desktop only). */
   info?: (id: string) => ReactNode
   /** Texts of the view controls (zoom in, zoom out, back to the south pole). */
-  controls?: { zoomIn: string; zoomOut: string; recenter: string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void; earth?: string; fromEarth?: string; hd?: string; newMoon?: (pct: number) => string }
+  controls?: { zoomIn: string; zoomOut: string; recenter: string; /** The orientation ring: its name and the label of each meridian button. */ gizmo?: string; faceLon?: (lon: string) => string; layer?: string; layerOn?: boolean; layerBusy?: boolean; onLayer?: () => void; earth?: string; fromEarth?: string; hd?: string; newMoon?: (pct: number) => string }
   /** Heat map laid over the polar cap (a square picture out to `deg` of colatitude), or null. */
   heat?: { canvas: HTMLCanvasElement; deg: number } | null
   /** Street view: dive down onto the focused site until the camera skims its ground. */
@@ -143,7 +143,8 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
   const labelsRef = useRef<HTMLDivElement>(null)
   const state = useRef({ mode, sites, focusId, onPick, showLabels, sunAt, earth })
   state.current = { mode, sites, focusId, onPick, showLabels, sunAt, earth }
-  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void; setHeat: (h: Props['heat']) => void; setView: (v: 0 | 1 | 2) => void; setHd: (on: boolean) => void } | null>(null)
+  const api = useRef<{ syncSites: () => void; focus: (id?: string) => void; zoomBy: (f: number) => void; recenter: () => void; dive: (on: boolean) => void; closeCallout: () => void; setHeat: (h: Props['heat']) => void; setView: (v: 0 | 1 | 2) => void; setHd: (on: boolean) => void; faceLon: (lon: number) => void; rotateBy: (screenRad: number) => void } | null>(null)
+  const gizmoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -805,7 +806,27 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       capMat.emissiveIntensity = heatTex ? 1 : 0
       if (had !== !!heatTex) capMat.needsUpdate = true
     }
-    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null), setHeat, setView: setViewTo, setHd }
+    // The orientation ring (as in 3D editors): a meridian turned to face the camera, or the Moon
+    // turned with the ring by an angle on the screen.
+    const faceLon = (lon: number) => {
+      const v = surface(-84, lon)
+      let d = Math.atan2(-v.x, v.z) + Math.PI - spin // + half a turn: towards the viewer, at the bottom
+      d = Math.atan2(Math.sin(d), Math.cos(d))
+      sfx.whoosh(0.5)
+      spinTarget = null
+      spinVel = tiltVel = 0
+      turn = Math.abs(d) < 0.02 ? null : { from: spin, to: spin + d, t0: performance.now(), dur: reduce ? 1 : 700 + (Math.abs(d) / Math.PI) * 900, hop: 0 }
+      holdUntil = performance.now() + HOLD_MS * 3
+    }
+    let gizmoSign = 1 // how the meridians turn on screen when the spin grows (depends on the view)
+    const rotateBy = (a: number) => {
+      turn = null
+      spinTarget = null
+      spinVel = tiltVel = 0
+      spin += a * gizmoSign
+      holdUntil = performance.now() + HOLD_MS * 3
+    }
+    api.current = { syncSites, focus, zoomBy, recenter, dive: diveTo, closeCallout: () => setHoverId(null), setHeat, setView: setViewTo, setHd, faceLon, rotateBy }
     syncSites()
 
     const pointers = new Map<number, { x: number; y: number }>()
@@ -956,6 +977,10 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
     let appDist = small ? 0.62 : 0.48
     const tmp = new THREE.Vector3()
     const world = new THREE.Vector3()
+    // The orientation ring: the pole and a point on each of four meridians (0, 90 E, 180, 90 W).
+    const gzPole = surface(-90, 0)
+    const gzLon = [0, 90, 180, -90].map((lon) => surface(-84, lon))
+    const gzTmp = new THREE.Vector3()
     const camToPoint = new THREE.Vector3()
 
     const resize = () => {
@@ -1233,6 +1258,39 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       }
       camera.setViewOffset(w, h, w / 2 - fx, h / 2 - fy, w, h)
       camera.updateProjectionMatrix()
+      const gz = gizmoRef.current
+      if (gz) {
+        const on = k > 0.95 && viewGoal === 0 && standGoal === 0
+        gz.style.opacity = on ? '1' : '0'
+        gz.style.pointerEvents = on ? 'auto' : 'none'
+        if (on) {
+          camera.updateMatrixWorld()
+          moon.updateMatrixWorld()
+          const toScreen = (v: THREE.Vector3) => {
+            tmp.copy(v).applyMatrix4(moon.matrixWorld).project(camera)
+            return [tmp.x * w, -tmp.y * h]
+          }
+          const [px, py] = toScreen(gzPole)
+          const angleOf = (v: THREE.Vector3) => {
+            const [x, y] = toScreen(v)
+            return Math.atan2(y - py, x - px)
+          }
+          const R = 34
+          const place = (el: Element | null | undefined, a: number, r = R) => {
+            if (el) (el as HTMLElement).style.transform = `translate(${(Math.cos(a) * r).toFixed(1)}px, ${(Math.sin(a) * r).toFixed(1)}px)`
+          }
+          const a0 = angleOf(gzLon[0])
+          // The sign of the turn: the same meridian a little further on in the spin.
+          const a1 = angleOf(gzTmp.copy(gzLon[0]).applyAxisAngle(Y_AXIS, 0.05))
+          gizmoSign = Math.sin(a1 - a0) >= 0 ? 1 : -1
+          const ring = gz.querySelector<SVGGElement>('.gz-ticks')
+          if (ring) ring.setAttribute('transform', `rotate(${((a0 * 180) / Math.PI).toFixed(2)} 44 44)`)
+          gz.querySelectorAll('.gz-lon').forEach((el, i) => place(el, angleOf(gzLon[i])))
+          place(gz.querySelector('.gz-sun'), angleOf(gzTmp.copy(sunLocal).setY(0).normalize().add(gzPole)), 45)
+          if (ea) place(gz.querySelector('.gz-earth'), angleOf(gzTmp.copy(earthDir).setY(0).normalize().add(gzPole)), 45)
+          ;(gz.querySelector('.gz-earth') as HTMLElement | null)?.style.setProperty('display', ea ? 'block' : 'none')
+        }
+      }
 
       const frameBox = frameEl ? frameEl.getBoundingClientRect() : null
       // Markers and their labels. Each label takes a free spot around its dot (the picked site first).
@@ -1588,6 +1646,59 @@ export function MoonScene({ mode, sites, focusId, onPick, frameRef, onFail, onRe
       <div ref={labelsRef} className="pointer-events-none fixed inset-0 z-[5] overflow-hidden" />
       {controls && (
         <div ref={controlsRef} data-franky="moon-tools" className={`moon-controls${compactControls ? ' compact' : ''}`} style={{ opacity: 0 }}>
+          {controls.gizmo && (
+            <div
+              ref={gizmoRef}
+              className="moon-gizmo"
+              role="group"
+              aria-label={controls.gizmo}
+              title={controls.gizmo}
+              onPointerDown={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return
+                const box = e.currentTarget.getBoundingClientRect()
+                const cx = box.left + box.width / 2
+                const cy = box.top + box.height / 2
+                let last = Math.atan2(e.clientY - cy, e.clientX - cx)
+                e.currentTarget.setPointerCapture(e.pointerId)
+                const move = (ev: PointerEvent) => {
+                  const a = Math.atan2(ev.clientY - cy, ev.clientX - cx)
+                  let d = a - last
+                  d = Math.atan2(Math.sin(d), Math.cos(d))
+                  last = a
+                  api.current?.rotateBy(d)
+                }
+                const el = e.currentTarget
+                const up = () => {
+                  el.removeEventListener('pointermove', move)
+                  el.removeEventListener('pointerup', up)
+                  el.removeEventListener('pointercancel', up)
+                }
+                el.addEventListener('pointermove', move)
+                el.addEventListener('pointerup', up)
+                el.addEventListener('pointercancel', up)
+              }}
+            >
+              <svg width="88" height="88" viewBox="0 0 88 88" aria-hidden="true">
+                <circle cx="44" cy="44" r="41" fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.25)" />
+                <circle cx="44" cy="44" r="25" fill="none" stroke="rgba(255,255,255,0.12)" />
+                <g className="gz-ticks">
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <line key={i} x1="44" y1={i % 6 === 0 ? 5 : 6} x2="44" y2={i % 6 === 0 ? 11 : 9} stroke={i === 0 ? '#f2b705' : 'rgba(255,255,255,0.45)'} strokeWidth={i % 6 === 0 ? 1.6 : 1} transform={`rotate(${i * 15 + 90} 44 44)`} />
+                  ))}
+                </g>
+              </svg>
+              <span className="gz-sun" aria-hidden="true" />
+              <span className="gz-earth" aria-hidden="true" />
+              {(['0°', '90°E', '180°', '90°W'] as const).map((l, i) => (
+                <button key={l} type="button" className={`gz-lon${i === 0 ? ' is-zero' : ''}`} onClick={() => api.current?.faceLon([0, 90, 180, -90][i])} aria-label={controls.faceLon ? controls.faceLon(l) : l} title={controls.faceLon ? controls.faceLon(l) : l}>
+                  {l}
+                </button>
+              ))}
+              <button type="button" className="gz-pole" onClick={() => api.current?.recenter()} aria-label={controls.recenter} title={controls.recenter}>
+                S
+              </button>
+            </div>
+          )}
           <div className="moon-zoom">
           <button type="button" onClick={() => api.current?.zoomBy(1 / 1.6)} aria-label={controls.zoomIn} title={controls.zoomIn}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
