@@ -1,6 +1,7 @@
 // Real ground around the team's sites: LOLA heights every 5 m (NASA PGDA 78, Barker et al. 2021),
 // a 900 m square centred on each site, made by scripts/ground_patches.py. Used by the street view
 // for the near ground and by the landing for the slope under the lander. Loaded on first use.
+import { versioned } from './version'
 
 export type Ground = {
   n: number
@@ -19,7 +20,7 @@ type Meta = { n: number; stepM: number; sites: Record<string, { block: number; h
 let all: Promise<{ meta: Meta; bin: ArrayBuffer } | null> | null = null
 
 export function loadGround(id: string): Promise<Ground | null> {
-  all ??= Promise.all([fetch('data/ground.json').then((r) => (r.ok ? r.json() : null)), fetch('data/ground.bin').then((r) => (r.ok ? r.arrayBuffer() : null))])
+  all ??= Promise.all([fetch(versioned('data/ground.json')).then((r) => (r.ok ? r.json() : null)), fetch(versioned('data/ground.bin')).then((r) => (r.ok ? r.arrayBuffer() : null))])
     .then(([meta, bin]) => (meta && bin ? { meta, bin } : null))
     .catch(() => {
       all = null

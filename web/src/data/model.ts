@@ -8,6 +8,7 @@
 //  - candidate sites: Wueller et al. (2026), 130 sites in the 16 Artemis candidate regions;
 //  - Moon elevation over NASA's Madrid deep space station, from Horizons (fetch_madrid.py).
 // Everything is computed here, in the browser, from those files: no server.
+import { versioned } from './version'
 
 export interface Site {
   id: string
@@ -164,7 +165,7 @@ let loading: Promise<void> | null = null
 export function loadData(base = 'data/'): Promise<void> {
   loading ??= (async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const get = (f: string): Promise<any> => fetch(base + f).then((r) => (r.ok ? r.json() : Promise.reject(new Error(f))))
+    const get = (f: string): Promise<any> => fetch(versioned(base + f)).then((r) => (r.ok ? r.json() : Promise.reject(new Error(f))))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tap = (p: Promise<any>, part: DataPart, detail: (x: any) => Record<string, number>): Promise<any> => p.then((x) => (report(part, detail(x)), x))
     const [sites, horizons, sub, mad, val, team] = await Promise.all([
@@ -531,7 +532,7 @@ type GridPoint = { e: number; n: number; lat: number; lon: number; slope100: num
 let grid: Record<string, { stepM: number; radiusM: number; points: GridPoint[] }> | null = null
 let gridLoading: Promise<typeof grid> | null = null
 export function loadGrid(base = 'data/') {
-  gridLoading ??= fetch(base + 'elipse.json')
+  gridLoading ??= fetch(versioned(base + 'elipse.json'))
     .then((r) => (r.ok ? r.json() : null))
     .then((g) => (grid = g))
     .catch(() => null)
@@ -576,7 +577,7 @@ export type RobustDay = { t: string; c: number; w: number; b: number; e0: number
 let robust: Record<string, unknown> | null = null
 let robustLoading: Promise<unknown> | null = null
 export function loadRobustness(base = 'data/') {
-  robustLoading ??= fetch(base + 'robustez.json')
+  robustLoading ??= fetch(versioned(base + 'robustez.json'))
     .then((r) => (r.ok ? r.json() : null))
     .then((g) => (robust = g))
     .catch(() => null)

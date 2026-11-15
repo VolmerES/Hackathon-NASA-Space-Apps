@@ -3,8 +3,8 @@
 // - Everything else from this site (code, NASA data, Moon textures): the saved copy at once,
 //   refreshed in the background, so a second visit starts fast and works offline.
 // Only same-origin GET requests are handled; nothing leaves the browser.
-const CACHE = 'lunar-landing-v6' // bump to drop files no longer used (v2: Plotly removed)
-const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/data/sites.json', '/data/horizons.json', '/data/subpoints.json', '/data/madrid.json', '/data/validation.json', '/data/team.json', '/moon/moon_fallback_wide.jpg', '/moon/moon_fallback_tall.jpg']
+const CACHE = 'lunar-landing-v7' // bump to drop files no longer used (v2: Plotly removed; v7: data URLs now carry ?v=<build>)
+const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/moon/moon_fallback_wide.jpg', '/moon/moon_fallback_tall.jpg']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -48,7 +48,12 @@ self.addEventListener('fetch', (event) => {
       const hit = await c.match(req)
       const fresh = fetch(req)
         .then((res) => {
-          if (res.ok) c.put(req, res.clone())
+          if (res.ok) {
+            c.put(req, res.clone())
+            // A data file of a new build (?v=…): drop the copies of older builds.
+            if (url.searchParams.has('v'))
+              c.keys().then((ks) => ks.forEach((k) => { const u = new URL(k.url); if (u.pathname === url.pathname && u.search !== url.search) c.delete(k) }))
+          }
           return res
         })
         .catch(() => hit)
