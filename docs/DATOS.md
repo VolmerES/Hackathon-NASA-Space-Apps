@@ -64,6 +64,7 @@ nuestro Sol.
 | Sitios candidatos | **Wueller et al. 2026** (Zenodo, CC BY 4.0): 130 sitios en 16 regiones de Artemis, con sus días seguidos de luz publicados | `web/scripts/build_catalogue.py` | `public/data/sites.json` |
 | Horizonte de cada sitio (720 acimuts, hasta 150 km, curvatura, 2 m de altura) | **LOLA** `LDEM_80S_80M` (80 m/px, nodo LOLA del PDS) y `ldem_16` (SVS) más allá de 80°S | `web/scripts/build_catalogue.py` | `public/data/horizons.json` |
 | Elevación de la Luna sobre Robledo de Chavela | **NASA JPL Horizons** | `web/scripts/fetch_madrid.py` | `public/data/madrid.json` |
+| Elevación de la Luna sobre las tres antenas de 70 m de la DSN (Madrid DSS-63, Goldstone DSS-14, Canberra DSS-43), para el contacto con la DSN; detalle y balance de enlace en [`ENLACE.md`](ENLACE.md) | **NASA JPL Horizons**; contraste independiente con SPICE (`dsn_spice.py`) | `web/scripts/fetch_dsn.py` | `public/data/dsn.json` |
 | Los 5 sitios que propone la web (MMA_K2023, HW09, dGR205, MMO07, NR102): horizonte fino, hipótesis, región NASA, distancia a la cresta y contraste con PGDA 69 | **Paquete del equipo** (Juan y Luna): LOLA 80 m (PGDA 90) + 5 m alrededor del sitio (PGDA 78), efemérides DE440 en `MOON_ME` | `web/scripts/import_team_package.py` | `public/data/horizons.json` (esos 5 sitios), `public/data/team.json` |
 
 El navegador calcula, para cualquier punto y hora, el acimut y la elevación

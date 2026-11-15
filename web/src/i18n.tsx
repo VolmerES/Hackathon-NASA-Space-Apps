@@ -219,7 +219,9 @@ const en = {
     darkestDay: (d: string, h: string) => `Darkest day: ${d} (${h} h of Sun)`,
     noEarthFrom: (h: string, from: string) => `Longest time without Earth: ${h}, from ${from} UTC`,
     noEarthNone: 'Earth is in view the whole stay.',
-    earthShare: (e: string, stations: string) => `Contact with Earth ${e} % of the stay · by antenna: ${stations}`,
+    earthShare: (e: string, dsn: string, stations: string) => `Earth in view ${e} % of the stay · DSN contact ${dsn} % (by antenna: ${stations})`,
+    noContact: (h: string) => `Longest time without DSN contact: ${h}`,
+    dsnNote: "Line of sight to NASA's Deep Space Network (Madrid, Goldstone, Canberra), Moon at least 10° above the station. Not a link budget; a worst-case one closes with margin (docs/ENLACE.md).",
     noEarthFail: 'Direct-to-Earth requirement not met: consider another date, another site or a relay satellite.',
     accuracy: "Landing accuracy: NASA's crewed landing requirement is within 100 m of the target",
     accuracyNote: "Grid every 40 m round the site, each point with its own LOLA horizon. Slope over 100 m from the 5 m LOLA map; NASA's crewed landing requirement asks for less than 10°.",
@@ -291,7 +293,8 @@ const en = {
   barSun: 'Sunlight during the stay',
   barEarth: 'Contact with Earth during the stay',
   barMadrid: 'Madrid deep space station can reach the site',
-  barStation: (name: string) => `${name} can reach the site`,
+  barDsn: 'DSN contact: an antenna of the Deep Space Network can reach the site',
+  dsnShort: 'DSN contact',
 
   both: 'Sun and Earth together',
   bothShort: 'Both',
@@ -300,7 +303,7 @@ const en = {
   madridToggle: 'Show NASA\'s Deep Space Network antennas (Madrid, Goldstone, Canberra)',
   madridBand: 'Madrid can reach the site',
   madridExplain: (minEl: number) =>
-    `Contact with Earth counts the hours when the site sees Earth and, at the same time, the Moon is at least ${minEl}° above the horizon at one of the three 70 m antennas of the NASA Deep Space Network: Madrid (DSS-63), Goldstone (DSS-14) or Canberra (DSS-43).`,
+    `DSN contact counts the hours when the site sees Earth and, at the same time, the Moon is at least ${minEl}° above the horizon at one of the three 70 m antennas of the NASA Deep Space Network: Madrid (DSS-63), Goldstone (DSS-14) or Canberra (DSS-43). Line of sight, not a link budget.`,
   dsnPcts: (list: string) => `Each antenna can reach the site: ${list} of the stay.`,
   madridPct: (pct: string) => `Madrid can reach the site ${pct} % of the stay.`,
 
@@ -311,7 +314,7 @@ const en = {
   yearCompute: 'Calculating…',
 
   downloadCsv: (name: string) => `Download the hourly table for ${name} (CSV)`,
-  csvHeader: ['time_utc', 'sun_visible', 'earth_in_view', 'earth_contact_dsn', 'sun_and_contact', 'madrid_dss63', 'goldstone_dss14', 'canberra_dss43', 'sun_az_deg', 'sun_el_deg', 'earth_az_deg', 'earth_el_deg'],
+  csvHeader: ['time_utc', 'sun_visible', 'earth_in_view', 'both', 'dsn_contact', 'madrid_dss63', 'goldstone_dss14', 'canberra_dss43', 'sun_az_deg', 'sun_el_deg', 'earth_az_deg', 'earth_el_deg'],
   yes: 'yes',
   findTitle: 'Where do you want to land?',
   loadingData: 'Loading NASA data…',
@@ -778,7 +781,9 @@ const es: Strings = {
     darkestDay: (d, h) => `Día con menos Sol: ${d} (${h} h de Sol)`,
     noEarthFrom: (h, from) => `Más tiempo seguido sin Tierra: ${h}, desde el ${from} UTC`,
     noEarthNone: 'La Tierra se ve durante toda la estancia.',
-    earthShare: (e, stations) => `Contacto con la Tierra el ${e} % de la estancia · por antena: ${stations}`,
+    earthShare: (e, dsn, stations) => `Tierra a la vista el ${e} % de la estancia · contacto con la DSN el ${dsn} % (por antena: ${stations})`,
+    noContact: (h) => `Más tiempo sin contacto con la DSN: ${h}`,
+    dsnNote: 'Línea de visión con la Red de Espacio Profundo de la NASA (Madrid, Goldstone, Canberra), con la Luna al menos a 10° sobre la estación. No es un balance de enlace; uno de peor caso cierra con margen (docs/ENLACE.md).',
     noEarthFail: 'No se cumple el requisito de contacto directo con la Tierra: prueba otra fecha, otro sitio o un satélite repetidor.',
     accuracy: 'Precisión de alunizaje: la NASA pide para un alunizaje tripulado quedar a menos de 100 m del objetivo',
     accuracyNote: 'Malla cada 40 m alrededor del sitio, cada punto con su propio horizonte LOLA. Pendiente sobre 100 m del mapa LOLA de 5 m; la NASA pide menos de 10° para un alunizaje tripulado.',
@@ -850,7 +855,8 @@ const es: Strings = {
   barSun: 'Luz solar durante la estancia',
   barEarth: 'Contacto con la Tierra durante la estancia',
   barMadrid: 'La estación de espacio profundo de Madrid puede alcanzar el sitio',
-  barStation: (name) => `${name} puede alcanzar el sitio`,
+  barDsn: 'Contacto con la DSN: una antena de la Red de Espacio Profundo puede alcanzar el sitio',
+  dsnShort: 'Contacto con la DSN',
 
   both: 'Sol y Tierra a la vez',
   bothShort: 'Ambos',
@@ -859,7 +865,7 @@ const es: Strings = {
   madridToggle: 'Mostrar las antenas de la Red de Espacio Profundo de la NASA (Madrid, Goldstone, Canberra)',
   madridBand: 'Madrid puede alcanzar el sitio',
   madridExplain: (minEl) =>
-    `El contacto con la Tierra cuenta las horas en las que el sitio ve la Tierra y, a la vez, la Luna está al menos ${minEl}° sobre el horizonte en una de las tres antenas de 70 m de la Red de Espacio Profundo de la NASA: Madrid (DSS-63), Goldstone (DSS-14) o Canberra (DSS-43).`,
+    `El contacto con la DSN cuenta las horas en las que el sitio ve la Tierra y, a la vez, la Luna está al menos ${minEl}° sobre el horizonte en una de las tres antenas de 70 m de la Red de Espacio Profundo de la NASA: Madrid (DSS-63), Goldstone (DSS-14) o Canberra (DSS-43). Línea de visión, no un balance de enlace.`,
   dsnPcts: (list) => `Cada antena puede alcanzar el sitio: ${list} de la estancia.`,
   madridPct: (pct) => `Madrid puede alcanzar el sitio el ${pct} % de la estancia.`,
 
@@ -870,7 +876,7 @@ const es: Strings = {
   yearCompute: 'Calculando…',
 
   downloadCsv: (name) => `Descargar la tabla horaria de ${name} (CSV)`,
-  csvHeader: ['hora_utc', 'sol_visible', 'tierra_a_la_vista', 'contacto_tierra_dsn', 'sol_y_contacto', 'madrid_dss63', 'goldstone_dss14', 'canberra_dss43', 'sol_az_grados', 'sol_el_grados', 'tierra_az_grados', 'tierra_el_grados'],
+  csvHeader: ['hora_utc', 'sol_visible', 'tierra_a_la_vista', 'ambos', 'contacto_dsn', 'madrid_dss63', 'goldstone_dss14', 'canberra_dss43', 'sol_az_grados', 'sol_el_grados', 'tierra_az_grados', 'tierra_el_grados'],
   yes: 'sí',
   findTitle: '¿Dónde quieres alunizar?',
   loadingData: 'Cargando los datos de la NASA…',

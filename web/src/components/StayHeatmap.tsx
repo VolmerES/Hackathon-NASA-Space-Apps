@@ -17,7 +17,7 @@ export function StayHeatmap({ samples, cursor, onPick }: { samples: Sample[]; cu
     const r = Math.floor((ms - day0) / 86400000)
     const c = s.t.getUTCHours()
     const lit = s.sunVisible > 0.5
-    const kind: keyof typeof FILL = lit && s.link ? 'both' : lit ? 'sun' : s.link ? 'earth' : 'none'
+    const kind: keyof typeof FILL = lit && s.earthVisible ? 'both' : lit ? 'sun' : s.earthVisible ? 'earth' : 'none'
     return { i, r, c, kind, label: `${s.t.toISOString().slice(0, 13).replace('T', ' ')}:00 UTC` }
   })
   const rowLabel = (r: number) => new Date(day0 + r * 86400000).toLocaleDateString(t.locale, { day: 'numeric', month: 'short', timeZone: 'UTC' })

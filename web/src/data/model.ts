@@ -7,8 +7,9 @@
 //    (scripts/import_team_package.py);
 //  - candidate sites: Wueller et al. (2026), 130 sites in the 16 Artemis candidate regions;
 //  - Moon elevation over the three 70 m antennas of NASA's Deep Space Network (Madrid DSS-63,
-//    Goldstone DSS-14, Canberra DSS-43), from Horizons (fetch_dsn.py). Direct contact with Earth needs
-//    Earth above the site's horizon AND the Moon at least 10 deg over one of them.
+//    Goldstone DSS-14, Canberra DSS-43), from Horizons (fetch_dsn.py). DSN contact: Earth above the
+//    site's horizon AND the Moon at least 10 deg over one of them. Shown apart: the verdict and the
+//    Earth figures keep counting Earth in view (docs/ENLACE.md: the two agree 98-100 % of the hours).
 // Everything is computed here, in the browser, from those files: no server.
 import { versioned } from './version'
 
@@ -81,7 +82,7 @@ export interface Sample {
   sunVisible: number // fraction of the solar disc above the terrain, 0..1
   /** Earth above the site's terrain horizon (by the antenna angle): geometry only. */
   earthVisible: boolean
-  /** Direct contact with Earth: Earth in view AND the Moon at least 10 deg over one DSN antenna. */
+  /** DSN contact: Earth in view AND the Moon at least 10 deg over one DSN antenna (Luna's dsnLink). */
   link: boolean
   /** DSN antennas with the Moon at least 10 deg over them (bit 1 Madrid, 2 Goldstone, 4 Canberra). */
   dsn: number
@@ -105,6 +106,10 @@ export interface Metrics {
   madridPct: number
   /** Share of the stay (%) each DSN antenna can reach the site, in DSN_STATIONS order. */
   stationPct: number[]
+  /** Share of the stay (%) with DSN contact (any antenna). */
+  dsnPct: number
+  /** Longest run of hours without DSN contact. */
+  longestNoContactH: number
   hoursToSunset: number | null
   hoursToEarthset: number | null
   /** Battery left after the longest night (Wh): capacity minus the battery that night needs. Null: no battery set. */
@@ -380,8 +385,8 @@ export function overview(site: Site, from: Date, days: number, minAntennaElevDeg
       const s = sampleAt(site, day + h * HOUR, minAntennaElevDeg)
       const lit = s.sunVisible > 0.5
       sun += lit ? 1 : 0
-      earth += s.link ? 1 : 0
-      both += lit && s.link ? 1 : 0
+      earth += s.earthVisible ? 1 : 0
+      both += lit && s.earthVisible ? 1 : 0
     }
     out.push({ t: new Date(day), sun: sun / 24, earth: earth / 24, both: both / 24 })
   }
@@ -462,7 +467,7 @@ export function landingCalendar(site: Site, durationDays: number, minAntennaElev
   for (let i = 0; i < n; i++) {
     const s = sampleAt(site, startMs + i * HOUR, minAntennaElevDeg)
     lit[i] = s.sunVisible > 0.5 ? 1 : 0
-    earth[i] = s.link ? 1 : 0
+    earth[i] = s.earthVisible ? 1 : 0
   }
   const pl = new Uint32Array(n + 1)
   const pe = new Uint32Array(n + 1)
@@ -497,8 +502,8 @@ export function landingCalendar(site: Site, durationDays: number, minAntennaElev
 export function metrics(samples: Sample[], mission: Mission): Metrics {
   const n = Math.max(1, samples.length)
   const sunlit = samples.filter((s) => s.sunVisible > 0.5).length
-  const earth = samples.filter((s) => s.link).length
-  const ops = samples.filter((s) => s.sunVisible > 0.5 && s.link).length
+  const earth = samples.filter((s) => s.earthVisible).length
+  const ops = samples.filter((s) => s.sunVisible > 0.5 && s.earthVisible).length
 
   // Longest runs of dark hours and of hours without Earth, with the index where each one starts.
   let longest = 0
@@ -507,13 +512,17 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
   let noEarth = 0
   let noEarthAt = -1
   let runE = 0
+  let noContact = 0
+  let runC = 0
   samples.forEach((s, i) => {
+    runC = s.link ? 0 : runC + 1
+    if (runC > noContact) noContact = runC
     run = s.sunVisible > 0.5 ? 0 : run + 1
     if (run > longest) {
       longest = run
       longestAt = i - run + 1
     }
-    runE = s.link ? 0 : runE + 1
+    runE = s.earthVisible ? 0 : runE + 1
     if (runE > noEarth) {
       noEarth = runE
       noEarthAt = i - runE + 1
@@ -526,7 +535,7 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
     return i < 0 ? null : i
   }
   const hoursToSunset = samples.length && samples[0].sunVisible > 0.5 ? firstIndex((s) => s.sunVisible <= 0.5) : 0
-  const hoursToEarthset = samples.length && samples[0].link ? firstIndex((s) => !s.link) : 0
+  const hoursToEarthset = samples.length && samples[0].earthVisible ? firstIndex((s) => !s.earthVisible) : 0
 
   const sunlightPct = (100 * sunlit) / n
   const earthLinkPct = (100 * earth) / n
@@ -551,6 +560,8 @@ export function metrics(samples: Sample[], mission: Mission): Metrics {
     earthLinkPct,
     opsPct: (100 * ops) / n,
     madridPct: (100 * samples.filter((s) => s.madridLink).length) / n,
+    dsnPct: (100 * samples.filter((s) => s.link).length) / n,
+    longestNoContactH: noContact,
     stationPct: DSN_STATIONS.map((_, k) => (100 * samples.filter((s) => s.earthVisible && s.dsn & (1 << k)).length) / n),
     hoursToSunset,
     hoursToEarthset,

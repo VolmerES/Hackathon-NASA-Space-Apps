@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { DATA, DEFAULT_REQUIREMENTS, DSN_MIN_ELEV_DEG, DSN_STATIONS, SITES, clampToData, customSite, gridReady, gridSiteById, loadGrid, loadRobustness, landingCalendar, loadData, metrics, overview, simulate, subsolarAt, subearthAt, dsnAt, type Metrics, type Mission, type Sample, type Site } from './data/model'
 import { Panorama } from './components/Panorama'
 import { SiteMap } from './components/SiteMap'
-import { DSN_COLORS, StayBar } from './components/StayBar'
+import { StayBar } from './components/StayBar'
 import { YearStrip, type YearMetric } from './components/YearView'
 import { readScenario, writeScenario } from './scenario'
 import { LIGHT_CAP_DEG, LIGHT_GRADIENT, lightMap, lightUpTo, type LightMap } from './data/lightmap'
@@ -44,7 +44,7 @@ function csvFor(samples: Sample[], t: Strings) {
   const yn = (b: boolean) => (b ? t.yes : t.no)
   const rows = samples.map((s) => {
     const lit = s.sunVisible > 0.5
-    return [s.t.toISOString().slice(0, 16) + 'Z', yn(lit), yn(s.earthVisible), yn(s.link), yn(lit && s.link), ...DSN_STATIONS.map((_, k) => yn(s.earthVisible && (s.dsn & (1 << k)) !== 0)), s.sunAz.toFixed(2), s.sunEl.toFixed(3), s.earthAz.toFixed(2), s.earthEl.toFixed(3)].join(',')
+    return [s.t.toISOString().slice(0, 16) + 'Z', yn(lit), yn(s.earthVisible), yn(lit && s.earthVisible), yn(s.link), ...DSN_STATIONS.map((_, k) => yn(s.earthVisible && (s.dsn & (1 << k)) !== 0)), s.sunAz.toFixed(2), s.sunEl.toFixed(3), s.earthAz.toFixed(2), s.earthEl.toFixed(3)].join(',')
   })
   return [t.csvHeader.join(','), ...rows].join('\n') + '\n'
 }
@@ -1460,12 +1460,11 @@ export default function App() {
                     <span className="flex items-center gap-1.5">
                       <i className="inline-block size-2 bg-earth" /> {t.earthContact}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.earthLinkPct * stayH) / 100)} h</b>
                     </span>
-                    {madrid &&
-                      DSN_STATIONS.map((st, k) => (
-                        <span key={st.id} className="flex items-center gap-1.5">
-                          <i className="inline-block size-2" style={{ background: DSN_COLORS[k] }} /> {st.name}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.stationPct[k] * stayH) / 100)} h</b>
-                        </span>
-                      ))}
+                    {madrid && (
+                      <span className="flex items-center gap-1.5">
+                        <i className="inline-block size-2 bg-nasa-red" /> {t.dsnShort}: <b className="font-semibold text-ink tabular-nums">{Math.round((focused.m.dsnPct * stayH) / 100)} h</b>
+                      </span>
+                    )}
                   </p>
                 </div>
 
