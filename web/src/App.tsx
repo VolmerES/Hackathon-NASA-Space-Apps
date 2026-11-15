@@ -906,10 +906,11 @@ export default function App() {
         .join(' · '),
   }
 
-  // The guided tour: the first time the tool opens (not from a shared link), and from the menu or Franky.
+  // The guided tour: the first time the tool opens in the educational mode (not from a shared link, and
+  // never in the expert mode, which starts with everything open and no help), and from the menu or Franky.
   const [tourOn, setTourOn] = useState(false)
   useEffect(() => {
-    if (!splashDone || !ready || hasLink) return
+    if (!splashDone || !ready || hasLink || mode === 'expert') return
     let seen = false
     try {
       seen = localStorage.getItem('fmttm-tour-v1') === 'done'
@@ -1586,7 +1587,8 @@ export default function App() {
               )}
             </div>
             {/* Desktop: with a site chosen, its sky in 2D docked under the Moon. */}
-            {skyStay.value && focused && (
+            {/* Not while a side panel is open: squeezed between the two it cut the Moon's labels (the panel has the sky as a tab). */}
+            {skyStay.value && focused && !panel && (
               <section className={`${skyStay.leaving ? 'ui-out' : 'ui-in'} glass pointer-events-auto mx-3 mb-3 hidden lg:block`} aria-label={t.skyFrom(siteName(focused.site))}>
                 <SkyStrip name={siteName(focused.site)} height={190} onExpand={() => { setView('2d'); setPanel('sky') }} onClose={() => setSkyOpen(false)}>
                   <Panorama site={focused.site} samples={focused.samples} height={190} />
