@@ -78,7 +78,7 @@ export function TimeBar({ start, min, max, stay, index, sunHours, plan, label, o
         <NumberField aria-label={t.daysOnSurface} min={1} max={60} value={stay} onValue={(n) => onStay(Math.round(n))} className="h-8 w-12 rounded-sm border border-white/20 bg-black/40 px-1.5 text-center text-xs text-ink" />
         {t.daysShort}
       </label>
-      <output className="ml-auto shrink-0 rounded-sm bg-sun/15 px-2 py-1 text-xs tabular-nums text-ink sm:order-last sm:ml-0">
+      <output className="ml-auto shrink-0 rounded-sm bg-sun/15 px-2 py-1 text-xs tabular-nums text-ink sm:order-last sm:ml-0 lg:max-xl:hidden">
         <strong className="font-semibold text-sun">{t.dayOfStay(day, stay)}</strong> · {when}
       </output>
       <div className="relative min-w-0 flex-1 basis-full sm:basis-auto" title={sunHours?.length ? t.timeBarStrip : undefined}>
